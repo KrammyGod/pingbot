@@ -18,6 +18,14 @@ module.exports = {
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEPLOY_PATH,
             'post-deploy' : 'npm ci --omit dev && pm2 start --env production --update-env'
+        },
+        development : {
+            'user'        : process.env.SSH_USER,
+            'host'        : process.env.SSH_HOST,
+            'ref'         : 'origin/dev-dist',
+            'repo'        : 'git@github.com:KrammyGod/pingbot.git',
+            'path'        : process.env.DEV_DEPLOY_PATH,
+            'post-deploy' : 'npm ci --omit dev && pm2 start --env production --update-env'
         }
     }
 };

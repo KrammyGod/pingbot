@@ -2,7 +2,7 @@
 name: Build and Publish
 
 on:
-  push:
+  pull_request:
     branches: ["main"]
 
   workflow_dispatch:
@@ -38,19 +38,19 @@ jobs:
 
       # Then after we checkout the branch, we can overwrite all files with the ones in .out
       # We also include the commit message to be the same as original commit
-      - name: Checkout and push to dist
+      - name: Checkout and push to dev-dist
         run: |
           git config user.name "${{ github.event.pusher.name }}"
           git config user.email "${{ github.event.pusher.email }}"
-          git fetch origin dist
+          git fetch origin dev-dist
           rm -rf dist
-          git checkout dist
+          git checkout dev-dist
           rm -r *
           mv .out/* .
           rmdir .out
           git add .
           git commit -m "${{ github.event.head_commit.message }}" || true
-          git push origin dist
+          git push origin dev-dist
 
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
@@ -62,10 +62,10 @@ jobs:
         run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       # Omitting output for security
-      - name: Deploy to production
+      - name: Deploy to development
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
-        run: pm2 deploy production > /dev/null
+        run: pm2 deploy development > /dev/null
