@@ -10,6 +10,10 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+
+    # Only trigger for non-drafts
+    if: ${{ github.event.pull_request.draft == false }}
+
     steps:
       - uses: actions/checkout@v3
       
@@ -27,11 +31,9 @@ jobs:
   build:
     needs: lint
     runs-on: ubuntu-latest
+    environment: Development
     permissions:
       contents: write
-    
-    # Only trigger for my PRs, other PRs will simply just run lint
-    if: ${{ github.event.pull_request.author_association == 'OWNER' }}
     
     steps:
       - uses: actions/checkout@v3
@@ -48,8 +50,8 @@ jobs:
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
-          TOKEN: ${{ secrets.DEV_TOKEN }}
-          CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
+          TOKEN: ${{ secrets.TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
           npm run deploy
           mkdir .out
@@ -76,6 +78,7 @@ jobs:
   publish:
     needs: [lint, build]
     runs-on: ubuntu-latest
+    environment: Development
     permissions:
       contents: write
     
@@ -106,6 +109,5 @@ jobs:
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
+          DEV_DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: pm2 deploy development > /dev/null
