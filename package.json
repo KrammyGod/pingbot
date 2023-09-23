@@ -1,0 +1,57 @@
+{
+  "name": "pingbot-typescript",
+  "version": "1.0.0",
+  "description": "A multi-purpose Discord Bot written in TypeScript",
+  "main": "dist/index",
+  "scripts": {
+    "clean:dist": "rimraf ./dist",
+    "collect:hi3": "env-cmd --environments hi3 node dist/modules/collector --enable-source-maps",
+    "collect:hsr": "env-cmd --environments hsr node dist/modules/collector --enable-source-maps",
+    "collect:gi": "env-cmd --environments gi node dist/modules/collector --enable-source-maps",
+    "lint": "eslint src/**/*.ts --max-warnings=0",
+    "lint:fix": "eslint --fix src/**/*.ts",
+    "prebuild": "npm run clean:dist",
+    "build": "tsc && tsc-alias",
+    "deploy": "npm run build && node dist/deployment/deploy-commands.js --enable-source-maps",
+    "start": "node . --enable-source-maps"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.5.2",
+    "@types/fluent-ffmpeg": "^2.1.22",
+    "@types/glob": "^8.1.0",
+    "@types/lodash": "^4.14.198",
+    "@types/node": "^20.6.0",
+    "@types/pg": "^8.10.2",
+    "@types/pg-copy-streams": "^1.2.2",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.49.0",
+    "nodemon": "^3.0.1",
+    "rimraf": "^5.0.1",
+    "tsc-alias": "^1.8.7",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.16.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "axios": "^1.5.0",
+    "cheerio": "^1.0.0-rc.12",
+    "chrono-node": "^2.7.0",
+    "cookie": "^0.5.0",
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.3.1",
+    "env-cmd": "^10.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "form-data": "^4.0.0",
+    "libsodium-wrappers": "^0.7.13",
+    "pg": "^8.11.3",
+    "pg-copy-streams": "^6.0.6",
+    "pixiv.ts": "github:KrammyGod/pixiv.ts",
+    "play-dl": "^1.9.6"
+  },
+  "engines": {
+    "node": ">=20.6.1",
+    "npm": ">=10.1.0"
+  }
+}
