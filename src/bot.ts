@@ -238,7 +238,7 @@ client.on(Events.InteractionCreate, interaction => {
 
 // When new member joins, send message according to guild settings
 client.on(Events.GuildMemberAdd, async member => {
-    if (process.env.NODE_ENV !== 'production') return;
+    if (config.env !== 'production') return;
     const info = await DB.getGuild(member.guild.id).catch(() => { });
     if (!info) return;
     const channel = member.guild.channels.cache.get(info.channelid ?? '');

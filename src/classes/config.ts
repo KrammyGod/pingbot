@@ -23,5 +23,6 @@ export default {
 
     // Completely optional - they have defaults
     port: process.env.PORT || 5000,
-    ffmpeg: process.env.NEW_FFMPEG_PATH
+    ffmpeg: process.env.NEW_FFMPEG_PATH,
+    env: process.env.NODE_ENV,
 };
