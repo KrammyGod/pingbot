@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restart = exports.vote = exports.remove = exports.skip = exports.prev = exports.shuffle = exports.queue = exports.resume = exports.pause = exports.loop = exports.clear = exports.host = exports.play = exports.np = exports.leave = exports.join = exports.desc = exports.name = void 0;
+exports.music = exports.desc = exports.name = void 0;
 const util_1 = __importDefault(require("util"));
 const play_dl_1 = __importDefault(require("play-dl"));
 const GuildVoice_1 = __importDefault(require("../classes/GuildVoice"));
@@ -156,15 +156,14 @@ async function playNext(guildId) {
     const embed = await nowPlaying(guildId);
     return guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
 }
-exports.join = {
-    data: new discord_js_1.SlashCommandBuilder()
+const join = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('join')
-        .setDescription('Joins the voice channel you are in.')
-        .setDMPermission(false),
+        .setDescription('Joins the voice channel you are in.'),
     desc: 'Joins the voice channel. Use this command to move me if I am already in a channel!\n' +
         'Note: You can only move me if you have the `MOVE_MEMBERS` permission!\n\n' +
-        'Usage: `/join`\n\n' +
-        'Examples: `/join`',
+        'Usage: `/music join`\n\n' +
+        'Examples: `/music join`',
     async execute(interaction) {
         await interaction.deferReply();
         const me = interaction.guild.members.me;
@@ -210,15 +209,14 @@ exports.join = {
         return interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
     }
 };
-exports.leave = {
-    data: new discord_js_1.SlashCommandBuilder()
+const leave = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('leave')
-        .setDescription('Disconnects me from the voice channel. MUST BE HOST/MOD')
-        .setDMPermission(false),
+        .setDescription('Disconnects me from the voice channel. MUST BE HOST/MOD'),
     desc: 'Leaves the voice channel. You can only disconnect me if you are the host/you have ' +
         '`MOVE_MEMBERS` permission!\n\n' +
-        'Usage: `/leave`\n\n' +
-        'Examples: `/leave`',
+        'Usage: `/music leave`\n\n' +
+        'Examples: `/music leave`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -236,14 +234,13 @@ exports.leave = {
         return interaction.editReply({ content: `💨 Leaving ${guildVoice.voiceChannel} bye!` });
     },
 };
-exports.np = {
-    data: new discord_js_1.SlashCommandBuilder()
+const np = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('np')
-        .setDescription('Shows the currently playing song.')
-        .setDMPermission(false),
+        .setDescription('Shows the currently playing song.'),
     desc: 'Shows the currently playing song in a pretty embed.\n\n' +
-        'Usage: `/np`\n\n' +
-        'Examples: `/np`',
+        'Usage: `/music np`\n\n' +
+        'Examples: `/music np`',
     async execute(interaction) {
         await interaction.deferReply();
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
@@ -257,8 +254,8 @@ exports.np = {
         return interaction.editReply({ embeds: [embed] });
     }
 };
-exports.play = {
-    data: new discord_js_1.SlashCommandBuilder()
+const play = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('play')
         .setDescription('Plays a song in the voice channel.')
         .addStringOption(option => option
@@ -271,16 +268,15 @@ exports.play = {
         .addChoices({ name: '🔀 None', value: "NONE" /* LoopType.none */ }, { name: '🔂 One', value: "ONE" /* LoopType.one */ }, { name: '🔁 All', value: "ALL" /* LoopType.all */ }))
         .addBooleanOption(option => option
         .setName('shuffle')
-        .setDescription('Whether to shuffle the playlist before playing.'))
-        .setDMPermission(false),
+        .setDescription('Whether to shuffle the playlist before playing.')),
     desc: 'Plays a query in the voice channel! I will automatically join if I am not with you.\n\n' +
-        'Usage: `/play query: <query> loop: [loop] shuffle: [shuffle]`\n\n' +
+        'Usage: `/music play query: <query> loop: [loop] shuffle: [shuffle]`\n\n' +
         '__**Options**__\n' +
         '*query:* The youtube, spotify, or search query to add. (Required)\n' +
         '*loop:* Set a loop option for the playlist. (Default: None)\n' +
         '*shuffle:* Whether to shuffle the playlist before adding. Only affects playlists. (Default: False) \n\n' +
-        'Examples: `/play query: Rick Astley loop: 🔁 All`, ' +
-        '`/play query: https://www.twitch.tv/videos/404860573 shuffle: True`',
+        'Examples: `/music play query: Rick Astley loop: 🔁 All`, ' +
+        '`/music play query: https://www.twitch.tv/videos/404860573 shuffle: True`',
     shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -317,7 +313,7 @@ exports.play = {
         if (!member)
             return;
         if (!guildVoice) {
-            await exports.join.execute(interaction);
+            await join.execute(interaction);
             guildVoice = client_1.GuildVoices.get(interaction.guildId);
             if (!guildVoice)
                 return;
@@ -456,14 +452,13 @@ exports.play = {
         }
     }
 };
-exports.host = {
-    data: new discord_js_1.SlashCommandBuilder()
+const host = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('host')
-        .setDescription('Views the current host of the music channel.')
-        .setDMPermission(false),
+        .setDescription('Views the current host of the music channel.'),
     desc: 'Views the current host of the music channel.\n\n' +
-        'Usage: `/host`\n\n' +
-        'Examples: `/host`',
+        'Usage: `/music host`\n\n' +
+        'Examples: `/music host`',
     async execute(interaction) {
         await interaction.deferReply();
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
@@ -480,14 +475,13 @@ exports.host = {
         return interaction.editReply({ content: `The host is ${host}`, allowedMentions: { users: [] } });
     }
 };
-exports.clear = {
-    data: new discord_js_1.SlashCommandBuilder()
+const clear = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('clear')
-        .setDescription('Clears the playlist. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Clears the playlist. MUST BE HOST'),
     desc: 'Clears the playlist. Only hosts may use this command.\n\n' +
-        'Usage: `/clear`\n\n' +
-        'Examples: `/clear`',
+        'Usage: `/music clear`\n\n' +
+        'Examples: `/music clear`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -505,20 +499,19 @@ exports.clear = {
         return interaction.editReply({ content: '❌ **RIP Queue.**' });
     }
 };
-exports.loop = {
-    data: new discord_js_1.SlashCommandBuilder()
+const loop = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('loop')
         .setDescription('Sets the loop mode. MUST BE HOST')
         .addStringOption(option => option
         .setName('type')
         .setDescription('The new type of loop.')
-        .addChoices({ name: '🔀 None', value: "NONE" /* LoopType.none */ }, { name: '🔂 One', value: "ONE" /* LoopType.one */ }, { name: '🔁 All', value: "ALL" /* LoopType.all */ }).setRequired(true))
-        .setDMPermission(false),
+        .addChoices({ name: '🔀 None', value: "NONE" /* LoopType.none */ }, { name: '🔂 One', value: "ONE" /* LoopType.one */ }, { name: '🔁 All', value: "ALL" /* LoopType.all */ }).setRequired(true)),
     desc: 'Sets a new loop type. Only hosts may use this command.\n\n' +
-        'Usage: `/loop type: <type>`\n\n' +
+        'Usage: `/music loop type: <type>`\n\n' +
         '__**Options**__\n' +
         '*type:* The type of loop to add. Please select one. (Required)\n\n' +
-        'Examples: `/loop type: `🔀 None',
+        'Examples: `/music loop type: `🔀 None',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -536,14 +529,13 @@ exports.loop = {
         return interaction.editReply({ content: `✅ Loop type set to ${guildVoice.loop}` });
     }
 };
-exports.pause = {
-    data: new discord_js_1.SlashCommandBuilder()
+const pause = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('pause')
-        .setDescription('Pauses the current song. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Pauses the current song. MUST BE HOST'),
     desc: 'Pauses the current song. Only hosts may use this command.\n\n' +
-        'Usage: `/pause`\n\n' +
-        'Examples: `/pause`',
+        'Usage: `/music pause`\n\n' +
+        'Examples: `/music pause`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -569,14 +561,13 @@ exports.pause = {
         }
     }
 };
-exports.resume = {
-    data: new discord_js_1.SlashCommandBuilder()
+const resume = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('resume')
-        .setDescription('Resumes the current song. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Resumes the current song. MUST BE HOST'),
     desc: 'Resumes the current song. Only hosts may use this command.\n\n' +
-        'Usage: `/resume`\n\n' +
-        'Examples: `/resume`',
+        'Usage: `/music resume`\n\n' +
+        'Examples: `/music resume`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -600,18 +591,17 @@ exports.resume = {
         }
     }
 };
-exports.queue = {
-    data: new discord_js_1.SlashCommandBuilder()
+const queue = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('queue')
         .setDescription('Shows the current queue.')
         .addIntegerOption(option => option
         .setName('page')
         .setDescription('The page number of the queue to get')
-        .setMinValue(1))
-        .setDMPermission(false),
+        .setMinValue(1)),
     desc: 'Shows the current queue.\n\n' +
-        'Usage: `/queue`\n\n' +
-        'Examples: `/queue`',
+        'Usage: `/music queue`\n\n' +
+        'Examples: `/music queue`',
     getPage(userID, guildVoice, page) {
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Here is the current queue:',
@@ -673,27 +663,27 @@ exports.queue = {
             new discord_js_1.ButtonBuilder()
                 .setEmoji('↩️')
                 .setStyle(discord_js_1.ButtonStyle.Primary)
-                .setCustomId(`queue/${userID}/${jumpPage}/`)
+                .setCustomId(`music/${userID}/queue/${jumpPage}/`)
                 .setDisabled(!song),
             new discord_js_1.ButtonBuilder()
                 .setEmoji('⬅️')
                 .setStyle(discord_js_1.ButtonStyle.Primary)
-                .setCustomId(`queue/${userID}/${page - 1}`)
+                .setCustomId(`music/${userID}/queue/${page - 1}`)
                 .setDisabled(page === 1),
             new discord_js_1.ButtonBuilder()
                 .setEmoji('➡️')
                 .setStyle(discord_js_1.ButtonStyle.Primary)
-                .setCustomId(`queue/${userID}/${page + 1}`)
+                .setCustomId(`music/${userID}/queue/${page + 1}`)
                 .setDisabled(page === max_pages),
             new discord_js_1.ButtonBuilder()
                 .setEmoji('🔀')
                 .setStyle(discord_js_1.ButtonStyle.Primary)
-                .setCustomId(`shuffle/${userID}/${page}`)
+                .setCustomId(`music/${userID}/shuffle/${page}`)
                 .setDisabled(userID !== guildVoice.host.id),
             new discord_js_1.ButtonBuilder()
                 .setEmoji('📄')
                 .setStyle(discord_js_1.ButtonStyle.Primary)
-                .setCustomId(`queue/${userID}/input`)
+                .setCustomId(`music/${userID}/queue/input`)
         ];
         const retval = {
             embeds: [embed],
@@ -725,13 +715,13 @@ exports.queue = {
             return interaction.followUp(followUp);
     },
     async buttonReact(interaction) {
-        const [page] = interaction.customId.split('/').slice(2);
+        const [page] = interaction.customId.split('/').slice(3);
         const val = parseInt(page);
         if (isNaN(val)) {
             if (page === 'input') {
                 const input = new discord_js_1.ModalBuilder({
                     title: 'Jump to page',
-                    customId: 'queue',
+                    customId: 'music/queue',
                     components: [
                         new discord_js_1.ActionRowBuilder({
                             components: [
@@ -774,14 +764,13 @@ exports.queue = {
         }
     }
 };
-exports.shuffle = {
-    data: new discord_js_1.SlashCommandBuilder()
+const shuffle = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('shuffle')
-        .setDescription('Shuffles the current queue. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Shuffles the current queue. MUST BE HOST'),
     desc: 'Shuffles the entire queue. Only hosts may use this command.\n\n' +
-        'Usage: `/shuffle`\n\n' +
-        'Example: `/shuffle`',
+        'Usage: `/music shuffle`\n\n' +
+        'Example: `/music shuffle`',
     async buttonReact(interaction) {
         await interaction.deferUpdate();
         const member = await get_member(interaction);
@@ -794,8 +783,8 @@ exports.shuffle = {
         if (reply)
             return interaction.followUp({ ...reply, ephemeral: true });
         guildVoice.shuffle();
-        const page = parseInt(interaction.customId.split('/').slice(2)[0]);
-        const { embeds, components } = exports.queue.getPage(interaction.user.id, guildVoice, page);
+        const page = parseInt(interaction.customId.split('/').slice(3)[0]);
+        const { embeds, components } = queue.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
         return interaction.followUp({ content: '🔀 Successfully shuffled the queue.', ephemeral: true });
     },
@@ -816,14 +805,13 @@ exports.shuffle = {
         return interaction.editReply({ content: '🔀 Successfully shuffled the queue.' });
     }
 };
-exports.prev = {
-    data: new discord_js_1.SlashCommandBuilder()
+const prev = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('prev')
-        .setDescription('Plays the previous song. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Plays the previous song. MUST BE HOST'),
     desc: 'Plays the previous song. Only hosts may use this command.\n\n' +
-        'Usage: `/prev`\n\n' +
-        'Example: `/prev`',
+        'Usage: `/music prev`\n\n' +
+        'Example: `/music prev`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -848,14 +836,13 @@ exports.prev = {
         return interaction.editReply({ content: '✅ Successfully rewinded to previous song.' });
     }
 };
-exports.skip = {
-    data: new discord_js_1.SlashCommandBuilder()
+const skip = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('skip')
-        .setDescription('Skips the current song. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Skips the current song. MUST BE HOST'),
     desc: 'Skips the current song. Only hosts may use this command.\n\n' +
-        'Usage: `/skip`\n\n' +
-        'Example: `/skip`',
+        'Usage: `/music skip`\n\n' +
+        'Example: `/music skip`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -888,10 +875,10 @@ const remove_song = {
         .setRequired(true)),
     desc: 'Removes a song at a certain index. Cannot be used to skip the current playing song\n' +
         'Use {/skip} to skip the current song instead. Only hosts may use this command.\n\n' +
-        'Usage: `/remove song index: <index>`\n\n' +
+        'Usage: `/music remove song index: <index>`\n\n' +
         '__**Options**__\n' +
-        '*index:* The index of the song in the queue. See {/queue} (Required)\n\n' +
-        'Examples: `/remove song index: 1`',
+        '*index:* The index of the song in the queue. See {/music queue} (Required)\n\n' +
+        'Examples: `/music remove song index: 1`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -919,12 +906,11 @@ const remove_song = {
         return interaction.editReply({ content: `✅ Successfully removed song at index ${idx + 1}.` });
     }
 };
-exports.remove = {
-    data: new discord_js_1.SlashCommandBuilder()
+const remove = {
+    data: new discord_js_1.SlashCommandSubcommandGroupBuilder()
         .setName('remove')
         .setDescription('Remove base description')
-        .addSubcommand(remove_song.data)
-        .setDMPermission(false),
+        .addSubcommand(remove_song.data),
     desc: 'Remove base command',
     subcommands: new Map()
         .set(remove_song.data.name, remove_song),
@@ -942,10 +928,10 @@ const vote_skip = {
         .setDescription('Whether to vote skip or not.')
         .setRequired(true)),
     desc: 'Votes to skip the current song.\n\n' +
-        'Usage: `/vote skip skip: <vote>`\n\n' +
+        'Usage: `/music vote skip skip: <vote>`\n\n' +
         '__**Options**__\n' +
         '*skip:* Whether to vote skip or not. (Required)\n\n' +
-        'Examples: `/vote skip skip: True`',
+        'Examples: `/music vote skip skip: True`',
     setEmbed(embed, guildVoice, requiredVotes) {
         let desc = '';
         desc += `**Song: ${guildVoice.getCurrentSong().linkedTitle}**\n`;
@@ -966,12 +952,11 @@ const vote_skip = {
         return interaction.editReply({ content: 'This command is not implemented yet.' });
     }
 };
-exports.vote = {
-    data: new discord_js_1.SlashCommandBuilder()
+const vote = {
+    data: new discord_js_1.SlashCommandSubcommandGroupBuilder()
         .setName('vote')
         .setDescription('Vote Base Command.')
-        .addSubcommand(vote_skip.data)
-        .setDMPermission(false),
+        .addSubcommand(vote_skip.data),
     desc: 'Vote Base Command',
     subcommands: new Map()
         .set(vote_skip.data.name, vote_skip),
@@ -980,14 +965,13 @@ exports.vote = {
         return subcmd.execute(interaction);
     }
 };
-exports.restart = {
-    data: new discord_js_1.SlashCommandBuilder()
+const restart = {
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('restart')
-        .setDescription('Restarts the queue. MUST BE HOST')
-        .setDMPermission(false),
+        .setDescription('Restarts the queue. MUST BE HOST'),
     desc: 'Restarts the queue (start from the beginning). Only hosts may use this command.\n\n' +
-        'Usage: `/restart`' +
-        'Examples: `/restart`',
+        'Usage: `/music restart`' +
+        'Examples: `/music restart`',
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
@@ -1033,6 +1017,64 @@ exports.restart = {
         else {
             return interaction.client.deleteFollowUp(interaction, message);
         }
+    }
+};
+// All commands are under this main command
+exports.music = {
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('music')
+        .setDescription('Music base command.')
+        .addSubcommand(join.data)
+        .addSubcommand(leave.data)
+        .addSubcommand(np.data)
+        .addSubcommand(play.data)
+        .addSubcommand(host.data)
+        .addSubcommand(clear.data)
+        .addSubcommand(loop.data)
+        .addSubcommand(pause.data)
+        .addSubcommand(resume.data)
+        .addSubcommand(queue.data)
+        .addSubcommand(shuffle.data)
+        .addSubcommand(prev.data)
+        .addSubcommand(skip.data)
+        .addSubcommandGroup(remove.data)
+        .addSubcommandGroup(vote.data)
+        .addSubcommand(restart.data)
+        .setDMPermission(false),
+    subcommands: new Map()
+        .set(join.data.name, join)
+        .set(leave.data.name, leave)
+        .set(np.data.name, np)
+        .set(play.data.name, play)
+        .set(host.data.name, host)
+        .set(clear.data.name, clear)
+        .set(loop.data.name, loop)
+        .set(pause.data.name, pause)
+        .set(resume.data.name, resume)
+        .set(queue.data.name, queue)
+        .set(shuffle.data.name, shuffle)
+        .set(prev.data.name, prev)
+        .set(skip.data.name, skip)
+        .set(remove.data.name, remove)
+        .set(vote.data.name, vote)
+        .set(restart.data.name, restart),
+    desc: 'Music base command',
+    async textInput(interaction) {
+        const subcommand = this.subcommands.get(interaction.customId.split('/')[1]);
+        return subcommand.textInput(interaction);
+    },
+    async buttonReact(interaction) {
+        const subcommand = this.subcommands.get(interaction.customId.split('/')[2]);
+        return subcommand.buttonReact(interaction);
+    },
+    async menuReact(interaction) {
+        const subcommand = this.subcommands.get(interaction.customId.split('/')[2]);
+        return subcommand.menuReact(interaction);
+    },
+    async execute(interaction) {
+        const subcmd = this.subcommands.get(interaction.options.getSubcommand(false) ??
+            interaction.options.getSubcommandGroup());
+        return subcmd.execute(interaction);
     }
 };
 //# sourceMappingURL=music_commands.js.map
