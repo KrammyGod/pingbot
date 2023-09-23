@@ -35,6 +35,7 @@ jobs:
           npm run build
           mkdir .out
           cp -r * .out
+          mv .env-cmdrc .out
 
       # Then after we checkout the branch, we can overwrite all files with the ones in .out
       # We also include the commit message to be the same as original commit
@@ -47,6 +48,7 @@ jobs:
           git checkout dist
           rm -r *
           mv .out/* .
+          mv .out/.env-cmdrc .
           rmdir .out
           git add .
           git commit -m "${{ github.event.head_commit.message }}" || true
