@@ -25,7 +25,7 @@ module.exports = {
             'ref'         : 'origin/dev-dist',
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEV_DEPLOY_PATH,
-            'post-deploy' : 'npm ci --omit dev && pm2 start --env production --update-env'
+            'post-deploy' : 'npm ci --omit dev && pm2 start --env development --update-env'
         }
     }
 };
