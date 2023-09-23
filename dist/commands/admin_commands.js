@@ -257,6 +257,7 @@ exports.purge = {
                 const arr = [msg.value];
                 arr.push(...iterator);
                 deleted += await this.delete_single(arr.map(m => m[1]));
+                to_delete = [];
                 break;
             }
             else if (to_delete.length === 100) {

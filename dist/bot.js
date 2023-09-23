@@ -123,7 +123,9 @@ async function replaceEmojis(message) {
 async function handle_reply(message) {
     if (message.mentions.users.has(client.user.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
-        const reply = await message.reply({ content: lines.shift() });
+        const reply = await message.reply({ content: lines.shift() }).catch(() => { });
+        if (!reply)
+            return; // No permissions to send messages
         for (const line of lines) {
             await new Promise(resolve => setTimeout(resolve, 2000));
             await reply.edit({ content: `${reply.content}\n${line}` });
@@ -243,6 +245,8 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
 });
 // When new member joins, send message according to guild settings
 client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
+    if (_config_1.default.env !== 'production')
+        return;
     const info = await DB.getGuild(member.guild.id).catch(() => { });
     if (!info)
         return;
@@ -367,8 +371,8 @@ function handle_error(err, opts = {}) {
                     error_str += `__In:__ ${interaction.channel.recipient?.tag ?? 'DMs'} (${interaction.channel.id})\n`;
                 }
                 else {
-                    error_str += `__In:__ ${interaction.channel.name} (${interaction.channel.id})\n` +
-                        `__Of:__ ${interaction.channel.guild.name} (${interaction.channel.guild.id})\n`;
+                    error_str += `__In:__ ${interaction.channel.name} (${interaction.channel.id})\n`;
+                    error_str += `__Of:__ ${interaction.channel.guild.name} (${interaction.channel.guild.id})\n`;
                 }
             }
         }
@@ -380,6 +384,7 @@ function handle_error(err, opts = {}) {
             }
             else {
                 error_str += `__In:__ ${message.channel.name} (${message.channel.id})\n`;
+                error_str += `__Of:__ ${message.guild.name} (${message.guild.id})\n`;
             }
         }
         // Discord only allows 2000 characters per message, 6 more for backticks, 3 for dots
