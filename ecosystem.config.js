@@ -7,7 +7,15 @@ module.exports = {
         wait_ready            : true,
         listen_timeout        : 60_000, // Listen for 1 minute before marking failed
         kill_timeout          : 10_000, // Wait 10 seconds before force killing
-        shutdown_with_message : true
+        shutdown_with_message : true,
+        source_map_support    : true,
+        appendEnvToName       : true,
+        env_production: {
+            NODE_ENV: 'production'
+        },
+        env_development: {
+            NODE_ENV: 'development'
+        }
     }],
 
     deploy : {
