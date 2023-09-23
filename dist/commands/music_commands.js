@@ -68,13 +68,14 @@ async function get_member(interaction) {
 }
 // This function will pretty much always be called to validate
 // if music commands can be used.
-async function member_voice_valid(interaction, full_name) {
+async function member_voice_valid(interaction) {
     const member = await get_member(interaction);
     if (!member)
         return null;
     if (!member.voice.channel) {
+        const rich_cmd = await Utils.get_rich_cmd(interaction);
         return interaction.editReply({
-            content: `You must be in a voice channel to use </${full_name}:${interaction.commandId}>`
+            content: `You must be in a voice channel to use ${rich_cmd}`
         }).then(() => null);
     }
     return member;
@@ -167,7 +168,7 @@ const join = {
     async execute(interaction) {
         await interaction.deferReply();
         const me = interaction.guild.members.me;
-        const member = await member_voice_valid(interaction, interaction.commandName);
+        const member = await member_voice_valid(interaction);
         if (!member)
             return;
         const channel = interaction.channel;
@@ -309,20 +310,20 @@ const play = {
     },
     async execute(interaction) {
         let guildVoice = client_1.GuildVoices.get(interaction.guildId);
-        const member = await member_voice_valid(interaction, interaction.commandName);
-        if (!member)
-            return;
         if (!guildVoice) {
             await join.execute(interaction);
             guildVoice = client_1.GuildVoices.get(interaction.guildId);
             if (!guildVoice)
                 return;
         }
-        else if (member.voice.channelId !== guildVoice.voiceChannel.id) {
-            return interaction.reply({ content: 'I am not with you, b-baka.', ephemeral: true });
-        }
         else {
             await interaction.deferReply();
+        }
+        const member = await member_voice_valid(interaction);
+        if (!member)
+            return;
+        if (member.voice.channelId !== guildVoice.voiceChannel.id) {
+            return interaction.editReply({ content: 'I am not with you, b-baka.' });
         }
         const link = interaction.options.getString('query');
         const shuffle = interaction.options.getBoolean('shuffle') || false;
