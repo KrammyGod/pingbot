@@ -45,7 +45,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm i -g npm@latest
+          npm i -g npm@latest pm2
           npm ci
 
       # We essentially move all required files to a hidden, untracked folder called .out
