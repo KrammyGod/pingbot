@@ -40,8 +40,8 @@ jobs:
       # We also include the commit message to be the same as original commit
       - name: Checkout and push to dist
         run: |
-          git config user.name "${{ github.event.pusher.name }}"
-          git config user.email "${{ github.event.pusher.email }}"
+          git config user.name "${{ github.event.sender.name }}"
+          git config user.email "${{ github.event.sender.email }}"
           git fetch origin dist
           rm -rf dist
           git checkout dist
