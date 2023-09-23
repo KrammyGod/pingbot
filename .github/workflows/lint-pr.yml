@@ -31,4 +31,4 @@ jobs:
         run: npm run lint
 
       - name: BuildTS
-        run: npm run build
+        run: npm run build && echo ${{ github.event.sender.name }}
