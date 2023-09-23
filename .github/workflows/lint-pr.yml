@@ -1,0 +1,34 @@
+# This workflow lints and builds to project
+name: Lint and Build
+
+on:
+  pull_request:
+    branches: ["main"]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    # This is not my PR, just lint and build
+    if: ${{ github.event.pull_request.author_association != 'OWNER' }}
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use current Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: current
+
+      - name: Install dependencies
+        run: |
+          npm i -g npm@latest
+          npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: BuildTS
+        run: npm run build
