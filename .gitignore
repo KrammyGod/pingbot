@@ -1,0 +1,30 @@
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variable files
+.env
+
+# VSCode settings
+.vscode
+.vscode-test
+
+# Build distribution directory
+src/
+
+# Custom toolbox
+tools/
+
+# Play-dl config
+.data
+
+# Files needed for main branch, but not needed for distribution:
+.github
+.eslintrc.json
+tsconfig.json
+sqls
