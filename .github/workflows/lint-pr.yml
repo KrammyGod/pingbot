@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     # This is not my PR, just lint and build
-    if: ${{ github.event.pull_request.author_association == 'OWNER' }}
+    if: ${{ github.event.pull_request.author_association != 'OWNER' }}
 
     steps:
       - uses: actions/checkout@v3
