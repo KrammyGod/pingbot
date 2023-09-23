@@ -26,7 +26,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-  build_deploy:
+  build:
     needs: lint
     runs-on: ubuntu-latest
     permissions:
@@ -45,15 +45,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm i -g npm@latest pm2
+          npm i -g npm@latest
           npm ci
 
       # We essentially move all required files to a hidden, untracked folder called .out
-      - name: BuildTS
+      # npm run deploy automatically builds and registers slash commands
+      - name: Build & Deploy
+        env:
+          TOKEN: ${{ secrets.DEV_TOKEN }}
+          CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
         run: |
-          npm run build
+          npm run deploy
           mkdir .out
           cp -r * .out
+          mv .env-cmdrc .out
 
       # Then after we checkout the branch, we can overwrite all files with the ones in .out
       # We also include the commit message to be the same as original commit
@@ -66,10 +71,30 @@ jobs:
           git checkout dev-dist
           rm -r *
           mv .out/* .
+          mv .out/.env-cmdrc .
           rmdir .out
           git add .
           git commit -m "${{ github.event.pull_request.head.label }}" || true
           git push origin dev-dist
+
+  publish:
+    needs: [lint, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use current Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: current
+
+      - name: Install dependencies
+        run: |
+          npm i -g npm@latest pm2
+          npm i dotenv
 
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
