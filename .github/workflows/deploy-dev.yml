@@ -3,7 +3,6 @@ name: Build and Publish
 
 on:
   pull_request:
-    types: [opened, reopened, edited]
     branches: ["main"]
 
   workflow_dispatch:
