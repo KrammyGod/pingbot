@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     # This is not my PR, just lint and build
-    if: ${{ github.event.sender.name != github.repository_owner }}
+    if: ${{ github.event.pull_request.author_association == 'OWNER' }}
 
     steps:
       - uses: actions/checkout@v3
@@ -31,4 +31,4 @@ jobs:
         run: npm run lint
 
       - name: BuildTS
-        run: npm run build && echo ${{ github.event.sender.name }}
+        run: npm run build

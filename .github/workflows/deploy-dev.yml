@@ -14,7 +14,7 @@ jobs:
       contents: write
     
     # Only trigger for my PRs, other PRs will simply just run lint
-    if: ${{ github.event.sender.name == github.repository_owner }}
+    if: ${{ github.event.pull_request.author_association == 'OWNER' }}
     
     steps:
       - uses: actions/checkout@v3
@@ -43,8 +43,8 @@ jobs:
       # We also include the commit message to be the same as original commit
       - name: Checkout and push to dev-dist
         run: |
-          git config user.name "${{ github.event.sender.name }}"
-          git config user.email "${{ github.event.sender.email }}"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
           git fetch origin dev-dist
           rm -rf dist
           git checkout dev-dist
