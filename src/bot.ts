@@ -100,7 +100,8 @@ async function replaceEmojis(message: DTypes.Message) {
 async function handle_reply(message: DTypes.Message) {
     if (message.mentions.users.has(client.user!.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
-        const reply = await message.reply({ content: lines.shift() });
+        const reply = await message.reply({ content: lines.shift() }).catch(() => { });
+        if (!reply) return; // No permissions to send messages
         for (const line of lines) {
             await new Promise(resolve => setTimeout(resolve, 2000));
             await reply.edit({ content: `${reply.content}\n${line}` });
@@ -237,6 +238,7 @@ client.on(Events.InteractionCreate, interaction => {
 
 // When new member joins, send message according to guild settings
 client.on(Events.GuildMemberAdd, async member => {
+    if (config.env !== 'production') return;
     const info = await DB.getGuild(member.guild.id).catch(() => { });
     if (!info) return;
     const channel = member.guild.channels.cache.get(info.channelid ?? '');
@@ -378,8 +380,8 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
                 if (interaction.channel.isDMBased()) {
                     error_str += `__In:__ ${interaction.channel.recipient?.tag ?? 'DMs'} (${interaction.channel.id})\n`;
                 } else {
-                    error_str += `__In:__ ${interaction.channel.name} (${interaction.channel.id})\n` +
-                        `__Of:__ ${interaction.channel.guild.name} (${interaction.channel.guild.id})\n`;
+                    error_str += `__In:__ ${interaction.channel.name} (${interaction.channel.id})\n`;
+                    error_str += `__Of:__ ${interaction.channel.guild.name} (${interaction.channel.guild.id})\n`;
                 }
             }
         } else if (message) {
@@ -389,6 +391,7 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
                 error_str += `__In:__ ${message.channel.recipient?.tag ?? 'DMs'} (${message.channel.id})\n`;
             } else {
                 error_str += `__In:__ ${message.channel.name} (${message.channel.id})\n`;
+                error_str += `__Of:__ ${message.guild!.name} (${message.guild!.id})\n`;
             }
         }
         // Discord only allows 2000 characters per message, 6 more for backticks, 3 for dots

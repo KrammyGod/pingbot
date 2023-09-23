@@ -246,9 +246,10 @@ export const purge: MessageCommand & PurgePrivates = {
                         deleted += arr.size;
                     }
                 }
-                const arr: [string, DTypes.Message][] = [msg.value];
+                const arr = [msg.value];
                 arr.push(...iterator);
                 deleted += await this.delete_single(arr.map(m => m[1]));
+                to_delete = [];
                 break;
             } else if (to_delete.length === 100) {
                 message.channel.bulkDelete(to_delete);
