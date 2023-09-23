@@ -20,9 +20,7 @@ jobs:
           node-version: current
 
       - name: Install dependencies
-        run: |
-          npm i -g npm@latest
-          npm ci
+        run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -42,9 +40,7 @@ jobs:
           node-version: current
 
       - name: Install dependencies
-        run: |
-          npm i -g npm@latest
-          npm ci
+        run: npm ci
 
       # We essentially move all required files to a hidden, untracked folder called .out
       # npm run deploy automatically builds and registers slash commands
@@ -91,7 +87,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm i -g npm@latest pm2
+          npm i -g pm2
           npm i dotenv
 
       - name: Install SSH Key
