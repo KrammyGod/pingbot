@@ -9,7 +9,7 @@ const PixivReady = new EventEmitter();
 Pixiv.refreshLogin(config.pixiv).then(res => {
     pixiv = res;
     PixivReady.emit('ready');
-});
+}).catch(() => { });
 
 // Returns the source and sauce of an image.
 // Source is the raw image url, sauce is the

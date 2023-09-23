@@ -8,7 +8,27 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint_build_publish:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use current Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: current
+
+      - name: Install dependencies
+        run: |
+          npm i -g npm@latest
+          npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  build:
+    needs: lint
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,16 +43,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm i -g npm@latest pm2
+          npm i -g npm@latest
           npm ci
 
-      - name: Lint
-        run: npm run lint
-
       # We essentially move all required files to a hidden, untracked folder called .out
-      - name: BuildTS
+      # npm run deploy automatically builds and registers slash commands
+      - name: Build & Deploy
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
-          npm run build
+          npm run deploy
           mkdir .out
           cp -r * .out
           mv .env-cmdrc .out
@@ -53,6 +74,25 @@ jobs:
           git add .
           git commit -m "${{ github.event.head_commit.message }}" || true
           git push origin dist
+
+  publish:
+    needs: [lint, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use current Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: current
+
+      - name: Install dependencies
+        run: |
+          npm i -g npm@latest pm2
+          npm i dotenv
 
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
