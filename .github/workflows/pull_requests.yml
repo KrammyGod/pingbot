@@ -6,13 +6,15 @@ on:
     branches: ["main"]
 
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to development'
+        required: true
+        default: 'false'
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-
-    # Only trigger for non-drafts
-    if: ${{ github.event.pull_request.draft == false }}
 
     steps:
       - uses: actions/checkout@v3
@@ -34,6 +36,9 @@ jobs:
     environment: Development
     permissions:
       contents: write
+
+    # Only trigger for my PRs or if manually requested
+    if: ${{ github.event.pull_request.author_association == 'OWNER' || github.event.inputs.deploy == 'true' }}
     
     steps:
       - uses: actions/checkout@v3
