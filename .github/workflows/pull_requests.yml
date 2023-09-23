@@ -54,7 +54,6 @@ jobs:
         env:
           TOKEN: ${{ secrets.DEV_TOKEN }}
           CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
-          PIXIV_REFRESH_TOKEN: ${{ secrets.PIXIV_REFRESH_TOKEN }}
         run: |
           npm run deploy
           mkdir .out
