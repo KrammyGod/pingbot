@@ -13,7 +13,7 @@ const PixivReady = new events_1.default();
 pixiv_ts_1.default.refreshLogin(_config_1.default.pixiv).then(res => {
     pixiv = res;
     PixivReady.emit('ready');
-});
+}).catch(() => { });
 // Returns the source and sauce of an image.
 // Source is the raw image url, sauce is the
 // description for imgur uploads (if needed)
