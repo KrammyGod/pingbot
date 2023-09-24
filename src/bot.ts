@@ -113,9 +113,8 @@ async function handle_command(message: DTypes.Message) {
     if (!command && message.author.id === (message.client as CustomClient).admin.id) {
         command = client.admin_commands.get(commandName);
     }
-    const is_down = !client.is_listening || !!config.maintenance;
     // All sorts of message commands
-    if (command && (!is_down || command.admin)) {
+    if (command && (client.is_listening || command.admin)) {
         const args = [];
         message.content = message.content.replace(message.content.split(/\s/)[0], '').trim();
         // Split by spaces, strip quotes
@@ -154,7 +153,7 @@ client.on(Events.InteractionCreate, interaction => {
     if (!commandName) return;
     let command: InteractionCommand | undefined = undefined;
     if (interaction.isCommand() && config.events) {
-        // April fools reversed command; typescript doesn't like the hacky solutions
+        // Special event reversed command; typescript doesn't like the hacky solutions
         command = client.commands.get(commandName.split('').reverse().join(''));
         // Reverse subcommand names back to original.
         if (interaction.options) {
@@ -354,8 +353,8 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
     const { commandName, interaction, message } = opts;
     // Log the error
     console.error(err.stack);
-    // Send the error to the log channel and don't log on maintenance
-    if (!config.maintenance && client.is_ready) {
+    // Send the error to the log channel and don't log when testing
+    if (!config.testing && client.is_ready) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
         let nameCommand = commandName;
         if (nameCommand && interaction) {

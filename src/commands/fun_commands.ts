@@ -1,3 +1,4 @@
+import config from '@config';
 import * as DB from '@modules/database';
 import * as Hoyo from '@modules/hoyolab';
 import * as Utils from '@modules/utils';
@@ -128,7 +129,7 @@ export const support: SlashCommand = {
         await interaction.deferReply({ ephemeral: true });
         // While we can get guild from fetching, it breaks the point of sharding
         // Maybe guild is unobtainable from fetching...?
-        const invite_link = await Utils.fetch_guild_cache(interaction.guildId!, (guild, invite_code) => {
+        const invite_link = await Utils.fetch_guild_cache(config.guild, (guild, invite_code) => {
             return guild?.invites.fetch(invite_code).then(invite => invite.url);
         }, invite_code);
         return interaction.editReply({
