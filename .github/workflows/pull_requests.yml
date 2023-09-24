@@ -16,6 +16,9 @@ jobs:
   lint:
     runs-on: ubuntu-latest
 
+    # Only trigger for non-drafts or manually triggered
+    if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
+
     steps:
       - uses: actions/checkout@v3
       
