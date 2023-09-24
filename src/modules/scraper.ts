@@ -78,5 +78,3 @@ export default async function scrape(url: string, all: string[] = []) {
 
     return { source, sauce };
 }
-
-scrape('https://www.pixiv.net/en/artworks/111960827/-1');
