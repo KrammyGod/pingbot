@@ -53,6 +53,7 @@ async function scrape(url, all = []) {
         if (res) {
             // Try to find given imageNumber, choose first if not found.
             const new_url = res.meta_pages.at(imageNumber)?.image_urls.original ??
+                res.meta_pages.at(0)?.image_urls.original ??
                 res.meta_single_page.original_image_url ?? res.image_urls.large ??
                 res.image_urls.medium;
             sauce = url;
