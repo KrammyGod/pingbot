@@ -48,18 +48,18 @@ export default async function scrape(url: string, all: string[] = []) {
                 console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!');
             });
         });
-        // Try to find given imageNumber, choose first if not found.
-        const new_url = res?.meta_pages.at(imageNumber)?.image_urls.original ??
-            res?.meta_single_page.original_image_url ?? res?.image_urls.large ??
-            res?.image_urls.medium;
-        if (new_url) {
+        if (res) {
+            // Try to find given imageNumber, choose first if not found.
+            const new_url = res.meta_pages.at(imageNumber)?.image_urls.original ??
+                res.meta_single_page.original_image_url ?? res.image_urls.large ??
+                res.image_urls.medium;
             sauce = url;
             source = new_url;
-        }
-        if (res?.meta_pages.length) {
-            all.push(...res.meta_pages.map(p => p.image_urls.original));
-        } else if (res?.meta_single_page.original_image_url) {
-            all.push(res.meta_single_page.original_image_url);
+            if (res.meta_pages.length) {
+                all.push(...res.meta_pages.map(p => p.image_urls.original));
+            } else {
+                all.push(new_url);
+            }
         }
     }
 
