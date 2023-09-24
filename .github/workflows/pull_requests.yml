@@ -6,10 +6,19 @@ on:
     branches: ["main"]
 
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to development'
+        required: true
+        default: 'false'
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+
+    # Only trigger for non-drafts or manually triggered
+    if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
+
     steps:
       - uses: actions/checkout@v3
       
@@ -27,11 +36,12 @@ jobs:
   build:
     needs: lint
     runs-on: ubuntu-latest
+    environment: Development
     permissions:
       contents: write
-    
-    # Only trigger for my PRs, other PRs will simply just run lint
-    if: ${{ github.event.pull_request.author_association == 'OWNER' }}
+
+    # Only trigger for my PRs or if manually requested
+    if: ${{ github.event.pull_request.author_association == 'OWNER' || github.event.inputs.deploy == 'true' }}
     
     steps:
       - uses: actions/checkout@v3
@@ -48,8 +58,8 @@ jobs:
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
-          TOKEN: ${{ secrets.DEV_TOKEN }}
-          CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
+          TOKEN: ${{ secrets.TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
           npm run deploy
           mkdir .out
@@ -76,6 +86,7 @@ jobs:
   publish:
     needs: [lint, build]
     runs-on: ubuntu-latest
+    environment: Development
     permissions:
       contents: write
     
@@ -106,6 +117,5 @@ jobs:
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
+          DEV_DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: pm2 deploy development > /dev/null
