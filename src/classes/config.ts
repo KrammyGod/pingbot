@@ -2,16 +2,16 @@ import 'dotenv/config';
 
 export default {
     // Must haves, for bot to work
-    prefix: process.env.PREFIX ?? '',
     admin: process.env.ADMIN!,
     token: process.env.TOKEN!,
     client: process.env.CLIENT_ID!,
 
     // Semi-optional - bot still works, but not fully functional
+    prefix: process.env.PREFIX || '',
     imgur: process.env.IMGUR_CLIENT_ID,
     guild: process.env.GUILD!,
     emojis: process.env.EMOJIGUILD!,
-    pixiv: process.env.PIXIV_REFRESH_TOKEN ?? '',
+    pixiv: process.env.PIXIV_REFRESH_TOKEN || '',
     scraper: process.env.SCRAPER_HOST,
     log: process.env.LOGID!,
     submit: process.env.SUBMIT_ID!,

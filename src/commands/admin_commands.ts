@@ -1,8 +1,8 @@
 import fs from 'fs';
 import axios from 'axios';
 import reset from '@modules/reset_db';
-import config from '@config';
 import scrape from '@modules/scraper';
+import config from '@config';
 import FormData from 'form-data';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
@@ -367,7 +367,7 @@ export const upload: MessageCommand & UploadPrivates = {
         let imageData: string | fs.ReadStream = url;
 
         // For now, we only ignore gifs (all animated will be ignored)
-        if (imageData && !imageData.includes('.gif')) {
+        if (!imageData.includes('.gif')) {
             // Add headers to prevent 403.
             if (imageData.startsWith('https://i.pximg.net/')) {
                 headers = 'Referer: https://www.pixiv.net/';
@@ -435,7 +435,7 @@ export const upload: MessageCommand & UploadPrivates = {
         if (!all.length) {
             res.push(await this.uploadToImgur(message, url, title, description));
         }
-        // All is defined for multiple images in twitter.
+        // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
             res.push(await this.uploadToImgur(message, url, title, description));
         }
