@@ -13,16 +13,16 @@ function strip(text: string, char: string) {
 // Helpers that convert text to Discord.js objects
 export async function fetch_user_fast<T>(
     uid: string,
-    userCb: (user: DTypes.User | undefined) => T
-): Promise<T | undefined>;
+    userCb: (user: DTypes.User | undefined) => DTypes.Awaitable<T | undefined>
+): Promise<DTypes.Serialized<T> | undefined>;
 export async function fetch_user_fast<T, R>(
     uid: string,
-    userCb: (user: DTypes.User | undefined, ctx: DTypes.Serialized<R>) => T,
+    userCb: (user: DTypes.User | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx: R
-): Promise<T | undefined>;
+): Promise<DTypes.Serialized<T> | undefined>;
 export async function fetch_user_fast<T, R>(
     uid: string,
-    userCb: (user: DTypes.User | undefined, ctx?: DTypes.Serialized<R>) => T,
+    userCb: (user: DTypes.User | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx?: R
 ) {
     const client = new CustomClient();
@@ -30,38 +30,38 @@ export async function fetch_user_fast<T, R>(
     // and then run the function on the discord user object.
     const retval = await client.shard?.broadcastEval(
         (client, { uid, userCb, ctx }) => {
-            return eval(userCb)(client.users.cache.get(uid), ctx);
+            return eval(userCb)(client.users.cache.get(uid), ctx) as DTypes.Awaitable<T | undefined>;
         },
         { context: { uid, userCb: userCb.toString(), ctx } }
-    ).then(results => results.find(r => r !== undefined) as T | undefined);
+    ).then(results => results.find(r => r !== undefined));
     if (!retval && client.user_cache_ready) {
-        return userCb(await client.users.fetch(uid).catch(() => undefined));
+        // Mimic serialization
+        return userCb(await client.users.fetch(uid).catch(() => undefined), JSON.parse(JSON.stringify(ctx ?? {})));
     }
     return retval;
 }
 
 export async function fetch_guild_cache<T>(
     gid: string,
-    guildCb: (guild: DTypes.Guild | undefined) => T
-): Promise<T | undefined>;
+    guildCb: (guild: DTypes.Guild | undefined) => DTypes.Awaitable<T | undefined>
+): Promise<DTypes.Serialized<T> | undefined>;
 export async function fetch_guild_cache<T, R>(
     gid: string,
-    guildCb: (guild: DTypes.Guild | undefined, ctx: DTypes.Serialized<R>) => T,
+    guildCb: (guild: DTypes.Guild | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx: R
-): Promise<T | undefined>;
+): Promise<DTypes.Serialized<T> | undefined>;
 export async function fetch_guild_cache<T, R>(
     gid: string,
-    guildCb: (guild: DTypes.Guild | undefined, ctx?: DTypes.Serialized<R>) => T,
+    guildCb: (guild: DTypes.Guild | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx?: R
 ) {
     const client = new CustomClient();
-    const retval = await client.shard?.broadcastEval(
+    return client.shard?.broadcastEval(
         (client, { gid, guildCb, ctx }) => {
-            return eval(guildCb)(client.guilds.cache.get(gid), ctx);
+            return eval(guildCb)(client.guilds.cache.get(gid), ctx) as DTypes.Awaitable<T | undefined>;
         },
         { context: { gid, guildCb: guildCb.toString(), ctx } }
-    ).then(results => results.find(r => r !== undefined) as T | undefined);
-    return retval;
+    ).then(results => results.find(r => r !== undefined));
 }
 
 export async function convert_user(text: string): Promise<DTypes.User | undefined>;
@@ -119,16 +119,16 @@ export async function convert_channel(text: string) {
 }
 export async function convert_emoji<T>(
     text: string,
-    emojiCb: (emoji: DTypes.GuildEmoji | undefined) => T,
-): Promise<T | undefined>;
+    emojiCb: (emoji: DTypes.GuildEmoji | undefined) => DTypes.Awaitable<T | undefined>,
+): Promise<DTypes.Serialized<T> | undefined>;
 export async function convert_emoji<T, R>(
     text: string,
-    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx: DTypes.Serialized<R>) => T,
+    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx: R
-): Promise<T | undefined>;
+): Promise<DTypes.Serialized<T> | undefined>;
 export async function convert_emoji<T, R>(
     text: string,
-    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx?: DTypes.Serialized<R>) => T,
+    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx?: R
 ) {
     const client = new CustomClient();
@@ -139,10 +139,10 @@ export async function convert_emoji<T, R>(
         (client, { text, emojiCb, ctx }) => {
             return eval(emojiCb)(client.emojis.cache.find(e =>
                 e.name!.toLowerCase() === text
-            ), ctx);
+            ), ctx) as DTypes.Awaitable<T | undefined>;
         },
         { context: { text, emojiCb: emojiCb.toString(), ctx } }
-    ).then(results => results.find(r => r !== undefined) as T | undefined);
+    ).then(results => results.find(r => r !== undefined));
 }
 
 export async function get_rich_cmd(textOrInteraction: DTypes.ChatInputCommandInteraction | string) {

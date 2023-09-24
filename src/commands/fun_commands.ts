@@ -128,12 +128,12 @@ export const support: SlashCommand = {
         await interaction.deferReply({ ephemeral: true });
         // While we can get guild from fetching, it breaks the point of sharding
         // Maybe guild is unobtainable from fetching...?
-        const invite = await Utils.fetch_guild_cache(interaction.guildId!, async guild => {
-            return guild?.invites.fetch(invite_code);
-        });
+        const invite_link = await Utils.fetch_guild_cache(interaction.guildId!, (guild, invite_code) => {
+            return guild?.invites.fetch(invite_code).then(invite => invite.url);
+        }, invite_code);
         return interaction.editReply({
             content: "Hey there, here's the invite link for the support server!\n" +
-                invite?.url ?? `https://discord.gg/${invite_code}` // Constant non-expiring invite
+                invite_link ?? `https://discord.gg/${invite_code}` // Constant non-expiring invite
         });
     }
 };
