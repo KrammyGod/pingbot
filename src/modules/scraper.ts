@@ -38,7 +38,6 @@ export default async function scrape(url: string, all: string[] = []) {
         // @ts-expect-error parseInt can handle undefined
         let imageNumber = parseInt(url.match(/\/artworks\/\d{8,}\/(?<id>-?[0-9]+)$/)?.groups.id);
         if (isNaN(imageNumber)) imageNumber = 1;
-        else url = url.replace(RegExp(`/${imageNumber}$`), '');
         if (imageNumber > 0) --imageNumber; // Positive indexes start at 0
 
         const res = await pixiv.illust.get(url).catch(() => {
