@@ -16,7 +16,7 @@ export const name = 'Fun';
 export const desc = 'This category contains all the commands for fun, or are informational.';
 
 // A purely random collection of images
-// Definitely not by @ryu-minoru
+// Definitely not by @ryu_minoru
 const images = [
     'https://i.imgur.com/SdOEWcD.png',
     'https://i.imgur.com/yI5mrdj.png',
@@ -109,7 +109,7 @@ export const invite: SlashCommand = {
             scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands]
         });
         return interaction.editReply({
-            content: `Hey there, here's the invite link for the bot!\n${url}\n` +
+            content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
                      'Please do not forget to use `/help command: invite` to verify permissions required!'
         });
     }
@@ -132,9 +132,10 @@ export const support: SlashCommand = {
         const invite_link = await Utils.fetch_guild_cache(config.guild, (guild, invite_code) => {
             return guild?.invites.fetch(invite_code).then(invite => invite.url);
         }, invite_code);
+        // Constant non-expiring invite
+        const link = invite_link ?? `https://discord.gg/${invite_code}`;
         return interaction.editReply({
-            content: "Hey there, here's the invite link for the support server!\n" +
-                invite_link ?? `https://discord.gg/${invite_code}` // Constant non-expiring invite
+            content: `Hey there, here's the [invite link](${link}) for the support server!\n`
         });
     }
 };
@@ -161,14 +162,13 @@ export const getid: SlashCommand = {
         if (!query.startsWith('@')) {
             query = `@${query}`;
         }
-        type VeryPartialUser = { name: string; id: string; };
         const users = await interaction.client.shard?.broadcastEval(
             (client, query) => {
                 const u = client.users.cache.filter(u =>
                     u.displayName.toLowerCase().includes(query) ||
                     u.tag.toLowerCase().includes(query)
                 );
-                return u.map(u => ({ name: `@${u.username}`, id: u.id })) as VeryPartialUser[];
+                return u.map(u => ({ name: `@${u.username}`, id: u.id }));
             }, { context: query }
         ).then(results => results.flat()) ?? [];
         const res = await Utils.get_results(interaction, users, {
