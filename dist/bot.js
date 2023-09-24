@@ -136,9 +136,8 @@ async function handle_command(message) {
     if (!command && message.author.id === message.client.admin.id) {
         command = client.admin_commands.get(commandName);
     }
-    const is_down = !client.is_listening || !!_config_1.default.maintenance;
     // All sorts of message commands
-    if (command && (!is_down || command.admin)) {
+    if (command && (client.is_listening || command.admin)) {
         const args = [];
         message.content = message.content.replace(message.content.split(/\s/)[0], '').trim();
         // Split by spaces, strip quotes
@@ -174,7 +173,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         return;
     let command = undefined;
     if (interaction.isCommand() && _config_1.default.events) {
-        // April fools reversed command; typescript doesn't like the hacky solutions
+        // Special event reversed command; typescript doesn't like the hacky solutions
         command = client.commands.get(commandName.split('').reverse().join(''));
         // Reverse subcommand names back to original.
         if (interaction.options) {
@@ -341,8 +340,8 @@ function handle_error(err, opts = {}) {
     const { commandName, interaction, message } = opts;
     // Log the error
     console.error(err.stack);
-    // Send the error to the log channel and don't log on maintenance
-    if (!_config_1.default.maintenance && client.is_ready) {
+    // Send the error to the log channel and don't log when testing
+    if (!_config_1.default.testing && client.is_ready) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
         let nameCommand = commandName;
         if (nameCommand && interaction) {

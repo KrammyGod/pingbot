@@ -22,8 +22,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.poll_end = exports.poll_edit = exports.poll = exports.hoyolab = exports.getid = exports.support = exports.invite = exports.count = exports.desc = exports.name = void 0;
+const _config_1 = __importDefault(require("../classes/config.js"));
 const DB = __importStar(require("../modules/database"));
 const Hoyo = __importStar(require("../modules/hoyolab"));
 const Utils = __importStar(require("../modules/utils"));
@@ -132,7 +136,7 @@ exports.support = {
         await interaction.deferReply({ ephemeral: true });
         // While we can get guild from fetching, it breaks the point of sharding
         // Maybe guild is unobtainable from fetching...?
-        const invite_link = await Utils.fetch_guild_cache(interaction.guildId, (guild, invite_code) => {
+        const invite_link = await Utils.fetch_guild_cache(_config_1.default.guild, (guild, invite_code) => {
             return guild?.invites.fetch(invite_code).then(invite => invite.url);
         }, invite_code);
         return interaction.editReply({
