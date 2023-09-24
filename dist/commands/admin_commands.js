@@ -30,8 +30,8 @@ exports.stop = exports.start = exports.upload = exports.add = exports.resetdb = 
 const fs_1 = __importDefault(require("fs"));
 const axios_1 = __importDefault(require("axios"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
-const _config_1 = __importDefault(require("../classes/config.js"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
+const _config_1 = __importDefault(require("../classes/config.js"));
 const form_data_1 = __importDefault(require("form-data"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
@@ -368,7 +368,7 @@ exports.upload = {
         let headers = undefined; // Custom headers for ffmpeg in case of pixiv images.
         let imageData = url;
         // For now, we only ignore gifs (all animated will be ignored)
-        if (imageData && !imageData.includes('.gif')) {
+        if (!imageData.includes('.gif')) {
             // Add headers to prevent 403.
             if (imageData.startsWith('https://i.pximg.net/')) {
                 headers = 'Referer: https://www.pixiv.net/';
@@ -437,7 +437,7 @@ exports.upload = {
         if (!all.length) {
             res.push(await this.uploadToImgur(message, url, title, description));
         }
-        // All is defined for multiple images in twitter.
+        // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
             res.push(await this.uploadToImgur(message, url, title, description));
         }

@@ -31,6 +31,7 @@ const path_1 = __importDefault(require("path"));
 const load_commands_1 = __importDefault(require("./modules/load_commands"));
 const _config_1 = __importDefault(require("./classes/config.js"));
 const DB = __importStar(require("./modules/database"));
+const utils_1 = require("./modules/utils");
 const exceptions_1 = require("./classes/exceptions");
 const client_1 = require("./classes/client");
 const discord_js_1 = require("discord.js");
@@ -84,12 +85,6 @@ function webhook_permission(message) {
     const _default = message.channel.permissionsFor(message.guild.roles.everyone);
     return _default.has(discord_js_1.PermissionsBitField.Flags.UseExternalEmojis);
 }
-function convert_emoji(message, text) {
-    if (!text.startsWith(':') || !text.endsWith(':'))
-        return;
-    text = text.replaceAll(/^:+|:+$/g, '');
-    return message.client.emojis.cache.find(emoji => emoji.name === text);
-}
 // Replace emojis
 async function replaceEmojis(message) {
     // No bots and DMs
@@ -99,12 +94,13 @@ async function replaceEmojis(message) {
     let impersonate = false;
     let msg = message.content;
     for (const i of emojis) {
-        const emoji = convert_emoji(message, i);
+        const emoji = await (0, utils_1.convert_emoji)(i, (e, id) => {
+            if (!e)
+                return undefined;
+            return e.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
+        }, message.author.id);
         if (emoji) {
-            const user = await emoji.guild.members.fetch(message.author.id).catch(() => undefined);
-            if (!user)
-                continue;
-            msg = msg.replaceAll(i, emoji.toString());
+            msg = msg.replaceAll(i, emoji);
             impersonate = true;
         }
     }
