@@ -71,7 +71,7 @@ async function replaceEmojis(message: DTypes.Message) {
     let impersonate = false;
     let msg = message.content;
     for (const i of emojis) {
-        const emoji = await convert_emoji(i, async (e, id) => {
+        const emoji = await convert_emoji(i, (e, id) => {
             if (!e) return undefined;
             return e.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
         }, message.author.id);
