@@ -5,23 +5,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const pixiv_ts_1 = __importDefault(require("pixiv.ts"));
 const _config_1 = __importDefault(require("../classes/config.js"));
-const events_1 = __importDefault(require("events"));
 const cheerio_1 = require("cheerio");
-// Connect to pixiv
+// Pixiv object for scraping pixiv images.
 let pixiv;
-const PixivReady = new events_1.default();
-pixiv_ts_1.default.refreshLogin(_config_1.default.pixiv).then(res => {
-    pixiv = res;
-    PixivReady.emit('ready');
-}).catch(() => { });
-// Returns the source and sauce of an image.
-// Source is the raw image url, sauce is the
-// description for imgur uploads (if needed)
+/**
+ * Returns the source and sauce of an image.
+ * Source is the raw image url, sauce is the
+ * description for imgur uploads (if needed)
+ */
 async function scrape(url, all = []) {
+    let sauce;
     let source = url;
-    let sauce = undefined;
     // Let a separate server handle the parsing of twitter images with playwright.
-    const { imgs } = await fetch(`${_config_1.default.scraper}?url=${url}`).then(res => res.json());
+    const { imgs } = await fetch(`${_config_1.default.scraper}?url=${url}`).then(res => res.json()).catch(() => ({ imgs: [url] }));
     // Server returns original image if it couldn't find twitter images.
     if (imgs[0] !== url) {
         all.push(...imgs); // We also return all images in case we want to upload all
@@ -29,33 +25,46 @@ async function scrape(url, all = []) {
         sauce = url;
     }
     // This part is parsing pixiv images.
-    if (url.startsWith('https://www.pixiv.net/')) {
-        // Wait for pixiv to be ready before continuing
+    if (url.startsWith('https://www.pixiv.net/en/artworks/')) {
         if (pixiv === undefined) {
-            await new Promise(resolve => PixivReady.once('ready', resolve));
+            // Login to pixiv only when needed.
+            pixiv = await pixiv_ts_1.default.refreshLogin(_config_1.default.pixiv).catch(() => {
+                console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv login failed!');
+                // Intentionally keep pixiv as undefined to throw error later.
+                return pixiv;
+            });
         }
         // We attempt to extract the image # from the url
-        // Replace /artworks/id with nothing so we can extract the image number
-        const imgNums = url.replace(/\/artworks\/[0-9]+/, '').match(/-?[0-9]+/);
-        let imageNumber = undefined;
-        if (imgNums)
-            imageNumber = parseInt(imgNums[0]);
-        if (!imageNumber || isNaN(imageNumber))
+        // Image number is always after /artworks/id, and at the end
+        // @ts-expect-error parseInt can handle undefined
+        let imageNumber = parseInt(url.match(/\/artworks\/\d{8,}\/(?<id>-?[0-9]+)$/)?.groups.id);
+        if (isNaN(imageNumber))
             imageNumber = 1;
         else
             url = url.replace(RegExp(`/${imageNumber}$`), '');
-        if (imageNumber <= 0)
-            imageNumber = 1;
-        // 1 is first image, but is 0 in array
-        --imageNumber;
-        const res = await pixiv.illust.get(url);
+        if (imageNumber > 0)
+            --imageNumber; // Positive indexes start at 0
+        const res = await pixiv.illust.get(url).catch(() => {
+            // We try to refresh token to hopefully fix the error.
+            return pixiv.refreshToken().then(() => {
+                return pixiv.illust.get(url);
+            }).catch(() => {
+                console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!');
+            });
+        });
         // Try to find given imageNumber, choose first if not found.
-        const new_url = res?.meta_pages[imageNumber]?.image_urls?.original ??
-            res?.meta_single_page?.original_image_url ?? res?.image_urls?.large ??
-            res?.image_urls?.medium;
+        const new_url = res?.meta_pages.at(imageNumber)?.image_urls.original ??
+            res?.meta_single_page.original_image_url ?? res?.image_urls.large ??
+            res?.image_urls.medium;
         if (new_url) {
             sauce = url;
             source = new_url;
+        }
+        if (res?.meta_pages.length) {
+            all.push(...res.meta_pages.map(p => p.image_urls.original));
+        }
+        else if (res?.meta_single_page.original_image_url) {
+            all.push(res.meta_single_page.original_image_url);
         }
     }
     // This part is parsing danbooru images.

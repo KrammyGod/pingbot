@@ -7,25 +7,24 @@ const discord_js_1 = require("discord.js");
 function strip(text, char) {
     return text.replaceAll(new RegExp(`^${char}+|${char}+$`, 'g'), '');
 }
-// Helpers that convert text to Discord.js objects
-async function fetch_user_fast(uid, userCb) {
+async function fetch_user_fast(uid, userCb, ctx) {
     const client = new client_1.CustomClient();
     // This is quite a hack, essentially define the callback using eval,
     // and then run the function on the discord user object.
-    const retval = await client.shard?.broadcastEval((client, { uid, userCb }) => {
-        return eval(userCb)(client.users.cache.get(uid));
-    }, { context: { uid, userCb: userCb.toString() } }).then(results => results.find(r => r !== undefined));
+    const retval = await client.shard?.broadcastEval((client, { uid, userCb, ctx }) => {
+        return eval(userCb)(client.users.cache.get(uid), ctx);
+    }, { context: { uid, userCb: userCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
     if (!retval && client.user_cache_ready) {
         return userCb(await client.users.fetch(uid).catch(() => undefined));
     }
     return retval;
 }
 exports.fetch_user_fast = fetch_user_fast;
-async function fetch_guild_cache(gid, guildCb) {
+async function fetch_guild_cache(gid, guildCb, ctx) {
     const client = new client_1.CustomClient();
-    const retval = await client.shard?.broadcastEval((client, { gid, guildCb }) => {
-        return eval(guildCb)(client.guilds.cache.get(gid));
-    }, { context: { gid, guildCb: guildCb.toString() } }).then(results => results.find(r => r !== undefined));
+    const retval = await client.shard?.broadcastEval((client, { gid, guildCb, ctx }) => {
+        return eval(guildCb)(client.guilds.cache.get(gid), ctx);
+    }, { context: { gid, guildCb: guildCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
     return retval;
 }
 exports.fetch_guild_cache = fetch_guild_cache;
@@ -69,15 +68,15 @@ async function convert_channel(text) {
     return channel2;
 }
 exports.convert_channel = convert_channel;
-async function convert_emoji(text, emojiCb) {
+async function convert_emoji(text, emojiCb, ctx) {
     const client = new client_1.CustomClient();
     if (!text.startsWith(':') || !text.endsWith(':'))
         return;
     text = strip(text, ':').toLowerCase();
     // Explaination of trick above in fetch_user_fast
-    return client.shard?.broadcastEval((client, { text, emojiCb }) => {
-        return eval(emojiCb)(client.emojis.cache.find(e => e.name.toLowerCase() === text));
-    }, { context: { text, emojiCb: emojiCb.toString() } }).then(results => results.find(r => r !== undefined));
+    return client.shard?.broadcastEval((client, { text, emojiCb, ctx }) => {
+        return eval(emojiCb)(client.emojis.cache.find(e => e.name.toLowerCase() === text), ctx);
+    }, { context: { text, emojiCb: emojiCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
 }
 exports.convert_emoji = convert_emoji;
 async function get_rich_cmd(textOrInteraction) {
