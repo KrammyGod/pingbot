@@ -15,17 +15,17 @@ async function fetch_user_fast(uid, userCb, ctx) {
         return eval(userCb)(client.users.cache.get(uid), ctx);
     }, { context: { uid, userCb: userCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
     if (!retval && client.user_cache_ready) {
-        return userCb(await client.users.fetch(uid).catch(() => undefined));
+        // Mimic serialization
+        return userCb(await client.users.fetch(uid).catch(() => undefined), JSON.parse(JSON.stringify(ctx ?? {})));
     }
     return retval;
 }
 exports.fetch_user_fast = fetch_user_fast;
 async function fetch_guild_cache(gid, guildCb, ctx) {
     const client = new client_1.CustomClient();
-    const retval = await client.shard?.broadcastEval((client, { gid, guildCb, ctx }) => {
+    return client.shard?.broadcastEval((client, { gid, guildCb, ctx }) => {
         return eval(guildCb)(client.guilds.cache.get(gid), ctx);
     }, { context: { gid, guildCb: guildCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
-    return retval;
 }
 exports.fetch_guild_cache = fetch_guild_cache;
 async function convert_user(text, guild) {
