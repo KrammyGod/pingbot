@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
-import { Pool } from 'pg';
 import { from } from 'pg-copy-streams';
+import { Pool, QueryResultRow } from 'pg';
 
 const LOGGER = {
     today: new Date().toLocaleDateString(),
@@ -26,11 +27,11 @@ const LOGGER = {
 const pool = new Pool({
     connectionTimeoutMillis: 2000
 });
-async function query<T = unknown>(query: string, values?: unknown[]) {
+async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
     const client = await pool.connect();
-    let res: T[] = [];
+    let res: R[] = [];
     try {
-        res = await client.query(query, values).then(res => res.rows as T[]);
+        res = await client.query<R, I[]>(query, values).then(res => res.rows);
     } finally {
         client.release();
     }
