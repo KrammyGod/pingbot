@@ -421,7 +421,7 @@ exports.anime = {
             let obtained = '🟩';
             let uStatus = char.getUStatus();
             let wFC = char.fc ? '⭐ ' : '';
-            const user_char = await DB.fetchUserCharacter(user.id, char.wid);
+            const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(() => { });
             if (user_char) {
                 obtained = '✅';
                 await user_char.loadWaifu();
