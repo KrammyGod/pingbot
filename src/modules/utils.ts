@@ -11,15 +11,28 @@ function strip(text: string, char: string) {
 }
 
 // Helpers that convert text to Discord.js objects
-export async function fetch_user_fast<T>(uid: string, userCb: (user?: DTypes.User) => T) {
+export async function fetch_user_fast<T>(
+    uid: string,
+    userCb: (user: DTypes.User | undefined) => T
+): Promise<T | undefined>;
+export async function fetch_user_fast<T, R>(
+    uid: string,
+    userCb: (user: DTypes.User | undefined, ctx: DTypes.Serialized<R>) => T,
+    ctx: R
+): Promise<T | undefined>;
+export async function fetch_user_fast<T, R>(
+    uid: string,
+    userCb: (user: DTypes.User | undefined, ctx?: DTypes.Serialized<R>) => T,
+    ctx?: R
+) {
     const client = new CustomClient();
     // This is quite a hack, essentially define the callback using eval,
     // and then run the function on the discord user object.
     const retval = await client.shard?.broadcastEval(
-        (client, { uid, userCb }) => {
-            return eval(userCb)(client.users.cache.get(uid));
+        (client, { uid, userCb, ctx }) => {
+            return eval(userCb)(client.users.cache.get(uid), ctx);
         },
-        { context: { uid, userCb: userCb.toString() } }
+        { context: { uid, userCb: userCb.toString(), ctx } }
     ).then(results => results.find(r => r !== undefined) as T | undefined);
     if (!retval && client.user_cache_ready) {
         return userCb(await client.users.fetch(uid).catch(() => undefined));
@@ -27,13 +40,26 @@ export async function fetch_user_fast<T>(uid: string, userCb: (user?: DTypes.Use
     return retval;
 }
 
-export async function fetch_guild_cache<T>(gid: string, guildCb: (guild?: DTypes.Guild) => T) {
+export async function fetch_guild_cache<T>(
+    gid: string,
+    guildCb: (guild: DTypes.Guild | undefined) => T
+): Promise<T | undefined>;
+export async function fetch_guild_cache<T, R>(
+    gid: string,
+    guildCb: (guild: DTypes.Guild | undefined, ctx: DTypes.Serialized<R>) => T,
+    ctx: R
+): Promise<T | undefined>;
+export async function fetch_guild_cache<T, R>(
+    gid: string,
+    guildCb: (guild: DTypes.Guild | undefined, ctx?: DTypes.Serialized<R>) => T,
+    ctx?: R
+) {
     const client = new CustomClient();
     const retval = await client.shard?.broadcastEval(
-        (client, { gid, guildCb }) => {
-            return eval(guildCb)(client.guilds.cache.get(gid));
+        (client, { gid, guildCb, ctx }) => {
+            return eval(guildCb)(client.guilds.cache.get(gid), ctx);
         },
-        { context: { gid, guildCb: guildCb.toString() } }
+        { context: { gid, guildCb: guildCb.toString(), ctx } }
     ).then(results => results.find(r => r !== undefined) as T | undefined);
     return retval;
 }
@@ -91,18 +117,31 @@ export async function convert_channel(text: string) {
     ).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
     return channel2;
 }
-export async function convert_emoji<T>(text: string, emojiCb: (emoji?: DTypes.Emoji) => T) {
+export async function convert_emoji<T>(
+    text: string,
+    emojiCb: (emoji: DTypes.GuildEmoji | undefined) => T,
+): Promise<T | undefined>;
+export async function convert_emoji<T, R>(
+    text: string,
+    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx: DTypes.Serialized<R>) => T,
+    ctx: R
+): Promise<T | undefined>;
+export async function convert_emoji<T, R>(
+    text: string,
+    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx?: DTypes.Serialized<R>) => T,
+    ctx?: R
+) {
     const client = new CustomClient();
     if (!text.startsWith(':') || !text.endsWith(':')) return;
     text = strip(text, ':').toLowerCase();
     // Explaination of trick above in fetch_user_fast
     return client.shard?.broadcastEval(
-        (client, { text, emojiCb }) => {
+        (client, { text, emojiCb, ctx }) => {
             return eval(emojiCb)(client.emojis.cache.find(e =>
                 e.name!.toLowerCase() === text
-            ));
+            ), ctx);
         },
-        { context: { text, emojiCb: emojiCb.toString() } }
+        { context: { text, emojiCb: emojiCb.toString(), ctx } }
     ).then(results => results.find(r => r !== undefined) as T | undefined);
 }
 

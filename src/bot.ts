@@ -3,6 +3,7 @@ import path from 'path';
 import load from '@modules/load_commands';
 import config from '@config';
 import * as DB from '@modules/database';
+import { convert_emoji } from '@modules/utils';
 import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
 import { CustomClient, GuildVoices, InteractionCommand, isContextCommand, isSlashCommand } from '@classes/client';
 import {
@@ -62,12 +63,6 @@ function webhook_permission(message: DTypes.Message) {
     return _default.has(PermissionsBitField.Flags.UseExternalEmojis);
 }
 
-function convert_emoji(message: DTypes.Message, text: string) {
-    if (!text.startsWith(':') || !text.endsWith(':')) return;
-    text = text.replaceAll(/^:+|:+$/g, '');
-    return message.client.emojis.cache.find(emoji => emoji.name === text);
-}
-
 // Replace emojis
 async function replaceEmojis(message: DTypes.Message) {
     // No bots and DMs
@@ -76,11 +71,12 @@ async function replaceEmojis(message: DTypes.Message) {
     let impersonate = false;
     let msg = message.content;
     for (const i of emojis) {
-        const emoji = convert_emoji(message, i);
+        const emoji = await convert_emoji(i, (e, id) => {
+            if (!e) return undefined;
+            return e.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
+        }, message.author.id);
         if (emoji) {
-            const user = await emoji.guild.members.fetch(message.author.id).catch(() => undefined);
-            if (!user) continue;
-            msg = msg.replaceAll(i, emoji.toString());
+            msg = msg.replaceAll(i, emoji);
             impersonate = true;
         }
     }
