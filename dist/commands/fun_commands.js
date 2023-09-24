@@ -36,7 +36,7 @@ const discord_js_1 = require("discord.js");
 exports.name = 'Fun';
 exports.desc = 'This category contains all the commands for fun, or are informational.';
 // A purely random collection of images
-// Definitely not by @ryu-minoru
+// Definitely not by @ryu_minoru
 const images = [
     'https://i.imgur.com/SdOEWcD.png',
     'https://i.imgur.com/yI5mrdj.png',
@@ -119,7 +119,7 @@ exports.invite = {
             scopes: [discord_js_1.OAuth2Scopes.Bot, discord_js_1.OAuth2Scopes.ApplicationsCommands]
         });
         return interaction.editReply({
-            content: `Hey there, here's the invite link for the bot!\n${url}\n` +
+            content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
                 'Please do not forget to use `/help command: invite` to verify permissions required!'
         });
     }
@@ -139,9 +139,10 @@ exports.support = {
         const invite_link = await Utils.fetch_guild_cache(_config_1.default.guild, (guild, invite_code) => {
             return guild?.invites.fetch(invite_code).then(invite => invite.url);
         }, invite_code);
+        // Constant non-expiring invite
+        const link = invite_link ?? `https://discord.gg/${invite_code}`;
         return interaction.editReply({
-            content: "Hey there, here's the invite link for the support server!\n" +
-                invite_link ?? `https://discord.gg/${invite_code}` // Constant non-expiring invite
+            content: `Hey there, here's the [invite link](${link}) for the support server!\n`
         });
     }
 };
