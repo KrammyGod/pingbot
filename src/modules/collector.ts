@@ -85,7 +85,7 @@ type RoleAPIResponse = {
     readonly retcode: number;
     readonly message: string;
     readonly data: {
-        readonly list: [{
+        readonly list: readonly [{
             readonly game_biz: string;
             readonly region: string;
             readonly game_uid: string;
@@ -115,6 +115,7 @@ type SignAPIResponse = {
     } | null;
 };
 
+// Custom result to allow parsing once message is sent.
 type CollectResult = {
     readonly uid: string;
     readonly error: false;
@@ -131,6 +132,14 @@ type CollectResult = {
 } | {
     readonly uid: string;
     readonly error: true;
+};
+
+// The actual full message as a JSON object.
+export type SendMessage = {
+    readonly accounts: CollectResult[];
+    readonly name: string; // Name of the game
+    // Split into sections to send per message
+    err?: readonly string[];
 };
 
 class Sign {
@@ -249,13 +258,6 @@ class Sign {
         return result;
     }
 }
-
-export type SendMessage = {
-    readonly accounts: CollectResult[];
-    readonly name: string; // Name of the game
-    // Split into sections to send per message
-    err?: readonly string[];
-};
 
 type CheckinType = 'none' | 'checkin' | 'notify';
 type HoyolabAccount = {

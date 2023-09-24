@@ -28,6 +28,7 @@ jobs:
   build:
     needs: lint
     runs-on: ubuntu-latest
+    environment: Production
     permissions:
       contents: write
 
@@ -74,6 +75,7 @@ jobs:
   publish:
     needs: [lint, build]
     runs-on: ubuntu-latest
+    environment: Production
     permissions:
       contents: write
 
@@ -105,5 +107,4 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
         run: pm2 deploy production > /dev/null
