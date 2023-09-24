@@ -5,7 +5,7 @@ export default {
     admin: process.env.ADMIN!,
     token: process.env.TOKEN!,
     client: process.env.CLIENT_ID!,
-    
+
     // Semi-optional - bot still works, but not fully functional
     prefix: process.env.PREFIX || '',
     imgur: process.env.IMGUR_CLIENT_ID,
