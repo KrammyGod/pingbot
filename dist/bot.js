@@ -95,9 +95,7 @@ async function replaceEmojis(message) {
     let msg = message.content;
     for (const i of emojis) {
         const emoji = await (0, utils_1.convert_emoji)(i, (e, id) => {
-            if (!e)
-                return undefined;
-            return e.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
+            return e?.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
         }, message.author.id);
         if (emoji) {
             msg = msg.replaceAll(i, emoji);
