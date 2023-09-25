@@ -67,7 +67,7 @@ jobs:
           mv .env-cmdrc .dist
 
       # We also include the commit message to be the same as original commit
-      - name: Checkout and push to dev-dist
+      - name: Commit and push to dev-dist
         run: |
           cd .dist
           git config user.name "${{ github.actor }}"
