@@ -29,6 +29,6 @@ A multi-purpose Discord Bot. Made with Discord.JS, TypeScript, and PostgreSQL.
 ## Technical Details:
 Prior to formal education on databases, the schema for the Postgres instance was extremely messy (can be viewed [here](sqls/old_schema.sql)). As such, there is a [migration script](sqls/migrate.sql) to move to the new and [improved schema](sqls/schema.sql).
 
-This specific bot is hosted on a personal [Orange Pi 5](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html), and to lessen the burden on its processor, there is a [workflow](.github/workflows/compileTS.yml) that transpiles the TypeScript files into JavaScript files, and then uploads them to a different branch, `dist`. The same workflow uses pm2, and the [configuration file](ecosystem.config.js) to automatically deploy the latest version.
+This specific bot is hosted on a personal [Orange Pi 5](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html), and to lessen the burden on its processor, there is a [workflow](.github/workflows/push.yml) that transpiles the TypeScript files into JavaScript files, and then uploads them to a different branch, `dist`. The same workflow uses pm2, and the [configuration file](ecosystem.config.js) to automatically deploy the latest version.
 
 More details will be added as the project progresses when necessary.
