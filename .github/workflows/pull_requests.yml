@@ -48,7 +48,6 @@ jobs:
       - name: Checkout dev branch
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}
           ref: dev-dist
           path: .dist
 
@@ -56,7 +55,7 @@ jobs:
         run: npm ci
 
       # We essentially move all required files to the hidden folder
-      # that contains the dev-dist branch.
+      # that contains the dev-dist branch (checked out simultaneously).
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
