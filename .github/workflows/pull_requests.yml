@@ -1,5 +1,5 @@
-# This workflow builds and pushes build to dev-dist branch
-name: Lint, Build, and Publish
+# This workflow builds, pushes build to dev-dist branch, and deploys to development
+name: Publish to development
 
 on:
   pull_request:
@@ -21,12 +21,8 @@ jobs:
     if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
 
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use current Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: current
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: npm ci
@@ -45,17 +41,22 @@ jobs:
     if: ${{ github.event.pull_request.author_association == 'OWNER' || github.event.inputs.deploy == 'true' }}
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source
+        uses: actions/checkout@v3
       
-      - name: Use current Node.js
-        uses: actions/setup-node@v3
+      # Checkout dist branch simulatenously
+      - name: Checkout dev branch
+        uses: actions/checkout@v4
         with:
-          node-version: current
+          repository: ${{ github.repository }}
+          ref: dev-dist
+          path: .dist
 
       - name: Install dependencies
         run: npm ci
 
-      # We essentially move all required files to a hidden, untracked folder called .out
+      # We essentially move all required files to the hidden folder
+      # that contains the dev-dist branch (checked out simultaneously).
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
@@ -63,26 +64,18 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
           npm run deploy
-          mkdir .out
-          cp -r * .out
-          mv .env-cmdrc .out
+          rsync -a * .dist
+          mv .env-cmdrc .dist
 
-      # Then after we checkout the branch, we can overwrite all files with the ones in .out
       # We also include the commit message to be the same as original commit
       - name: Checkout and push to dev-dist
         run: |
+          cd .dist
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git fetch origin dev-dist
-          rm -rf dist
-          git checkout dev-dist
-          rm -r *
-          mv .out/* .
-          mv .out/.env-cmdrc .
-          rmdir .out
           git add .
           git commit -m "${{ github.event.pull_request.head.label }}" || true
-          git push origin dev-dist
+          git push
 
   publish:
     needs: [lint, build]
@@ -92,12 +85,8 @@ jobs:
       contents: write
     
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use current Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: current
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -108,10 +97,10 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'none' # Required by the action
-      
-      - name: Add to known hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: Hash known_hosts
+        run: ssh-keygen -Hf ~/.ssh/known_hosts
 
       # Omitting output for security
       - name: Deploy to development
