@@ -86,20 +86,14 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-known-hosts: ssh-keyscan -H ${{ secrets.SSH_HOST }} 
 
       - name: Install dependencies
         run: |
           npm i -g pm2
           npm i dotenv
-
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'none' # Required by the action
-      
-      - name: Add to known hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       # Omitting output for security
       - name: Deploy to development
