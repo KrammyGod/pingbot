@@ -62,7 +62,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
           npm run deploy
-          mv * .dist
+          rsync -a * .dist
           mv .env-cmdrc .dist
 
       # Then after we checkout the branch, we can overwrite all files with the ones in .out
