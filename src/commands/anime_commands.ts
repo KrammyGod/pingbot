@@ -1727,38 +1727,41 @@ async function generateCharacterDisplay(
 ) {
     await character.loadWaifu();
     const img = character.getImage(channel);
-    let add_on = '';
     let refund = 0;
+    let add_on = '';
+    let add_emoji = '';
     if (!character.new) {
-        // Duplicate, refund brons
-        refund += character.fc ? 4 : 2; // CONSTANT: Refund brons
-        add_on = `Already obtained +${refund} ${(channel.client as CustomClient).bot_emojis.brons}.`;
+        // CONSTANT: Refund brons
+        refund = character.fc ? 4 : 2;
+        const refund_str = `+${refund} ${(channel.client as CustomClient).bot_emojis.brons}`;
         if (character.lvl > 1) {
-            add_on += ` Leveled up! 🆙 (Now Lvl. ${character.lvl})`;
+            add_emoji = ` 🆙 ${refund_str}`;
+            add_on = `**Reached level ${character.lvl}!**\n`;
             if (character.unlockedImages) {
-                add_on += `\nReached level ${character.lvl}! You unlocked new image(s)! 🎉`;
-                add_on += '\nFind the waifu to switch to the image!';
+                add_on += 'You unlocked new image(s)! 🎉\n';
+                add_on += 'Find the waifu to switch the image!\n';
             } else if (character.unlockedNMode && character.thisIsNToggleable()) {
-                add_on += `\nReached level ${character.lvl}! You unlocked a new mode! 🎉`;
-                add_on += '\nFind the waifu to switch to lewd mode!';
+                add_on += 'You unlocked a new mode! 🎉\n';
+                add_on += 'Find the waifu to switch to lewd mode!\n';
             } else if (character.unlockedNImages && character.thisIsNSwitchable()) {
-                add_on += `\nReached level ${character.lvl}! You unlocked new lewd image(s)! 🎉`;
-                add_on += '\nFind the waifu to switch to the image!';
+                add_on += 'You unlocked new lewd image(s)! 🎉\n';
+                add_on += 'Find the waifu to switch the image!\n';
             }
         } else {
-            add_on += ' Max level.';
+            add_emoji = ` 🆒 ${refund_str}`;
         }
+    } else {
+        add_emoji = ' 🆕';
     }
     const embed = new EmbedBuilder({
-        title: '**Results:**',
         description:
-            `You got ${character.getWFC(channel)}**` +
-            `${character.name.replace('*', '\\*')}` +
-            `**${character.getGender()}! ${character.new ? '🆕' : ''}\n` +
-            `__From:__ *${character.origin.replace('*', '\\*')}*\n` +
-            `${add_on}${add_on ? '\n' : ''}` +
-            `[Source](${DB.getSource(img)})\n[Raw Image](${img})`
-    }).setColor(character.fc ? Colors.Gold : Colors.LightGrey).setAuthor({
+            `## ${character.getWFC(channel)}${character.name}${character.getGender()}${add_emoji}\n` +
+            `**__From:__ *${character.origin.replace('*', '\\*')}***\n` +
+            `${add_on}` +
+            `[Source](${DB.getSource(img)})\n` +
+            `[Raw Image](${img})`,
+        color: character.fc ? Colors.Gold : Colors.LightGrey
+    }).setAuthor({
         name: `@${user.tag}`,
         iconURL: user.displayAvatarURL()
     }).setImage(img);
