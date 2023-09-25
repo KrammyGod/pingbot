@@ -12,34 +12,34 @@ const pg_1 = require("pg");
 const LOGGER = {
     today: new Date().toLocaleDateString(),
     start() {
-        console.log(`START RESET [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC`);
+        console.log('\x1b[92m%s\x1b[0m', `BGN [${LOGGER.today}]: BEGIN RESET ON ${new Date().toLocaleTimeString()} UTC`);
     },
     log(msg) {
         if (!msg)
-            return console.log(`LOG [${LOGGER.today}]:`);
+            return console.log('\x1b[96m%s\x1b[0m', `LOG [${LOGGER.today}]:`);
         const lines = typeof msg === 'string' ? msg : (0, util_1.inspect)(msg, {
             colors: true,
             depth: null,
             compact: false
         });
         for (const line of lines.split('\n')) {
-            console.log(`LOG [${LOGGER.today}]: ${line}`);
+            console.log('\x1b[96m%s\x1b[0m%s', `LOG [${LOGGER.today}]: `, line);
         }
     },
     error(msg) {
         if (!msg)
-            return console.log(`ERROR [${LOGGER.today}]:`);
+            return console.log('\x1b[31m%s\x1b[0m', `ERR [${LOGGER.today}]:`);
         const lines = typeof msg === 'string' ? msg : (0, util_1.inspect)(msg, {
             colors: true,
             depth: null,
             compact: false
         });
         for (const line of lines.split('\n')) {
-            console.log(`ERROR [${LOGGER.today}]: ${line}`);
+            console.log('\x1b[31m%s\x1b[0m%s', `ERR [${LOGGER.today}]: `, line);
         }
     },
     end() {
-        console.log(`END [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC\n\n`);
+        console.log('\x1b[95m%s\x1b[0m', `END [${LOGGER.today}]: END RESET ON ${new Date().toLocaleTimeString()} UTC\n`);
     }
 };
 const pool = new pg_1.Pool({
