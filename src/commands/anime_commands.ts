@@ -425,7 +425,7 @@ export const anime: SlashCommand = {
           'Usage: `/anime anime: <anime_name> user: [user]`\n\n' +
           '__**Options**__\n' +
           '*anime:* The name of the anime to search for. (Required)\n' +
-          '*user:* Check a different user\'s list. (Default: You)\n\n' +
+          "*user:* Check a different user's list. (Default: You)\n\n" +
           'Examples: `/anime anime: COTE`, `/anime anime: Genshin user: @krammygod`',
 
     async execute(interaction) {
@@ -494,7 +494,7 @@ export const bal: SlashCommand = {
                 .setDescription('The user to stalk.'))
         .setDescription('Show your current balance.'),
 
-    desc: 'Check anyone\'s current balance of brons!\n\n' +
+    desc: "Check anyone's current balance of brons!\n\n" +
           'Usage: `/bal user: [user]`\n\n' +
           '__**Options**__\n' +
           '*user:* The user to stalk. (Default: You)\n\n' +
@@ -748,9 +748,9 @@ export const daily: SlashCommand = {
     desc: 'What is {/daily} you ask?  Well, here you will learn\n' +
           'That once in a day, 200 bron you may earn.\n\n' +
           'And if a waifu is at level 5 or more,\n' +
-          'Then there\'s a chance extra bron is in store!\n\n' +
+          "Then there's a chance extra bron is in store!\n\n" +
           'But if you are new, use {/daily} to start,\n' +
-          'And 1000 bron just this once I\'ll impart.\n\n' +
+          "And 1000 bron just this once I'll impart.\n\n" +
           'So when does your next {/daily} go live?\n' +
           'The answer is midnight, UTC -5!\n' +
           '\\- *A prose by @ryu_minoru*\n\n' +
@@ -807,7 +807,7 @@ export const profile: SlashCommand = {
     desc: 'All stats combined into one simple and clean display!\n\n' +
           'Usage: `/profile user: [user]`\n\n' +
           '__**Options**__\n' +
-          '*user:* The user\'s profile to see. (Default: You)\n\n' +
+          "*user:* The user's profile to see. (Default: You)\n\n" +
           'Examples: `/profile`, `/profile user: @krammygod`',
 
     async execute(interaction) {
@@ -2593,7 +2593,7 @@ export const submit: CachedSlashCommand<{
           '__**Character Submission Rules:**__\n' +
           '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
           '2. If the character is from an **anime** that already exists, it must use the exact same name.\n' +
-          '3. The character\'s **gender** must be one of: `Male`, `Female`, `Unknown`.\n' +
+          "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
           '4. If its a new character, the character must have at least **one normal image**.\n' +
           '5. If its a new character, and you include a lewd image, the character must have at least ' +
           '**two normal images**.\n' +
@@ -2651,9 +2651,9 @@ export const submit: CachedSlashCommand<{
         components: [
             new ActionRowBuilder<DTypes.TextInputBuilder>({
                 components: [new TextInputBuilder({
-                    label: 'Character\'s name',
+                    label: "Character's name",
                     customId: 'name',
-                    placeholder: 'Enter the character\'s name',
+                    placeholder: "Enter the character's name",
                     style: TextInputStyle.Short,
                     maxLength: 100,
                     required: true
@@ -2661,7 +2661,7 @@ export const submit: CachedSlashCommand<{
             }),
             new ActionRowBuilder<DTypes.TextInputBuilder>({
                 components: [new TextInputBuilder({
-                    label: 'Character\'s gender',
+                    label: "Character's gender",
                     customId: 'gender',
                     placeholder: 'Female, Male, or Unknown',
                     style: TextInputStyle.Short,
@@ -2673,7 +2673,7 @@ export const submit: CachedSlashCommand<{
                 components: [new TextInputBuilder({
                     label: 'Anime name',
                     customId: 'origin',
-                    placeholder: 'Enter the anime\'s name',
+                    placeholder: "Enter the anime's name",
                     style: TextInputStyle.Short,
                     maxLength: 100,
                     required: true
@@ -3124,7 +3124,7 @@ export const submit: CachedSlashCommand<{
                     customId: `submitSearchWaifu${id++}`, // Fixes a very specific bug
                     components: [new ActionRowBuilder<TextInputBuilder>({
                         components: [new TextInputBuilder({
-                            label: 'Character\'s name',
+                            label: "Character's name",
                             customId: 'name',
                             placeholder: 'Enter the name of the character',
                             style: TextInputStyle.Short,

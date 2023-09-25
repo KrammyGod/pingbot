@@ -89,7 +89,7 @@ export const purge: MessageCommand & PurgePrivates = {
         // DMs are always partials....
         message = await message.fetch();
         if (all) {
-            return message.reply({ content: 'Can\'t delete all messages in DMs.' }).then(() => { });
+            return message.reply({ content: "Can't delete all messages in DMs." }).then(() => { });
         } else if (amount <= 0) {
             return message.reply({ content: 'Enter a positive number.' }).then(() => { });
         }
@@ -151,7 +151,7 @@ export const purge: MessageCommand & PurgePrivates = {
             position: message.channel.rawPosition
         }).catch(async () => {
             await message.edit({
-                content: 'I can\'t purge here. Give me permissions to see the channel.'
+                content: "I can't purge here. Give me permissions to see the channel."
             });
             throw new PermissionError();
         });
@@ -186,7 +186,7 @@ export const purge: MessageCommand & PurgePrivates = {
         } else if (!message.channel.permissionsFor(message.guild.members.me!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
-                content: 'I don\'t have permission to purge.\n' +
+                content: "I don't have permission to purge.\n" +
                     'I need the Manage Messages permission.'
             });
         }
@@ -198,7 +198,7 @@ export const purge: MessageCommand & PurgePrivates = {
         const ___ = await message.channel.messages.fetch({ limit: 1 })
             .catch(async () => {
                 await message.reply({
-                    content: 'I can\'t purge here. Give me permissions to read the messages.'
+                    content: "I can't purge here. Give me permissions to read the messages."
                 });
                 throw new PermissionError();
             });
@@ -208,7 +208,7 @@ export const purge: MessageCommand & PurgePrivates = {
 
         if (amount >= 100 && message.author.id !== message.client.admin.id) {
             const buttonMessage = await message.reply({
-                content: 'Woah! That\'s a lot of messages!\nAre you sure ' +
+                content: "Woah! That's a lot of messages!\nAre you sure " +
                     `you want to delete ${amount} messages?`,
                 components: [this.buttons]
             });

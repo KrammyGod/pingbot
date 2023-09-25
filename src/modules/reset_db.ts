@@ -63,8 +63,8 @@ type CommonData = {
 
 async function copy() {
     const API_URL = 'https://www.animecharactersdatabase.com/api_series_characters.php';
-    // eslint-disable-next-line max-len
-    const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
+    const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
     const HEADERS = { 'User-Agent': _USER_AGENT };
     let i = await query<{ id: number }>('SELECT MAX(iid) AS id FROM commons').then(r => ++r[0].id);
     let chars = 0;
@@ -83,12 +83,12 @@ async function copy() {
             try {
                 res = JSON.parse(bad.replaceAll('	', '').replaceAll('\\', '\\\\'));
             } catch (e) {
-                throw `Bad response at ${i}\n${e}`;
+                throw new Error(`Bad response at ${i}\n${e}`);
             }
         }
         if (res === -1) break;
         if (!res.name || !res.origin || !res.gender || !res.character_image) {
-            throw `Bad response at ${i}\n${res}`;
+            throw new Error(`Bad response at ${i}\n${res}`);
         }
         if (res.gender !== 'Female' && res.gender !== 'Male') res.gender = 'Unknown';
         LOGGER.log(`Added common: id: ${i} name: ${res.name}`);
