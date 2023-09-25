@@ -21,12 +21,8 @@ jobs:
     if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
 
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use current Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: current
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: npm ci
@@ -45,12 +41,15 @@ jobs:
     if: ${{ github.event.pull_request.author_association == 'OWNER' || github.event.inputs.deploy == 'true' }}
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source
+        uses: actions/checkout@v3
       
-      - name: Use current Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout dev branch
+        uses: actions/checkout@v4
         with:
-          node-version: current
+          repository: ${{ github.repository }}
+          ref: dev-dist
+          path: .dist
 
       - name: Install dependencies
         run: npm ci
@@ -63,9 +62,8 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
           npm run deploy
-          mkdir .out
-          cp -r * .out
-          mv .env-cmdrc .out
+          mv * .dist
+          mv .env-cmdrc .dist
 
       # Then after we checkout the branch, we can overwrite all files with the ones in .out
       # We also include the commit message to be the same as original commit
@@ -73,16 +71,10 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git fetch origin dev-dist
-          rm -rf dist
-          git checkout dev-dist
-          rm -r *
-          mv .out/* .
-          mv .out/.env-cmdrc .
-          rmdir .out
+          cd .dist
           git add .
           git commit -m "${{ github.event.pull_request.head.label }}" || true
-          git push origin dev-dist
+          git push
 
   publish:
     needs: [lint, build]
@@ -92,12 +84,8 @@ jobs:
       contents: write
     
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use current Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: current
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
