@@ -1,5 +1,5 @@
-# This workflow builds and pushes build to dist branch
-name: Lint, Build, and Publish
+# This workflow builds, pushes build to dist branch, and deploys to production
+name: Publish to production
 
 on:
   push:
@@ -82,10 +82,10 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'none' # Required by the action
-      
-      - name: Add to known hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: Hash known_hosts
+        run: ssh-keygen -Hf ~/.ssh/known_hosts
 
       # Omitting output for security
       - name: Deploy to production

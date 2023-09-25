@@ -1,5 +1,5 @@
-# This workflow builds and pushes build to dev-dist branch
-name: Lint, Build, and Publish
+# This workflow builds, pushes build to dev-dist branch, and deploys to development
+name: Publish to development
 
 on:
   pull_request:
