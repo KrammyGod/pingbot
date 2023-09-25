@@ -44,6 +44,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3
       
+      # Checkout dist branch simulatenously
       - name: Checkout dev branch
         uses: actions/checkout@v4
         with:
@@ -54,7 +55,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # We essentially move all required files to a hidden, untracked folder called .out
+      # We essentially move all required files to the hidden folder
+      # that contains the dev-dist branch.
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
@@ -65,13 +67,12 @@ jobs:
           rsync -a * .dist
           mv .env-cmdrc .dist
 
-      # Then after we checkout the branch, we can overwrite all files with the ones in .out
       # We also include the commit message to be the same as original commit
       - name: Checkout and push to dev-dist
         run: |
+          cd .dist
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          cd .dist
           git add .
           git commit -m "${{ github.event.pull_request.head.label }}" || true
           git push
