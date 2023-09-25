@@ -3,6 +3,7 @@ name: Lint, Build, and Publish
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: ["main"]
 
   workflow_dispatch:
