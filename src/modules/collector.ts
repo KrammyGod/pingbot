@@ -13,13 +13,23 @@ const LOGGER = {
     },
     log(msg?: unknown) {
         if (!msg) return console.log(`LOG [${LOGGER.today}]:`);
-        for (const line of inspect(msg).split('\n')) {
+        const lines = typeof msg === 'string' ? msg : inspect(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
             console.log(`LOG [${LOGGER.today}]: ${line}`);
         }
     },
     error(msg?: unknown) {
         if (!msg) return console.log(`ERROR [${LOGGER.today}]:`);
-        for (const line of inspect(msg).split('\n')) {
+        const lines = typeof msg === 'string' ? msg : inspect(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
             console.log(`ERROR [${LOGGER.today}]: ${line}`);
         }
     },
