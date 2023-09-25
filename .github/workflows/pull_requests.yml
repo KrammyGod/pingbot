@@ -99,6 +99,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
+      - name: Hash known_hosts
+        run: ssh-keygen -Hf ~/.ssh/known_hosts
+
       # Omitting output for security
       - name: Deploy to development
         env:
