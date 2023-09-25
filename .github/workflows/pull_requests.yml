@@ -48,6 +48,7 @@ jobs:
       - name: Checkout dev branch
         uses: actions/checkout@v4
         with:
+          repository: ${{ github.repository }}
           ref: dev-dist
           path: .dist
 
@@ -67,7 +68,7 @@ jobs:
           mv .env-cmdrc .dist
 
       # We also include the commit message to be the same as original commit
-      - name: Commit and push to dev-dist
+      - name: Checkout and push to dev-dist
         run: |
           cd .dist
           git config user.name "${{ github.actor }}"
@@ -86,14 +87,17 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          ssh-known-hosts: ssh-keyscan -H ${{ secrets.SSH_HOST }} 
 
       - name: Install dependencies
         run: |
           npm i -g pm2
           npm i dotenv
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
       # Omitting output for security
       - name: Deploy to development
