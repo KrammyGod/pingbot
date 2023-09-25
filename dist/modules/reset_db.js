@@ -7,23 +7,38 @@ require("dotenv/config");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const pg_copy_streams_1 = require("pg-copy-streams");
+const util_1 = require("util");
 const pg_1 = require("pg");
 const LOGGER = {
     today: new Date().toLocaleDateString(),
-    start: () => {
+    start() {
         console.log(`START RESET [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC`);
     },
-    log: (msg) => {
-        for (const line of msg.split('\n')) {
+    log(msg) {
+        if (!msg)
+            return console.log(`LOG [${LOGGER.today}]:`);
+        const lines = typeof msg === 'string' ? msg : (0, util_1.inspect)(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
             console.log(`LOG [${LOGGER.today}]: ${line}`);
         }
     },
-    error: (msg) => {
-        for (const line of msg.split('\n')) {
+    error(msg) {
+        if (!msg)
+            return console.log(`ERROR [${LOGGER.today}]:`);
+        const lines = typeof msg === 'string' ? msg : (0, util_1.inspect)(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
             console.log(`ERROR [${LOGGER.today}]: ${line}`);
         }
     },
-    end: () => {
+    end() {
         console.log(`END [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC\n\n`);
     }
 };
@@ -49,8 +64,8 @@ async function reset() {
 exports.default = reset;
 async function copy() {
     const API_URL = 'https://www.animecharactersdatabase.com/api_series_characters.php';
-    // eslint-disable-next-line max-len
-    const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
+    const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
     const HEADERS = { 'User-Agent': _USER_AGENT };
     let i = await query('SELECT MAX(iid) AS id FROM commons').then(r => ++r[0].id);
     let chars = 0;
@@ -71,13 +86,13 @@ async function copy() {
                 res = JSON.parse(bad.replaceAll('	', '').replaceAll('\\', '\\\\'));
             }
             catch (e) {
-                throw `Bad response at ${i}\n${e}`;
+                throw new Error(`Bad response at ${i}\n${e}`);
             }
         }
         if (res === -1)
             break;
         if (!res.name || !res.origin || !res.gender || !res.character_image) {
-            throw `Bad response at ${i}\n${res}`;
+            throw new Error(`Bad response at ${i}\n${(0, util_1.inspect)(res)}`);
         }
         if (res.gender !== 'Female' && res.gender !== 'Male')
             res.gender = 'Unknown';
@@ -95,10 +110,9 @@ async function copy() {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const stream = client.query((0, pg_copy_streams_1.from)('COPY commons (id, name, gender, origin, img) FROM STDIN'));
+        const stream = client.query((0, pg_copy_streams_1.from)('COPY commons (iid, name, gender, origin, img) FROM STDIN'));
         const fileStream = fs_1.default.createReadStream(dumpFile);
         stream.on('finish', () => {
-            fs_1.default.unlinkSync(dumpFile);
             LOGGER.log('Finished dump!');
         });
         fileStream.pipe(stream);
@@ -106,10 +120,11 @@ async function copy() {
     }
     catch (err) {
         await client.query('ROLLBACK');
-        throw err.stack;
+        throw err;
     }
     finally {
         client.release();
+        await fs_1.default.promises.unlink(dumpFile).catch(() => { });
     }
     return chars;
 }
@@ -117,12 +132,11 @@ if (require.main === module) {
     (async () => {
         LOGGER.start();
         await reset();
-        const result = await copy().catch(ret => ret);
-        if (typeof result === 'number') {
+        const result = await copy().catch(ret => {
+            LOGGER.error(ret);
+        });
+        if (result) {
             LOGGER.log(`Added ${result} commons.`);
-        }
-        else {
-            LOGGER.log(`Exited with error: ${result}`);
         }
         LOGGER.log('Done!');
         LOGGER.end();

@@ -17,14 +17,24 @@ const LOGGER = {
     log(msg) {
         if (!msg)
             return console.log(`LOG [${LOGGER.today}]:`);
-        for (const line of (0, util_1.inspect)(msg).split('\n')) {
+        const lines = typeof msg === 'string' ? msg : (0, util_1.inspect)(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
             console.log(`LOG [${LOGGER.today}]: ${line}`);
         }
     },
     error(msg) {
         if (!msg)
             return console.log(`ERROR [${LOGGER.today}]:`);
-        for (const line of (0, util_1.inspect)(msg).split('\n')) {
+        const lines = typeof msg === 'string' ? msg : (0, util_1.inspect)(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
             console.log(`ERROR [${LOGGER.today}]: ${line}`);
         }
     },
