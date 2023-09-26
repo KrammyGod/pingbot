@@ -1055,7 +1055,7 @@ const restart: SlashSubcommand = {
                 return i.editReply({ content: 'There is no queue.', components: [] });
             }
         } else {
-            return interaction.client.deleteFollowUp(interaction, message);
+            return interaction.deleteReply();
         }
     }
 };
