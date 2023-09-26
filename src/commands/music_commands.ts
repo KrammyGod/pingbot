@@ -500,7 +500,7 @@ const clear: SlashSubcommand = {
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply) return interaction.editReply(reply);
         guildVoice.fullReset();
-        return interaction.editReply({ content: '❌ **RIP Queue.**' });
+        return interaction.editReply({ content: '🚮 **RIP Queue.**' });
     }
 };
 
@@ -1022,19 +1022,21 @@ const restart: SlashSubcommand = {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply) return interaction.editReply(reply);
+        if (!guildVoice.fullQueue.length) {
+            return interaction.editReply({ content: 'There is no queue.' });
+        }
         const message = await interaction.editReply({
-            content: 'Are you sure you want to restart the queue?',
+            content: '# Are you sure you want to restart the queue?',
             components: [new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                     .setLabel('Yes!')
                     .setCustomId('restart/confirm')
-                    .setEmoji('👍')
+                    .setEmoji('🔄')
                     .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
-                    .setLabel('No!')
+                    .setLabel('No')
                     .setCustomId('restart/cancel')
-                    .setEmoji('👎')
-                    .setStyle(ButtonStyle.Danger)
+                    .setStyle(ButtonStyle.Secondary)
             )]
         });
         const i = await message.awaitMessageComponent({
@@ -1048,12 +1050,12 @@ const restart: SlashSubcommand = {
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
                 playNext(interaction.guildId!);
-                return i.editReply({ content: '✅ Successfully restarted the queue.', components: [] });
+                return i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             } else {
                 return i.editReply({ content: 'There is no queue.', components: [] });
             }
         } else {
-            return interaction.client.deleteFollowUp(interaction, message);
+            return interaction.deleteReply();
         }
     }
 };

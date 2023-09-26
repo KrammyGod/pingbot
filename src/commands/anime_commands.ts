@@ -1260,13 +1260,12 @@ async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Ch
             new ButtonBuilder()
                 .setCustomId('upgrade_char/confirm')
                 .setLabel('Yes!')
-                .setEmoji('✅')
+                .setEmoji('⏫')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId('upgrade_char/cancel')
-                .setLabel('No.')
-                .setEmoji('❎')
-                .setStyle(ButtonStyle.Danger));
+                .setLabel('No')
+                .setStyle(ButtonStyle.Secondary));
     embed.setColor(Colors.Gold).setTitle(
         `Are you sure you want to use ${costs[char.lvl]} ` +
         `${(interaction.client as CustomClient).bot_emojis.brons} to upgrade ${char.name} ` +
@@ -1384,13 +1383,12 @@ async function delete_char(interaction: DTypes.AnySelectMenuInteraction, char: D
             new ButtonBuilder()
                 .setCustomId('delete_char/confirm')
                 .setLabel('Yes... :(')
-                .setEmoji('✅')
+                .setEmoji('🚮')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('delete_char/cancel')
                 .setLabel('No! Take me back!')
-                .setEmoji('❌')
-                .setStyle(ButtonStyle.Success));
+                .setStyle(ButtonStyle.Secondary));
     const message = await interaction.followUp({
         embeds: [embed],
         components: [buttons],
@@ -1983,13 +1981,12 @@ export const dall: SlashCommand = {
                 new ButtonBuilder()
                     .setCustomId('dall/confirm')
                     .setLabel('Yes... :(')
-                    .setEmoji('✅')
+                    .setEmoji('🚮')
                     .setStyle(ButtonStyle.Danger),
                 new ButtonBuilder()
                     .setCustomId('dall/cancel')
                     .setLabel('No! Take me back!')
-                    .setEmoji('❌')
-                    .setStyle(ButtonStyle.Success));
+                    .setStyle(ButtonStyle.Secondary));
         // Setup confirmation
         const message = await interaction.editReply({
             embeds: [embed],
