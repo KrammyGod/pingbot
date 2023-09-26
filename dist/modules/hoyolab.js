@@ -1,10 +1,32 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getHoyoLabData = exports.getUID = void 0;
 const cookie_1 = require("cookie");
-const userAgent = `
-    Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150
-`;
+const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) ' +
+    'AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150';
 const roleURL = 'https://bbs-api-os.hoyolab.com/game_record/card/wapi/getGameRecordCard?uid=';
 class HoyoAccountInfo {
     constructor(uid, list) {
@@ -69,7 +91,9 @@ async function getHoyoLabData(cookie) {
     const headers = {
         'User-Agent': userAgent,
         'Accept-Encoding': 'gzip, deflate, br',
-        'Cookie': cookie
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': cookie,
+        'X-Rpc-Language': 'en-us',
     };
     const uid = getUID(cookie);
     const info = await fetch(roleURL + uid, { headers })
@@ -81,4 +105,23 @@ async function getHoyoLabData(cookie) {
     return null;
 }
 exports.getHoyoLabData = getHoyoLabData;
+// Allows for testing API route with cookie input.
+if (require.main === module) {
+    // Conditional import
+    Promise.resolve().then(() => __importStar(require('readline'))).then(readline => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        // Challenge: don't use async/await
+        rl.question('Enter cookie or blank to stop: ', function getData(ans) {
+            if (!ans.length)
+                return rl.close();
+            getHoyoLabData(ans).then(data => {
+                console.dir(data, { colors: true, depth: null, compact: false });
+                rl.question('Enter cookie or blank to stop: ', getData);
+            });
+        });
+    });
+}
 //# sourceMappingURL=hoyolab.js.map
