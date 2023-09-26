@@ -1,12 +1,16 @@
 import { parse } from 'cookie';
 
-const userAgent = `
-    Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150
-`;
+const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) ' +
+    'AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150';
 const roleURL = 'https://bbs-api-os.hoyolab.com/game_record/card/wapi/getGameRecordCard?uid=';
 
 // Normally would use zod or other verifying library
 // however unnecessary for this.
+type GameStat = {
+    name: string;  // eg. "Days Active"
+    type: number;  // Seems to all be 1 atm
+    value: string; // spiral abyss is '12-3'
+};
 type GameAccountInfo = {
     has_role: boolean;
     game_id: number;            // 1 = HI3, 2 = Genshin, 6 = StarRail
@@ -15,7 +19,8 @@ type GameAccountInfo = {
     region: string;             // eg. "os_usa"
     level: number;
     background_image: string;
-    is_public: boolean;
+    is_public: boolean;         // Whether its currently displayed on profile
+    data: GameStat[];
     region_name: string;        // eg. "America Server"
     url: string;                // brings to game profile
 };
@@ -92,7 +97,9 @@ export async function getHoyoLabData(cookie?: string) {
     const headers = {
         'User-Agent': userAgent,
         'Accept-Encoding': 'gzip, deflate, br',
-        'Cookie': cookie
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': cookie,
+        'X-Rpc-Language': 'en-us',
     };
     const uid = getUID(cookie);
     const info = await fetch(roleURL + uid, { headers })
@@ -102,4 +109,23 @@ export async function getHoyoLabData(cookie?: string) {
         return new HoyoAccountInfo(uid, info);
     }
     return null;
+}
+
+// Allows for testing API route with cookie input.
+if (require.main === module) {
+    // Conditional import
+    import('readline').then(readline => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        // Challenge: don't use async/await
+        rl.question('Enter cookie or blank to stop: ', function getData(ans: string) {
+            if (!ans.length) return rl.close();
+            getHoyoLabData(ans).then(data => {
+                console.dir(data, { colors: true, depth: null, compact: false });
+                rl.question('Enter cookie or blank to stop: ', getData);
+            });
+        });
+    });
 }
