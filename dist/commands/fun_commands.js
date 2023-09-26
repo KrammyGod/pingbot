@@ -251,19 +251,18 @@ exports.hoyolab = {
         const buttons = [
             new discord_js_1.ButtonBuilder({
                 label: 'Yes!',
-                emoji: '✔️',
+                emoji: '🚮',
                 customId: 'hconfirm',
                 style: discord_js_1.ButtonStyle.Danger
             }),
             new discord_js_1.ButtonBuilder({
                 label: 'No.',
-                emoji: '✖️',
                 customId: 'hcancel',
-                style: discord_js_1.ButtonStyle.Success
+                style: discord_js_1.ButtonStyle.Secondary
             })
         ];
         const message = await interaction.followUp({
-            content: 'Are you sure you want to delete this account?',
+            content: '# Are you sure you want to delete this account?',
             components: [new discord_js_1.ActionRowBuilder({
                     components: buttons
                 })],

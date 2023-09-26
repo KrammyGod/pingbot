@@ -497,7 +497,7 @@ const clear = {
         if (reply)
             return interaction.editReply(reply);
         guildVoice.fullReset();
-        return interaction.editReply({ content: '❌ **RIP Queue.**' });
+        return interaction.editReply({ content: '🚮 **RIP Queue.**' });
     }
 };
 const loop = {
@@ -986,17 +986,19 @@ const restart = {
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
             return interaction.editReply(reply);
+        if (!guildVoice.fullQueue.length) {
+            return interaction.editReply({ content: 'There is no queue.' });
+        }
         const message = await interaction.editReply({
-            content: 'Are you sure you want to restart the queue?',
+            content: '# Are you sure you want to restart the queue?',
             components: [new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
                     .setLabel('Yes!')
                     .setCustomId('restart/confirm')
-                    .setEmoji('👍')
+                    .setEmoji('🔄')
                     .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder()
-                    .setLabel('No!')
+                    .setLabel('No')
                     .setCustomId('restart/cancel')
-                    .setEmoji('👎')
-                    .setStyle(discord_js_1.ButtonStyle.Danger))]
+                    .setStyle(discord_js_1.ButtonStyle.Secondary))]
         });
         const i = await message.awaitMessageComponent({
             filter: i => i.user.id === interaction.user.id,
@@ -1009,7 +1011,7 @@ const restart = {
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
                 playNext(interaction.guildId);
-                return i.editReply({ content: '✅ Successfully restarted the queue.', components: [] });
+                return i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             }
             else {
                 return i.editReply({ content: 'There is no queue.', components: [] });
