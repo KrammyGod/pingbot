@@ -256,7 +256,7 @@ exports.hoyolab = {
                 style: discord_js_1.ButtonStyle.Danger
             }),
             new discord_js_1.ButtonBuilder({
-                label: 'No.',
+                label: 'No',
                 customId: 'hcancel',
                 style: discord_js_1.ButtonStyle.Secondary
             })
