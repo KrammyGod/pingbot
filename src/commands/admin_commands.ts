@@ -43,13 +43,12 @@ export const purge: MessageCommand & PurgePrivates = {
             new ButtonBuilder()
                 .setCustomId('purge/confirm')
                 .setLabel('Yes!')
-                .setEmoji('✅')
-                .setStyle(ButtonStyle.Success),
+                .setEmoji('🚮')
+                .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('purge/cancel')
-                .setLabel('No.')
-                .setEmoji('❎')
-                .setStyle(ButtonStyle.Danger)),
+                .setLabel('No')
+                .setStyle(ButtonStyle.Secondary)),
 
     // Using discord.py's internal structure, delete messages one at a time
     // Useful for DMs/messages older than 14 days.
@@ -125,8 +124,8 @@ export const purge: MessageCommand & PurgePrivates = {
             }).then(() => { });
         }
         const buttonMessage = await message.reply({
-            content: "Woah! That's a lot of messages!\n" +
-                'Are you sure you want to delete all of them?',
+            content: "## Woah! That's a lot of messages!\n" +
+                '# Are you sure you want to delete all of them?',
             components: [this.buttons]
         });
 
