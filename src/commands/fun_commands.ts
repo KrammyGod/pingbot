@@ -272,19 +272,18 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         const buttons = [
             new ButtonBuilder({
                 label: 'Yes!',
-                emoji: '✔️',
+                emoji: '🚮',
                 customId: 'hconfirm',
                 style: ButtonStyle.Danger
             }),
             new ButtonBuilder({
-                label: 'No.',
-                emoji: '✖️',
+                label: 'No',
                 customId: 'hcancel',
-                style: ButtonStyle.Success
+                style: ButtonStyle.Secondary
             })
         ];
         const message = await interaction.followUp({
-            content: 'Are you sure you want to delete this account?',
+            content: '# Are you sure you want to delete this account?',
             components: [new ActionRowBuilder<DTypes.ButtonBuilder>({
                 components: buttons
             })],
