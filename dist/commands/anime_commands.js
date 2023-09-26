@@ -1141,12 +1141,11 @@ async function upgrade(interaction, char) {
         .addComponents(new discord_js_1.ButtonBuilder()
         .setCustomId('upgrade_char/confirm')
         .setLabel('Yes!')
-        .setEmoji('✅')
+        .setEmoji('⏫')
         .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder()
         .setCustomId('upgrade_char/cancel')
-        .setLabel('No.')
-        .setEmoji('❎')
-        .setStyle(discord_js_1.ButtonStyle.Danger));
+        .setLabel('No')
+        .setStyle(discord_js_1.ButtonStyle.Secondary));
     embed.setColor(discord_js_1.Colors.Gold).setTitle(`Are you sure you want to use ${costs[char.lvl]} ` +
         `${interaction.client.bot_emojis.brons} to upgrade ${char.name} ` +
         `to level ${char.lvl + 1}?`);
@@ -1258,12 +1257,11 @@ async function delete_char(interaction, char) {
         .addComponents(new discord_js_1.ButtonBuilder()
         .setCustomId('delete_char/confirm')
         .setLabel('Yes... :(')
-        .setEmoji('✅')
+        .setEmoji('🚮')
         .setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder()
         .setCustomId('delete_char/cancel')
         .setLabel('No! Take me back!')
-        .setEmoji('❌')
-        .setStyle(discord_js_1.ButtonStyle.Success));
+        .setStyle(discord_js_1.ButtonStyle.Secondary));
     const message = await interaction.followUp({
         embeds: [embed],
         components: [buttons],
@@ -1782,12 +1780,11 @@ exports.dall = {
             .addComponents(new discord_js_1.ButtonBuilder()
             .setCustomId('dall/confirm')
             .setLabel('Yes... :(')
-            .setEmoji('✅')
+            .setEmoji('🚮')
             .setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder()
             .setCustomId('dall/cancel')
             .setLabel('No! Take me back!')
-            .setEmoji('❌')
-            .setStyle(discord_js_1.ButtonStyle.Success));
+            .setStyle(discord_js_1.ButtonStyle.Secondary));
         // Setup confirmation
         const message = await interaction.editReply({
             embeds: [embed],

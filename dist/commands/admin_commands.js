@@ -51,12 +51,11 @@ exports.purge = {
         .addComponents(new discord_js_1.ButtonBuilder()
         .setCustomId('purge/confirm')
         .setLabel('Yes!')
-        .setEmoji('✅')
-        .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder()
+        .setEmoji('🚮')
+        .setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder()
         .setCustomId('purge/cancel')
-        .setLabel('No.')
-        .setEmoji('❎')
-        .setStyle(discord_js_1.ButtonStyle.Danger)),
+        .setLabel('No')
+        .setStyle(discord_js_1.ButtonStyle.Secondary)),
     // Using discord.py's internal structure, delete messages one at a time
     // Useful for DMs/messages older than 14 days.
     async delete_single(msgs) {
@@ -129,8 +128,8 @@ exports.purge = {
             }).then(() => { });
         }
         const buttonMessage = await message.reply({
-            content: "Woah! That's a lot of messages!\n" +
-                'Are you sure you want to delete all of them?',
+            content: "## Woah! That's a lot of messages!\n" +
+                '# Are you sure you want to delete all of them?',
             components: [this.buttons]
         });
         const confirmed = await buttonMessage.awaitMessageComponent({
