@@ -1018,7 +1018,7 @@ const restart = {
             }
         }
         else {
-            return interaction.client.deleteFollowUp(interaction, message);
+            return interaction.deleteReply();
         }
     }
 };
