@@ -277,7 +277,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                 style: ButtonStyle.Danger
             }),
             new ButtonBuilder({
-                label: 'No.',
+                label: 'No',
                 customId: 'hcancel',
                 style: ButtonStyle.Secondary
             })
