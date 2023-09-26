@@ -115,6 +115,9 @@ async function copy() {
         stream.on('finish', () => {
             LOGGER.log('Finished dump!');
         });
+        stream.on('error', err => {
+            throw err;
+        });
         fileStream.pipe(stream);
         await client.query('COMMIT');
     }
