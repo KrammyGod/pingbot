@@ -116,7 +116,7 @@ async function nowPlaying(guildId) {
         client.bot_emojis.barempty.repeat(emptyBars);
     const embed = new discord_js_1.EmbedBuilder({
         title: '🎶 Now Playing:',
-        description: `${guildVoice.paused ? '⏸' : '▶️'} ${song.linkedTitle} ` +
+        description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
             `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
             `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
         color: discord_js_1.Colors.Blue
@@ -558,7 +558,7 @@ const pause = {
         else {
             guildVoice.player.pause();
             guildVoice.paused = true;
-            return interaction.editReply({ content: '⏸ Paused.' });
+            return interaction.editReply({ content: '⏸️ Paused.' });
         }
     }
 };
