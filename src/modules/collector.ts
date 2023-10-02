@@ -83,6 +83,8 @@ type RewardAPIResponse = {
             readonly name: string;
             readonly cnt: string;
         }[]
+        readonly resign: boolean;
+        readonly now: string; // Epoch format
     };
 };
 type InfoAPIResponse = {
@@ -95,6 +97,7 @@ type InfoAPIResponse = {
         readonly first_bind: boolean;
         readonly is_sub: boolean;
         readonly region: string;
+        readonly month_last_day: boolean;
     } | null;
 };
 type RoleAPIResponse = {
