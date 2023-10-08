@@ -213,7 +213,7 @@ http_1.default.createServer((req, res) => {
         return sendCollectorResults(body);
     });
 }).listen(_config_1.default.port, () => {
-    console.log(`Message server listening on ${_config_1.default.port}`);
+    console.log(`Message server listening on ${_config_1.default.port}\n`);
 });
 // Gracefully kill all shards and then exit
 function cleanup() {
