@@ -195,7 +195,7 @@ http.createServer((req, res) => {
         return sendCollectorResults(body);
     });
 }).listen(config.port, () => {
-    console.log(`Message server listening on ${config.port}`);
+    console.log(`Message server listening on ${config.port}\n`);
 });
 
 // Gracefully kill all shards and then exit
