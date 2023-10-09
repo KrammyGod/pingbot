@@ -1,5 +1,5 @@
-import Pixiv from 'pixiv.ts';
 import config from '@config';
+import Pixiv from 'pixiv.ts';
 import { load } from 'cheerio';
 
 // Pixiv object for scraping pixiv images.
@@ -10,17 +10,14 @@ let pixiv: Pixiv;
  * Source is the raw image url, sauce is the
  * description for imgur uploads (if needed)
  */
-export async function scrape(url: string, all: string[] = []) {
-    let sauce;
-    let source = url;
+export async function scrape(url: string) {
+    const retval: string[] = [];
 
     // Let a separate server handle the parsing of twitter images with playwright.
     const { imgs } = await fetch(`${config.scraper}?url=${url}`).then(res => res.json()).catch(() => ({ imgs: [url] }));
     // Server returns original image if it couldn't find twitter images.
     if (imgs[0] !== url) {
-        all.push(...imgs); // We also return all images in case we want to upload all
-        source = imgs[0];
-        sauce = url;
+        retval.push(...imgs);
     }
 
     // This part is parsing pixiv images.
@@ -37,7 +34,6 @@ export async function scrape(url: string, all: string[] = []) {
         // Image number is always after /artworks/id, and at the end
         // @ts-expect-error parseInt can handle undefined
         let imageNumber = parseInt(url.match(/\/artworks\/\d{8,}\/(?<id>-?[0-9]+)$/)?.groups.id);
-        if (isNaN(imageNumber)) imageNumber = 1;
         if (imageNumber > 0) --imageNumber; // Positive indexes start at 0
 
         const res = await pixiv.illust.get(url).catch(() => {
@@ -54,12 +50,11 @@ export async function scrape(url: string, all: string[] = []) {
                 res.meta_pages.at(0)?.image_urls.original ??
                 res.meta_single_page.original_image_url ?? res.image_urls.large ??
                 res.image_urls.medium;
-            sauce = url;
-            source = new_url;
-            if (res.meta_pages.length) {
-                all.push(...res.meta_pages.map(p => p.image_urls.original));
+            // There are multiple images, and did not specify an image, return all available.
+            if (res.meta_pages.length && isNaN(imageNumber)) {
+                retval.push(...res.meta_pages.map(p => p.image_urls.original));
             } else {
-                all.push(new_url);
+                retval.push(new_url);
             }
         }
     }
@@ -70,22 +65,23 @@ export async function scrape(url: string, all: string[] = []) {
         const sectionTag = $('section').find('.image-container');
         // Backup in case there is no section/image source
         const imgTag = $('img#image');
-        source = sectionTag.attr('data-file-url') ?? sectionTag.attr('data-source') ??
-            imgTag.attr('src')?.replace('/sample/', '/original/').replace('sample-', '') ?? url;
-        // Sauce is not url if source is url. url is fallback if sauce does not exist, but we found source.
-        sauce = sectionTag.attr('data-normalized-source') ?? (source === url ? undefined : url);
+        const source = sectionTag.attr('data-file-url') ?? sectionTag.attr('data-source') ??
+            imgTag.attr('src')?.replace('/sample/', '/original/').replace('sample-', '');
+        if (source) {
+            retval.push(source);
+        }
     }
 
-    return { source, sauce };
+    return retval;
 }
 
 export async function uploadToCDN(form: FormData): Promise<string[]> {
+    const headers = new Headers();
+    headers.append('Authorization', config.secret);
     const { urls } = await fetch(config.origin, {
         method: 'POST',
         body: form,
-        headers: {
-            Authorization: config.secret
-        }
+        headers
     }).then(res => {
         if (res.status === 200) return res.json();
         return { urls: [] };

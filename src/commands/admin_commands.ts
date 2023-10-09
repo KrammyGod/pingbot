@@ -1,6 +1,7 @@
-import fs from 'fs';
-import reset from '@modules/reset_db';
 import config from '@config';
+import fs from 'fs';
+import path from 'path';
+import reset from '@modules/reset_db';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import { scrape, uploadToCDN } from '@modules/scraper';
@@ -360,7 +361,7 @@ export const upload: MessageCommand & UploadPrivates = {
             // To avoid 403
             opts = { headers: { Referer: 'https://www.pixiv.net/' } };
         }
-        return fetch(url, opts).then(res => res.blob());
+        return fetch(url, opts).then(res => res.blob()).catch(() => new Blob([]));
     },
 
     async execute(message, args) {
@@ -370,26 +371,25 @@ export const upload: MessageCommand & UploadPrivates = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        let url = args[0];
+        const res = [];
         await message.channel.sendTyping();
-
-        // Use our helper to get the image data.
-        const all: string[] = [];
-        await scrape(url, all).then(res => {
-            url = res.source;
-        }).catch(() => { });
-
-        const formdata = new FormData();
-        if (!all.length) {
-            const file = await this.getImage(url);
-            formdata.append('images', file);
+        const all: { sources: string[], url: string }[] = [];
+        for (const url of args) {
+            // Use our helper to get the image data.
+            const sources = await scrape(url).catch(() => []);
+            all.push({ sources, url });
         }
-        // All is defined for multiple images in twitter or pixiv.
-        for (const url of all) {
-            const file = await this.getImage(url);
-            formdata.append('images', file);
+        if (all.length) {
+            const formdata = new FormData();
+            for (const obj of all) {
+                for (const url of obj.sources) {
+                    const file = await this.getImage(url);
+                    formdata.append('images', file, path.extname(url));
+                    formdata.append('sources', obj.url);
+                }
+            }
+            res.push(...await uploadToCDN(formdata));
         }
-        const res = await uploadToCDN(formdata);
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };
