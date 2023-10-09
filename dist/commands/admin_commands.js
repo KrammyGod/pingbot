@@ -28,7 +28,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stop = exports.start = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
-const axios_1 = __importDefault(require("axios"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
 const _config_1 = __importDefault(require("../classes/config.js"));
@@ -37,10 +36,6 @@ const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
-// Setup ffmpeg
-const ffmpeg_1 = require("@ffmpeg-installer/ffmpeg");
-const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
-fluent_ffmpeg_1.default.setFfmpegPath(_config_1.default.ffmpeg || ffmpeg_1.path);
 exports.name = 'Admin Message Commands';
 exports.desc = "You shouldn't be seeing this";
 exports.purge = {
@@ -363,56 +358,28 @@ exports.upload = {
         }
         return test;
     },
-    async uploadToImgur(message, url, title, description) {
-        let headers = undefined; // Custom headers for ffmpeg in case of pixiv images.
-        let imageData = url;
-        // For now, we only ignore gifs (all animated will be ignored)
-        if (!imageData.includes('.gif')) {
-            // Add headers to prevent 403.
-            if (imageData.startsWith('https://i.pximg.net/')) {
-                headers = 'Referer: https://www.pixiv.net/';
-            }
-            // Use ffmpeg to quickly convert into jpg.
-            const filePath = this.uniqueFileName('.jpg');
-            // This allows us to block until ffmpeg is done.
-            await new Promise(resolve => {
-                const cmd = (0, fluent_ffmpeg_1.default)().input(imageData);
-                if (headers)
-                    cmd.inputOption('-headers', headers);
-                cmd.save(filePath).on('end', () => {
-                    // Clean up after reading file.
-                    imageData = fs_1.default.createReadStream(filePath).on('end', () => {
-                        return fs_1.default.promises.unlink(filePath).catch(() => { });
-                    });
-                    resolve(undefined);
-                }).on('error', async (err) => {
-                    await message.reply(`FFmpeg error: ${err}`);
-                    resolve(undefined);
+    async upload(formdata) {
+        // Post to imgur to upload and send back the link.
+        return new Promise((resolve, reject) => {
+            formdata.submit({
+                host: _config_1.default.origin_host,
+                port: _config_1.default.origin_port,
+                path: _config_1.default.origin_path,
+                headers: {
+                    Authorization: _config_1.default.secret
+                }
+            }, (err, res) => {
+                if (err)
+                    return reject(err);
+                let data = '';
+                res.on('data', chunk => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    resolve(JSON.parse(data).urls);
                 });
             });
-        }
-        // Post to imgur to upload and send back the link.
-        const formdata = new form_data_1.default();
-        formdata.append('image', imageData);
-        if (title)
-            formdata.append('title', title);
-        if (description)
-            formdata.append('description', description);
-        const request_config = {
-            method: 'POST',
-            maxBodyLength: Infinity,
-            url: 'https://api.imgur.com/3/image',
-            headers: {
-                'Authorization': `Client-ID ${_config_1.default.imgur}`,
-                ...formdata.getHeaders()
-            },
-            data: formdata
-        };
-        // Gave up w/ fetch and had to use axios.
-        return (0, axios_1.default)(request_config)
-            .then(i => i.data.data.link)
-            .catch(err => err.response.data.data.error.message ??
-            err.response.data.data.error);
+        });
     },
     async execute(message, args) {
         if (args.length < 1) {
@@ -422,24 +389,21 @@ exports.upload = {
             });
         }
         let url = args[0];
-        const title = args[1];
-        let description = args[2];
         await message.channel.sendTyping();
         // Use our helper to get the image data.
         const all = [];
         await (0, scraper_1.default)(url, all).then(res => {
             url = res.source;
-            if (res.sauce)
-                description = res.sauce;
         }).catch(() => { });
-        const res = [];
+        const formdata = new form_data_1.default();
         if (!all.length) {
-            res.push(await this.uploadToImgur(message, url, title, description));
+            formdata.append('images', url);
         }
         // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
-            res.push(await this.uploadToImgur(message, url, title, description));
+            formdata.append('images', url);
         }
+        const res = await this.upload(formdata);
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };

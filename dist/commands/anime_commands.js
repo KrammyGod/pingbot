@@ -28,7 +28,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.submit = exports.move = exports.swap = exports.users = exports.top = exports.stars = exports.dall = exports.whale = exports.multi = exports.roll = exports.high = exports.list_menu = exports.list = exports.profile_menu = exports.profile = exports.daily = exports.lb = exports.bal = exports.anime = exports.animes = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
-const axios_1 = __importDefault(require("axios"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
 const form_data_1 = __importDefault(require("form-data"));
@@ -36,10 +35,6 @@ const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
-// Setup ffmpeg
-const ffmpeg_1 = require("@ffmpeg-installer/ffmpeg");
-const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
-fluent_ffmpeg_1.default.setFfmpegPath(_config_1.default.ffmpeg || ffmpeg_1.path);
 exports.name = 'Animes/Gacha';
 exports.desc = 'This category is for commands that deal with the character gacha.';
 const NO_NUM = -1;
@@ -2465,7 +2460,8 @@ exports.submit = {
         }
         else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith('https://i.imgur')) || nimg.some(i => !i.startsWith('https://i.imgur'))) {
+            if (img.some(i => !i.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) ||
+                nimg.some(i => !i.startsWith('https://d1irvsiobt1r8d.cloudfront.net/'))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2514,60 +2510,44 @@ exports.submit = {
             const imgs = [];
             for (const url of [...img, ...nimg]) {
                 let imageData = url;
-                let headers; // Custom headers for ffmpeg in case of pixiv images.
-                let description = undefined;
+                // To be used later with new schema update
+                // let description = undefined;
                 const formdata = new form_data_1.default();
-                // Do not reupload imgur images.
-                if (url.startsWith('https://i.imgur.com/')) {
+                // Do not reupload CDN images.
+                if (url.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) {
                     imgs.push(url);
                     continue;
                 }
                 // Use our helper to get the image data.
                 await (0, scraper_1.default)(url).then(res => {
                     imageData = res.source;
-                    description = res.sauce;
+                    // TODO: Use with schema upodate
+                    // description = res.sauce;
                 }).catch(() => { });
-                // For now, we only ignore gifs (all animated will be ignored)
-                if (!imageData.includes('.gif')) {
-                    // Add headers to prevent 403.
-                    if (imageData.startsWith('https://i.pximg.net/')) {
-                        headers = 'Referer: https://www.pixiv.net/';
-                    }
-                    // Use ffmpeg to quickly convert into jpg.
-                    const filePath = this.uniqueFileName('.jpg');
-                    // This allows us to block until ffmpeg is done.
-                    await new Promise(resolve => {
-                        const cmd = (0, fluent_ffmpeg_1.default)().input(imageData);
-                        if (headers)
-                            cmd.inputOption('-headers', headers);
-                        cmd.save(filePath).on('end', () => {
-                            // Clean up after reading file.
-                            imageData = fs_1.default.createReadStream(filePath).on('end', async () => {
-                                return fs_1.default.promises.unlink(filePath).catch(() => { });
-                            });
-                            resolve(undefined);
-                        }).on('error', () => {
-                            fs_1.default.promises.unlink(filePath).catch(() => { });
-                            resolve(undefined); // If ffmpeg fails, we can still try imgur.
+                formdata.append('image', imageData);
+                // Upload to our CDN and get url back.
+                imgs.push(await new Promise(resolve => {
+                    formdata.submit({
+                        host: _config_1.default.origin_host,
+                        port: _config_1.default.origin_port,
+                        path: _config_1.default.origin_path,
+                        headers: {
+                            Authorization: _config_1.default.secret
+                        }
+                    }, (err, res) => {
+                        if (err) {
+                            console.error(err);
+                            return resolve(url);
+                        }
+                        let data = '';
+                        res.on('data', chunk => {
+                            data += chunk;
+                        });
+                        res.on('end', () => {
+                            resolve(JSON.parse(data).urls[0]);
                         });
                     });
-                }
-                // Post to imgur to upload and send back the link.
-                formdata.append('image', imageData);
-                formdata.append('title', name);
-                if (description)
-                    formdata.append('description', description);
-                const request_config = {
-                    method: 'POST',
-                    maxBodyLength: Infinity,
-                    url: 'https://api.imgur.com/3/image',
-                    headers: {
-                        'Authorization': `Client-ID ${_config_1.default.imgur}`,
-                        ...formdata.getHeaders()
-                    },
-                    data: formdata
-                };
-                imgs.push((0, axios_1.default)(request_config).then(i => i.data.data.link).catch(() => url));
+                }));
             }
             await Promise.all(imgs).then(imgs => {
                 submission.data.img = imgs.splice(0, img.length);
