@@ -28,6 +28,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stop = exports.start = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
 const _config_1 = __importDefault(require("../classes/config.js"));
@@ -358,6 +359,19 @@ exports.upload = {
         }
         return test;
     },
+    async getImage(url) {
+        const file = fs_1.default.createWriteStream(this.uniqueFileName(path_1.default.extname(url)));
+        let opts = undefined;
+        if (url.startsWith('https://i.pximg.net/')) {
+            // To avoid 403
+            opts = { headers: { Referer: 'https://www.pixiv.net/' } };
+        }
+        return fetch(url, opts).then(res => res.blob()).then(blob => blob.arrayBuffer()).then(buf => {
+            file.write(Buffer.from(buf));
+            file.close();
+            return fs_1.default.createReadStream(file.path);
+        });
+    },
     async upload(formdata) {
         // Post to imgur to upload and send back the link.
         return new Promise((resolve, reject) => {
@@ -396,14 +410,23 @@ exports.upload = {
             url = res.source;
         }).catch(() => { });
         const formdata = new form_data_1.default();
+        const files = [];
         if (!all.length) {
-            formdata.append('images', url);
+            const file = await this.getImage(url);
+            files.push(file);
+            formdata.append('images', file);
         }
         // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
-            formdata.append('images', url);
+            const file = await this.getImage(url);
+            files.push(file);
+            formdata.append('images', file);
         }
         const res = await this.upload(formdata);
+        // Cleanup all files after upload is completed.
+        for (const file of files) {
+            fs_1.default.unlinkSync(file.path);
+        }
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };
