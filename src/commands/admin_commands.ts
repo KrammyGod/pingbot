@@ -1,5 +1,4 @@
 import fs from 'fs';
-import axios from 'axios';
 import reset from '@modules/reset_db';
 import scrape from '@modules/scraper';
 import config from '@config';
@@ -13,11 +12,6 @@ import {
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type { MessageCommand } from '@classes/client';
-
-// Setup ffmpeg
-import { path } from '@ffmpeg-installer/ffmpeg';
-import ffmpeg from 'fluent-ffmpeg';
-ffmpeg.setFfmpegPath(config.ffmpeg || path);
 
 export const name = 'Admin Message Commands';
 export const desc = "You shouldn't be seeing this";
@@ -344,7 +338,7 @@ export const add: MessageCommand = {
 
 type UploadPrivates = {
     uniqueFileName: (ext: string) => string;
-    uploadToImgur: (message: DTypes.Message, url: string, title?: string, description?: string) => Promise<string>;
+    upload: (formdata: FormData) => Promise<string[]>;
 };
 export const upload: MessageCommand & UploadPrivates = {
     name: 'upload',
@@ -361,54 +355,27 @@ export const upload: MessageCommand & UploadPrivates = {
         return test;
     },
 
-    async uploadToImgur(message, url, title, description) {
-        let headers: string | undefined = undefined; // Custom headers for ffmpeg in case of pixiv images.
-        let imageData: string | fs.ReadStream = url;
-
-        // For now, we only ignore gifs (all animated will be ignored)
-        if (!imageData.includes('.gif')) {
-            // Add headers to prevent 403.
-            if (imageData.startsWith('https://i.pximg.net/')) {
-                headers = 'Referer: https://www.pixiv.net/';
-            }
-            // Use ffmpeg to quickly convert into jpg.
-            const filePath = this.uniqueFileName('.jpg');
-            // This allows us to block until ffmpeg is done.
-            await new Promise(resolve => {
-                const cmd = ffmpeg().input(imageData);
-                if (headers) cmd.inputOption('-headers', headers);
-                cmd.save(filePath).on('end', () => {
-                    // Clean up after reading file.
-                    imageData = fs.createReadStream(filePath).on('end', () => {
-                        return fs.promises.unlink(filePath).catch(() => { });
-                    });
-                    resolve(undefined);
-                }).on('error', async err => {
-                    await message.reply(`FFmpeg error: ${err}`);
-                    resolve(undefined);
+    async upload(formdata) {
+        // Post to imgur to upload and send back the link.
+        return new Promise((resolve, reject) => {
+            formdata.submit({
+                host: config.origin_host,
+                port: config.origin_port,
+                path: config.origin_path,
+                headers: {
+                    Authorization: config.secret
+                }
+            }, (err, res) => {
+                if (err) return reject(err);
+                let data = '';
+                res.on('data', chunk => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    resolve((JSON.parse(data) as { urls: string[] }).urls);
                 });
             });
-        }
-        // Post to imgur to upload and send back the link.
-        const formdata = new FormData();
-        formdata.append('image', imageData);
-        if (title) formdata.append('title', title);
-        if (description) formdata.append('description', description);
-        const request_config = {
-            method: 'POST',
-            maxBodyLength: Infinity,
-            url: 'https://api.imgur.com/3/image',
-            headers: {
-                'Authorization': `Client-ID ${config.imgur}`,
-                ...formdata.getHeaders()
-            },
-            data: formdata
-        };
-        // Gave up w/ fetch and had to use axios.
-        return axios(request_config)
-            .then(i => i.data.data.link)
-            .catch(err => err.response.data.data.error.message ??
-                err.response.data.data.error);
+        });
     },
 
     async execute(message, args) {
@@ -419,25 +386,23 @@ export const upload: MessageCommand & UploadPrivates = {
             });
         }
         let url = args[0];
-        const title = args[1];
-        let description = args[2];
         await message.channel.sendTyping();
 
         // Use our helper to get the image data.
         const all: string[] = [];
         await scrape(url, all).then(res => {
             url = res.source;
-            if (res.sauce) description = res.sauce;
         }).catch(() => { });
 
-        const res: string[] = [];
+        const formdata = new FormData();
         if (!all.length) {
-            res.push(await this.uploadToImgur(message, url, title, description));
+            formdata.append('images', url);
         }
         // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
-            res.push(await this.uploadToImgur(message, url, title, description));
+            formdata.append('images', url);
         }
+        const res = await this.upload(formdata);
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };

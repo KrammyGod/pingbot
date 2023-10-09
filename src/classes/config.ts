@@ -21,9 +21,21 @@ export default {
      */
     prefix: process.env.PREFIX || '',
     /**
-     * The imgur client ID. Used for uploading images to imgur.
+     * The host for uploading images to AWS CDN.
      */
-    imgur: process.env.IMGUR_CLIENT_ID,
+    origin_host: process.env.ORIGIN_HOST!,
+    /**
+     * The port for uploading images to AWS CDN.
+     */
+    origin_port: process.env.ORIGIN_PORT!,
+    /**
+     * The path for uploading images to AWS CDN.
+     */
+    origin_path: process.env.ORIGIN_PATH!,
+    /**
+     * The secret for uploading images to AWS CDN.
+     */
+    secret: process.env.SECRET!,
     /**
      * The support server's ID.
      */
@@ -70,10 +82,6 @@ export default {
      * Port to receive messages from collector and possibly other services.
      */
     port: process.env.PORT || 5000,
-    /**
-     * Defined if there's a different path to the ffmpeg binary that is not detectable.
-     */
-    ffmpeg: process.env.NEW_FFMPEG_PATH,
     /**
      * The environment the bot is running in. Only used to determine whether to send a welcome message or not.
      */
