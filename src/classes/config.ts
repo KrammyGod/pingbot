@@ -81,7 +81,7 @@ export default {
     /**
      * Port to receive messages from collector and possibly other services.
      */
-    port: process.env.PORT || 5001,
+    port: process.env.PORT || 5000,
     /**
      * The environment the bot is running in. Only used to determine whether to send a welcome message or not.
      */
