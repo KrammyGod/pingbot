@@ -29,10 +29,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.submit = exports.move = exports.swap = exports.users = exports.top = exports.stars = exports.dall = exports.whale = exports.multi = exports.roll = exports.high = exports.list_menu = exports.list = exports.profile_menu = exports.profile = exports.daily = exports.lb = exports.bal = exports.anime = exports.animes = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
 const _config_1 = __importDefault(require("../classes/config.js"));
-const scraper_1 = __importDefault(require("../modules/scraper"));
-const form_data_1 = __importDefault(require("form-data"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
+const scraper_1 = require("../modules/scraper");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 exports.name = 'Animes/Gacha';
@@ -2512,42 +2511,21 @@ exports.submit = {
                 let imageData = url;
                 // To be used later with new schema update
                 // let description = undefined;
-                const formdata = new form_data_1.default();
+                const formdata = new FormData();
                 // Do not reupload CDN images.
                 if (url.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) {
                     imgs.push(url);
                     continue;
                 }
                 // Use our helper to get the image data.
-                await (0, scraper_1.default)(url).then(res => {
+                await (0, scraper_1.scrape)(url).then(res => {
                     imageData = res.source;
                     // TODO: Use with schema upodate
                     // description = res.sauce;
                 }).catch(() => { });
-                formdata.append('image', imageData);
+                formdata.append('images', imageData);
                 // Upload to our CDN and get url back.
-                imgs.push(await new Promise(resolve => {
-                    formdata.submit({
-                        host: _config_1.default.origin_host,
-                        port: _config_1.default.origin_port,
-                        path: _config_1.default.origin_path,
-                        headers: {
-                            Authorization: _config_1.default.secret
-                        }
-                    }, (err, res) => {
-                        if (err) {
-                            console.error(err);
-                            return resolve(url);
-                        }
-                        let data = '';
-                        res.on('data', chunk => {
-                            data += chunk;
-                        });
-                        res.on('end', () => {
-                            resolve(JSON.parse(data).urls[0]);
-                        });
-                    });
-                }));
+                imgs.push(...await (0, scraper_1.uploadToCDN)(formdata));
             }
             await Promise.all(imgs).then(imgs => {
                 submission.data.img = imgs.splice(0, img.length);

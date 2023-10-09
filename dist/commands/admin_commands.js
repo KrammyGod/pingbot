@@ -28,13 +28,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stop = exports.start = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
-const scraper_1 = __importDefault(require("../modules/scraper"));
 const _config_1 = __importDefault(require("../classes/config.js"));
-const form_data_1 = __importDefault(require("form-data"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
+const scraper_1 = require("../modules/scraper");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 exports.name = 'Admin Message Commands';
@@ -360,40 +358,12 @@ exports.upload = {
         return test;
     },
     async getImage(url) {
-        const file = fs_1.default.createWriteStream(this.uniqueFileName(path_1.default.extname(url)));
         let opts = undefined;
         if (url.startsWith('https://i.pximg.net/')) {
             // To avoid 403
             opts = { headers: { Referer: 'https://www.pixiv.net/' } };
         }
-        return fetch(url, opts).then(res => res.blob()).then(blob => blob.arrayBuffer()).then(buf => {
-            file.write(Buffer.from(buf));
-            file.close();
-            return fs_1.default.createReadStream(file.path);
-        });
-    },
-    async upload(formdata) {
-        // Post to imgur to upload and send back the link.
-        return new Promise((resolve, reject) => {
-            formdata.submit({
-                host: _config_1.default.origin_host,
-                port: _config_1.default.origin_port,
-                path: _config_1.default.origin_path,
-                headers: {
-                    Authorization: _config_1.default.secret
-                }
-            }, (err, res) => {
-                if (err)
-                    return reject(err);
-                let data = '';
-                res.on('data', chunk => {
-                    data += chunk;
-                });
-                res.on('end', () => {
-                    resolve(JSON.parse(data).urls);
-                });
-            });
-        });
+        return fetch(url, opts).then(res => res.blob());
     },
     async execute(message, args) {
         if (args.length < 1) {
@@ -406,27 +376,20 @@ exports.upload = {
         await message.channel.sendTyping();
         // Use our helper to get the image data.
         const all = [];
-        await (0, scraper_1.default)(url, all).then(res => {
+        await (0, scraper_1.scrape)(url, all).then(res => {
             url = res.source;
         }).catch(() => { });
-        const formdata = new form_data_1.default();
-        const files = [];
+        const formdata = new FormData();
         if (!all.length) {
             const file = await this.getImage(url);
-            files.push(file);
             formdata.append('images', file);
         }
         // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
             const file = await this.getImage(url);
-            files.push(file);
             formdata.append('images', file);
         }
-        const res = await this.upload(formdata);
-        // Cleanup all files after upload is completed.
-        for (const file of files) {
-            fs_1.default.unlinkSync(file.path);
-        }
+        const res = await (0, scraper_1.uploadToCDN)(formdata);
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };

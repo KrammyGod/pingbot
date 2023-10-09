@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.uploadToCDN = exports.scrape = void 0;
 const pixiv_ts_1 = __importDefault(require("pixiv.ts"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const cheerio_1 = require("cheerio");
@@ -79,5 +80,23 @@ async function scrape(url, all = []) {
     }
     return { source, sauce };
 }
-exports.default = scrape;
+exports.scrape = scrape;
+async function uploadToCDN(form) {
+    const { urls } = await fetch(_config_1.default.origin, {
+        method: 'POST',
+        body: form,
+        headers: {
+            Authorization: _config_1.default.secret
+        }
+    }).then(res => {
+        if (res.status === 200)
+            return res.json();
+        return { urls: [] };
+    }).catch(e => {
+        console.error(e);
+        return { urls: [] };
+    });
+    return urls;
+}
+exports.uploadToCDN = uploadToCDN;
 //# sourceMappingURL=scraper.js.map
