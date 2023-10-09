@@ -21,17 +21,9 @@ export default {
      */
     prefix: process.env.PREFIX || '',
     /**
-     * The host for uploading images to AWS CDN.
+     * The url for uploading images to AWS CDN.
      */
-    origin_host: process.env.ORIGIN_HOST!,
-    /**
-     * The port for uploading images to AWS CDN.
-     */
-    origin_port: process.env.ORIGIN_PORT!,
-    /**
-     * The path for uploading images to AWS CDN.
-     */
-    origin_path: process.env.ORIGIN_PATH!,
+    origin: process.env.ORIGIN_URL!,
     /**
      * The secret for uploading images to AWS CDN.
      */

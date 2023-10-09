@@ -1,11 +1,9 @@
 import fs from 'fs';
-import path from 'path';
 import reset from '@modules/reset_db';
-import scrape from '@modules/scraper';
 import config from '@config';
-import FormData from 'form-data';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import { scrape, uploadToCDN } from '@modules/scraper';
 import { PermissionError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
@@ -339,8 +337,7 @@ export const add: MessageCommand = {
 
 type UploadPrivates = {
     uniqueFileName: (ext: string) => string;
-    getImage: (url: string) => Promise<fs.ReadStream>;
-    upload: (formdata: FormData) => Promise<string[]>;
+    getImage: (url: string) => Promise<Blob>;
 };
 export const upload: MessageCommand & UploadPrivates = {
     name: 'upload',
@@ -358,40 +355,12 @@ export const upload: MessageCommand & UploadPrivates = {
     },
 
     async getImage(url) {
-        const file = fs.createWriteStream(this.uniqueFileName(path.extname(url)));
         let opts = undefined;
         if (url.startsWith('https://i.pximg.net/')) {
             // To avoid 403
             opts = { headers: { Referer: 'https://www.pixiv.net/' } };
         }
-        return fetch(url, opts).then(res => res.blob()).then(blob => blob.arrayBuffer()).then(buf => {
-            file.write(Buffer.from(buf));
-            file.close();
-            return fs.createReadStream(file.path);
-        });
-    },
-
-    async upload(formdata) {
-        // Post to imgur to upload and send back the link.
-        return new Promise((resolve, reject) => {
-            formdata.submit({
-                host: config.origin_host,
-                port: config.origin_port,
-                path: config.origin_path,
-                headers: {
-                    Authorization: config.secret
-                }
-            }, (err, res) => {
-                if (err) return reject(err);
-                let data = '';
-                res.on('data', chunk => {
-                    data += chunk;
-                });
-                res.on('end', () => {
-                    resolve((JSON.parse(data) as { urls: string[] }).urls);
-                });
-            });
-        });
+        return fetch(url, opts).then(res => res.blob());
     },
 
     async execute(message, args) {
@@ -411,23 +380,16 @@ export const upload: MessageCommand & UploadPrivates = {
         }).catch(() => { });
 
         const formdata = new FormData();
-        const files = [];
         if (!all.length) {
             const file = await this.getImage(url);
-            files.push(file);
             formdata.append('images', file);
         }
         // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
             const file = await this.getImage(url);
-            files.push(file);
             formdata.append('images', file);
         }
-        const res = await this.upload(formdata);
-        // Cleanup all files after upload is completed.
-        for (const file of files) {
-            fs.unlinkSync(file.path);
-        }
+        const res = await uploadToCDN(formdata);
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };

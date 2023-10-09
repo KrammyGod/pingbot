@@ -10,7 +10,7 @@ let pixiv: Pixiv;
  * Source is the raw image url, sauce is the
  * description for imgur uploads (if needed)
  */
-export default async function scrape(url: string, all: string[] = []) {
+export async function scrape(url: string, all: string[] = []) {
     let sauce;
     let source = url;
 
@@ -77,4 +77,21 @@ export default async function scrape(url: string, all: string[] = []) {
     }
 
     return { source, sauce };
+}
+
+export async function uploadToCDN(form: FormData): Promise<string[]> {
+    const { urls } = await fetch(config.origin, {
+        method: 'POST',
+        body: form,
+        headers: {
+            Authorization: config.secret
+        }
+    }).then(res => {
+        if (res.status === 200) return res.json();
+        return { urls: [] };
+    }).catch(e => {
+        console.error(e);
+        return { urls: [] };
+    });
+    return urls;
 }

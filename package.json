@@ -56,7 +56,6 @@
     "discord.js": "^14.13.0",
     "dotenv": "^16.3.1",
     "env-cmd": "^10.1.0",
-    "form-data": "^4.0.0",
     "libsodium-wrappers": "^0.7.13",
     "pg": "^8.11.3",
     "pg-copy-streams": "^6.0.6",

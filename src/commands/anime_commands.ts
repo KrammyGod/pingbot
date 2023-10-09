@@ -1,9 +1,8 @@
 import fs from 'fs';
 import config from '@config';
-import scrape from '@modules/scraper';
-import FormData from 'form-data';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import { scrape, uploadToCDN } from '@modules/scraper';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -2821,30 +2820,9 @@ export const submit: CachedSlashCommand<{
                     // description = res.sauce;
                 }).catch(() => { });
 
-                formdata.append('image', imageData);
+                formdata.append('images', imageData);
                 // Upload to our CDN and get url back.
-                imgs.push(await new Promise(resolve => {
-                    formdata.submit({
-                        host: config.origin_host,
-                        port: config.origin_port,
-                        path: config.origin_path,
-                        headers: {
-                            Authorization: config.secret
-                        }
-                    }, (err, res) => {
-                        if (err) {
-                            console.error(err);
-                            return resolve(url);
-                        }
-                        let data = '';
-                        res.on('data', chunk => {
-                            data += chunk;
-                        });
-                        res.on('end', () => {
-                            resolve((JSON.parse(data) as { urls: string[] }).urls[0]);
-                        });
-                    });
-                }));
+                imgs.push(...await uploadToCDN(formdata));
             }
             await Promise.all(imgs).then(imgs => {
                 submission.data.img = imgs.splice(0, img.length);
