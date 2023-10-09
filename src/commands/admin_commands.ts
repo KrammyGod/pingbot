@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import reset from '@modules/reset_db';
 import scrape from '@modules/scraper';
 import config from '@config';
@@ -338,6 +339,7 @@ export const add: MessageCommand = {
 
 type UploadPrivates = {
     uniqueFileName: (ext: string) => string;
+    getImage: (url: string) => Promise<fs.ReadStream>;
     upload: (formdata: FormData) => Promise<string[]>;
 };
 export const upload: MessageCommand & UploadPrivates = {
@@ -353,6 +355,20 @@ export const upload: MessageCommand & UploadPrivates = {
             test = `./files/tmp${id++}${ext}`;
         }
         return test;
+    },
+
+    async getImage(url) {
+        const file = fs.createWriteStream(this.uniqueFileName(path.extname(url)));
+        let opts = undefined;
+        if (url.startsWith('https://i.pximg.net/')) {
+            // To avoid 403
+            opts = { headers: { Referer: 'https://www.pixiv.net/' } };
+        }
+        return fetch(url, opts).then(res => res.blob()).then(blob => blob.arrayBuffer()).then(buf => {
+            file.write(Buffer.from(buf));
+            file.close();
+            return fs.createReadStream(file.path);
+        });
     },
 
     async upload(formdata) {
@@ -395,14 +411,23 @@ export const upload: MessageCommand & UploadPrivates = {
         }).catch(() => { });
 
         const formdata = new FormData();
+        const files = [];
         if (!all.length) {
-            formdata.append('images', url);
+            const file = await this.getImage(url);
+            files.push(file);
+            formdata.append('images', file);
         }
         // All is defined for multiple images in twitter or pixiv.
         for (const url of all) {
-            formdata.append('images', url);
+            const file = await this.getImage(url);
+            files.push(file);
+            formdata.append('images', file);
         }
         const res = await this.upload(formdata);
+        // Cleanup all files after upload is completed.
+        for (const file of files) {
+            fs.unlinkSync(file.path);
+        }
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };
