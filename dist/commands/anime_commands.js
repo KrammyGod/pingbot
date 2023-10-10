@@ -2331,7 +2331,7 @@ exports.submit = {
                 style: discord_js_1.ButtonStyle.Primary
             }),
             new discord_js_1.ButtonBuilder({
-                label: 'Upload to Imgur',
+                label: 'Upload to CDN',
                 customId: 'submit/0/upload',
                 style: discord_js_1.ButtonStyle.Secondary
             }),
@@ -2521,7 +2521,13 @@ exports.submit = {
                 formdata.append('images', blob, `tmp.${ext}`);
                 formdata.append('sources', url);
                 // Upload to our CDN and get url back.
-                imgs.push(...await (0, cdn_1.uploadToCDN)(formdata));
+                const [uploaded_url] = await (0, cdn_1.uploadToCDN)(formdata);
+                if (uploaded_url) {
+                    imgs.push(uploaded_url);
+                }
+                else {
+                    imgs.push(url);
+                }
             }
             await Promise.all(imgs).then(imgs => {
                 submission.data.img = imgs.splice(0, img.length);
