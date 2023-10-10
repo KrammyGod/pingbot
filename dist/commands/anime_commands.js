@@ -29,9 +29,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.submit = exports.move = exports.swap = exports.users = exports.top = exports.stars = exports.dall = exports.whale = exports.multi = exports.roll = exports.high = exports.list_menu = exports.list = exports.profile_menu = exports.profile = exports.daily = exports.lb = exports.bal = exports.anime = exports.animes = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
 const _config_1 = __importDefault(require("../classes/config.js"));
+const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
-const scraper_1 = require("../modules/scraper");
+const cdn_1 = require("../modules/cdn");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 exports.name = 'Animes/Gacha';
@@ -2508,7 +2509,7 @@ exports.submit = {
             // All image uploads go here.
             const imgs = [];
             for (const url of [...img, ...nimg]) {
-                let imageData = url;
+                const imageData = url;
                 // To be used later with new schema update
                 // let description = undefined;
                 const formdata = new FormData();
@@ -2518,14 +2519,14 @@ exports.submit = {
                     continue;
                 }
                 // Use our helper to get the image data.
-                await (0, scraper_1.scrape)(url).then(res => {
-                    imageData = res.source;
+                await (0, scraper_1.default)(url).then(() => {
+                    // imageData = res.source;
                     // TODO: Use with schema upodate
                     // description = res.sauce;
                 }).catch(() => { });
                 formdata.append('images', imageData);
                 // Upload to our CDN and get url back.
-                imgs.push(...await (0, scraper_1.uploadToCDN)(formdata));
+                imgs.push(...await (0, cdn_1.uploadToCDN)(formdata));
             }
             await Promise.all(imgs).then(imgs => {
                 submission.data.img = imgs.splice(0, img.length);

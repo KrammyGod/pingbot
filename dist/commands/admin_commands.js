@@ -26,13 +26,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stop = exports.start = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
-const fs_1 = __importDefault(require("fs"));
-const reset_db_1 = __importDefault(require("../modules/reset_db"));
+exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const reset_db_1 = __importDefault(require("../modules/reset_db"));
+const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
-const scraper_1 = require("../modules/scraper");
+const cdn_1 = require("../modules/cdn");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 exports.name = 'Admin Message Commands';
@@ -363,7 +365,13 @@ exports.upload = {
             // To avoid 403
             opts = { headers: { Referer: 'https://www.pixiv.net/' } };
         }
-        return fetch(url, opts).then(res => res.blob());
+        return fetch(url, opts).then(res => {
+            // Try to extract extension from content-type
+            let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path_1.default.extname(url).slice(1);
+            if (ext === 'jpeg')
+                ext = 'jpg';
+            return res.blob().then(blob => ({ ext, blob }));
+        }).catch(() => ({ ext: '', blob: new Blob([]) }));
     },
     async execute(message, args) {
         if (args.length < 1) {
@@ -372,25 +380,68 @@ exports.upload = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        let url = args[0];
+        const res = [];
         await message.channel.sendTyping();
-        // Use our helper to get the image data.
         const all = [];
-        await (0, scraper_1.scrape)(url, all).then(res => {
-            url = res.source;
-        }).catch(() => { });
-        const formdata = new FormData();
-        if (!all.length) {
-            const file = await this.getImage(url);
-            formdata.append('images', file);
+        for (const url of args) {
+            // Use our helper to get the image data.
+            const sources = await (0, scraper_1.default)(url).catch(() => []);
+            all.push({ sources, url });
         }
-        // All is defined for multiple images in twitter or pixiv.
-        for (const url of all) {
-            const file = await this.getImage(url);
-            formdata.append('images', file);
+        if (all.length) {
+            const formdata = new FormData();
+            for (const obj of all) {
+                for (const url of obj.sources) {
+                    const { ext, blob } = await this.getImage(url);
+                    formdata.append('images', blob, `tmp.${ext}`);
+                    formdata.append('sources', obj.url);
+                }
+            }
+            res.push(...await (0, cdn_1.uploadToCDN)(formdata));
         }
-        const res = await (0, scraper_1.uploadToCDN)(formdata);
         return message.reply({ content: `<${res.join('>\n<')}>` });
+    }
+};
+exports.update = {
+    name: 'update',
+    admin: true,
+    desc: 'Updates the sources of images in the CDN.',
+    async execute(message, args) {
+        console.log(args);
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        else if (args.length % 2 !== 0) {
+            return message.channel.send({ content: 'Arguments must be in pairs.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        const urls = args.splice(0, args.length / 2);
+        const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace('https://d1irvsiobt1r8d.cloudfront.net/images/', '')), args // Rest of the args are new sources
+        );
+        return message.reply({ content: `API replied with: ${res}` });
+    }
+};
+exports.del = {
+    name: 'delete',
+    admin: true,
+    desc: 'Deletes images from the CDN.',
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        // Remove CDN url to get the filename
+        const res = await (0, cdn_1.deleteFromCDN)(args.map(a => a.replace('https://d1irvsiobt1r8d.cloudfront.net/images/', '')));
+        return message.reply({ content: `API replied with: ${res}` });
     }
 };
 exports.start = {
