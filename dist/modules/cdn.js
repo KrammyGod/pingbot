@@ -3,8 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = void 0;
+exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
+const path_1 = __importDefault(require("path"));
 const headers = new Headers();
 headers.append('Authorization', _config_1.default.secret);
 async function uploadToCDN(form) {
@@ -47,4 +48,19 @@ async function deleteFromCDN(filenames) {
     return res?.message ?? 'Error deleting files';
 }
 exports.deleteFromCDN = deleteFromCDN;
+async function getImage(url) {
+    let opts = undefined;
+    if (url.startsWith('https://i.pximg.net/')) {
+        // To avoid 403
+        opts = { headers: { Referer: 'https://www.pixiv.net/' } };
+    }
+    return fetch(url, opts).then(res => {
+        // Try to extract extension from content-type
+        let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path_1.default.extname(url).slice(1);
+        if (ext === 'jpeg')
+            ext = 'jpg';
+        return res.blob().then(blob => ({ ext, blob }));
+    }).catch(() => ({ ext: '', blob: new Blob([]) }));
+}
+exports.getImage = getImage;
 //# sourceMappingURL=cdn.js.map

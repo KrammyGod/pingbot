@@ -2509,22 +2509,17 @@ exports.submit = {
             // All image uploads go here.
             const imgs = [];
             for (const url of [...img, ...nimg]) {
-                const imageData = url;
-                // To be used later with new schema update
-                // let description = undefined;
-                const formdata = new FormData();
                 // Do not reupload CDN images.
                 if (url.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) {
                     imgs.push(url);
                     continue;
                 }
                 // Use our helper to get the image data.
-                await (0, scraper_1.default)(url).then(() => {
-                    // imageData = res.source;
-                    // TODO: Use with schema upodate
-                    // description = res.sauce;
-                }).catch(() => { });
-                formdata.append('images', imageData);
+                const [image] = await (0, scraper_1.default)(url).catch(() => []);
+                const { ext, blob } = await (0, cdn_1.getImage)(image);
+                const formdata = new FormData();
+                formdata.append('images', blob, `tmp.${ext}`);
+                formdata.append('sources', url);
                 // Upload to our CDN and get url back.
                 imgs.push(...await (0, cdn_1.uploadToCDN)(formdata));
             }

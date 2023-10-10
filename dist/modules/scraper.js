@@ -70,6 +70,9 @@ async function scrape(url) {
             retval.push(source);
         }
     }
+    // Everything fails, just return original url.
+    if (!retval.length)
+        retval.push(url);
     return retval;
 }
 exports.default = scrape;

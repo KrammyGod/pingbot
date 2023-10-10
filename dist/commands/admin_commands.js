@@ -29,13 +29,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
-const cdn_1 = require("../modules/cdn");
 const exceptions_1 = require("../classes/exceptions");
+const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
 exports.name = 'Admin Message Commands';
 exports.desc = "You shouldn't be seeing this";
@@ -359,20 +358,6 @@ exports.upload = {
         }
         return test;
     },
-    async getImage(url) {
-        let opts = undefined;
-        if (url.startsWith('https://i.pximg.net/')) {
-            // To avoid 403
-            opts = { headers: { Referer: 'https://www.pixiv.net/' } };
-        }
-        return fetch(url, opts).then(res => {
-            // Try to extract extension from content-type
-            let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path_1.default.extname(url).slice(1);
-            if (ext === 'jpeg')
-                ext = 'jpg';
-            return res.blob().then(blob => ({ ext, blob }));
-        }).catch(() => ({ ext: '', blob: new Blob([]) }));
-    },
     async execute(message, args) {
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
@@ -392,7 +377,7 @@ exports.upload = {
             const formdata = new FormData();
             for (const obj of all) {
                 for (const url of obj.sources) {
-                    const { ext, blob } = await this.getImage(url);
+                    const { ext, blob } = await (0, cdn_1.getImage)(url);
                     formdata.append('images', blob, `tmp.${ext}`);
                     formdata.append('sources', obj.url);
                 }
