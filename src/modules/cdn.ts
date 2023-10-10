@@ -1,4 +1,5 @@
 import config from '@config';
+import path from 'path';
 const headers = new Headers();
 headers.append('Authorization', config.secret);
 export async function uploadToCDN(form: FormData): Promise<string[]> {
@@ -38,4 +39,19 @@ export async function deleteFromCDN(filenames: string[]): Promise<string> {
     }).then(res => res.json()).catch(e => console.error(e));
     headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';
+}
+
+type Image = { ext: string, blob: Blob };
+export async function getImage(url: string): Promise<Image> {
+    let opts = undefined;
+    if (url.startsWith('https://i.pximg.net/')) {
+        // To avoid 403
+        opts = { headers: { Referer: 'https://www.pixiv.net/' } };
+    }
+    return fetch(url, opts).then(res => {
+        // Try to extract extension from content-type
+        let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path.extname(url).slice(1);
+        if (ext === 'jpeg') ext = 'jpg';
+        return res.blob().then(blob => ({ ext, blob }));
+    }).catch(() => ({ ext: '', blob: new Blob([]) }));
 }

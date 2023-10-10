@@ -1,12 +1,11 @@
 import config from '@config';
 import fs from 'fs';
-import path from 'path';
 import reset from '@modules/reset_db';
 import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { deleteFromCDN, updateCDN, uploadToCDN } from '@modules/cdn';
 import { PermissionError } from '@classes/exceptions';
+import { deleteFromCDN, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
     MessageMentions, PermissionsBitField
@@ -339,7 +338,6 @@ export const add: MessageCommand = {
 
 type UploadPrivates = {
     uniqueFileName: (ext: string) => string;
-    getImage: (url: string) => Promise<{ ext: string, blob: Blob }>;
 };
 export const upload: MessageCommand & UploadPrivates = {
     name: 'upload',
@@ -354,20 +352,6 @@ export const upload: MessageCommand & UploadPrivates = {
             test = `./files/tmp${id++}${ext}`;
         }
         return test;
-    },
-
-    async getImage(url) {
-        let opts = undefined;
-        if (url.startsWith('https://i.pximg.net/')) {
-            // To avoid 403
-            opts = { headers: { Referer: 'https://www.pixiv.net/' } };
-        }
-        return fetch(url, opts).then(res => {
-            // Try to extract extension from content-type
-            let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path.extname(url).slice(1);
-            if (ext === 'jpeg') ext = 'jpg';
-            return res.blob().then(blob => ({ ext, blob }));
-        }).catch(() => ({ ext: '', blob: new Blob([]) }));
     },
 
     async execute(message, args) {
@@ -389,7 +373,7 @@ export const upload: MessageCommand & UploadPrivates = {
             const formdata = new FormData();
             for (const obj of all) {
                 for (const url of obj.sources) {
-                    const { ext, blob } = await this.getImage(url);
+                    const { ext, blob } = await getImage(url);
                     formdata.append('images', blob, `tmp.${ext}`);
                     formdata.append('sources', obj.url);
                 }

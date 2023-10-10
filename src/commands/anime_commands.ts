@@ -3,7 +3,7 @@ import config from '@config';
 import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { uploadToCDN } from '@modules/cdn';
+import { getImage, uploadToCDN } from '@modules/cdn';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -2802,25 +2802,18 @@ export const submit: CachedSlashCommand<{
             // All image uploads go here.
             const imgs: string[] = [];
             for (const url of [...img, ...nimg]) {
-                const imageData: string = url;
-                // To be used later with new schema update
-                // let description = undefined;
-                const formdata = new FormData();
-
                 // Do not reupload CDN images.
                 if (url.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) {
                     imgs.push(url);
                     continue;
                 }
-
                 // Use our helper to get the image data.
-                await scrape(url).then(() => {
-                    // imageData = res.source;
-                    // TODO: Use with schema upodate
-                    // description = res.sauce;
-                }).catch(() => { });
-
-                formdata.append('images', imageData);
+                const [image] = await scrape(url).catch(() => []);
+                const { ext, blob } = await getImage(image);
+                
+                const formdata = new FormData();
+                formdata.append('images', blob, `tmp.${ext}`);
+                formdata.append('sources', url);
                 // Upload to our CDN and get url back.
                 imgs.push(...await uploadToCDN(formdata));
             }
