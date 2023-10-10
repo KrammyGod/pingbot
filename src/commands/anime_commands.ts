@@ -1,8 +1,9 @@
 import fs from 'fs';
 import config from '@config';
+import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { scrape, uploadToCDN } from '@modules/scraper';
+import { uploadToCDN } from '@modules/cdn';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -13,7 +14,6 @@ import {
     ApplicationCommandType
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { Readable } from 'stream';
 import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
 
 export const name = 'Animes/Gacha';
@@ -2802,7 +2802,7 @@ export const submit: CachedSlashCommand<{
             // All image uploads go here.
             const imgs: string[] = [];
             for (const url of [...img, ...nimg]) {
-                let imageData: Readable | string = url;
+                const imageData: string = url;
                 // To be used later with new schema update
                 // let description = undefined;
                 const formdata = new FormData();
@@ -2814,8 +2814,8 @@ export const submit: CachedSlashCommand<{
                 }
 
                 // Use our helper to get the image data.
-                await scrape(url).then(res => {
-                    imageData = res.source;
+                await scrape(url).then(() => {
+                    // imageData = res.source;
                     // TODO: Use with schema upodate
                     // description = res.sauce;
                 }).catch(() => { });

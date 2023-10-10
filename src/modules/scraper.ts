@@ -6,11 +6,9 @@ import { load } from 'cheerio';
 let pixiv: Pixiv;
 
 /**
- * Returns the source and sauce of an image.
- * Source is the raw image url, sauce is the
- * description for imgur uploads (if needed)
+ * Returns all images scraped from the given url.
  */
-export async function scrape(url: string) {
+export default async function scrape(url: string) {
     const retval: string[] = [];
 
     // Let a separate server handle the parsing of twitter images with playwright.
@@ -73,21 +71,4 @@ export async function scrape(url: string) {
     }
 
     return retval;
-}
-
-export async function uploadToCDN(form: FormData): Promise<string[]> {
-    const headers = new Headers();
-    headers.append('Authorization', config.secret);
-    const { urls } = await fetch(config.origin, {
-        method: 'POST',
-        body: form,
-        headers
-    }).then(res => {
-        if (res.status === 200) return res.json();
-        return { urls: [] };
-    }).catch(e => {
-        console.error(e);
-        return { urls: [] };
-    });
-    return urls;
 }

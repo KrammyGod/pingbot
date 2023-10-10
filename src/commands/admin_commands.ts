@@ -2,9 +2,10 @@ import config from '@config';
 import fs from 'fs';
 import path from 'path';
 import reset from '@modules/reset_db';
+import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { scrape, uploadToCDN } from '@modules/scraper';
+import { deleteFromCDN, updateCDN, uploadToCDN } from '@modules/cdn';
 import { PermissionError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
@@ -338,7 +339,7 @@ export const add: MessageCommand = {
 
 type UploadPrivates = {
     uniqueFileName: (ext: string) => string;
-    getImage: (url: string) => Promise<Blob>;
+    getImage: (url: string) => Promise<{ ext: string, blob: Blob }>;
 };
 export const upload: MessageCommand & UploadPrivates = {
     name: 'upload',
@@ -361,7 +362,12 @@ export const upload: MessageCommand & UploadPrivates = {
             // To avoid 403
             opts = { headers: { Referer: 'https://www.pixiv.net/' } };
         }
-        return fetch(url, opts).then(res => res.blob()).catch(() => new Blob([]));
+        return fetch(url, opts).then(res => {
+            // Try to extract extension from content-type
+            let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path.extname(url).slice(1);
+            if (ext === 'jpeg') ext = 'jpg';
+            return res.blob().then(blob => ({ ext, blob }));
+        }).catch(() => ({ ext: '', blob: new Blob([]) }));
     },
 
     async execute(message, args) {
@@ -383,14 +389,61 @@ export const upload: MessageCommand & UploadPrivates = {
             const formdata = new FormData();
             for (const obj of all) {
                 for (const url of obj.sources) {
-                    const file = await this.getImage(url);
-                    formdata.append('images', file, path.extname(url));
+                    const { ext, blob } = await this.getImage(url);
+                    formdata.append('images', blob, `tmp.${ext}`);
                     formdata.append('sources', obj.url);
                 }
             }
             res.push(...await uploadToCDN(formdata));
         }
         return message.reply({ content: `<${res.join('>\n<')}>` });
+    }
+};
+
+export const update: MessageCommand = {
+    name: 'update',
+    admin: true,
+    desc: 'Updates the sources of images in the CDN.',
+
+    async execute(message, args) {
+        console.log(args);
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        } else if (args.length % 2 !== 0) {
+            return message.channel.send({ content: 'Arguments must be in pairs.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        const urls = args.splice(0, args.length / 2);
+        const res = await updateCDN(
+            urls.map(a => a.replace('https://d1irvsiobt1r8d.cloudfront.net/images/', '')),
+            args // Rest of the args are new sources
+        );
+        return message.reply({ content: `API replied with: ${res}` });
+    }
+};
+
+export const del: MessageCommand = {
+    name: 'delete',
+    admin: true,
+    desc: 'Deletes images from the CDN.',
+
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        // Remove CDN url to get the filename
+        const res = await deleteFromCDN(args.map(a => a.replace('https://d1irvsiobt1r8d.cloudfront.net/images/', '')));
+        return message.reply({ content: `API replied with: ${res}` });
     }
 };
 
