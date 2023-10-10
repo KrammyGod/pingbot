@@ -2622,7 +2622,7 @@ export const submit: CachedSlashCommand<{
                 style: ButtonStyle.Primary
             }),
             new ButtonBuilder({
-                label: 'Upload to Imgur',
+                label: 'Upload to CDN',
                 customId: 'submit/0/upload',
                 style: ButtonStyle.Secondary
             }),
@@ -2815,7 +2815,12 @@ export const submit: CachedSlashCommand<{
                 formdata.append('images', blob, `tmp.${ext}`);
                 formdata.append('sources', url);
                 // Upload to our CDN and get url back.
-                imgs.push(...await uploadToCDN(formdata));
+                const [uploaded_url] = await uploadToCDN(formdata);
+                if (uploaded_url) {
+                    imgs.push(uploaded_url);
+                } else {
+                    imgs.push(url);
+                }
             }
             await Promise.all(imgs).then(imgs => {
                 submission.data.img = imgs.splice(0, img.length);
