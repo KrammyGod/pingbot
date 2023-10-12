@@ -91,16 +91,17 @@ class Sign {
         };
     }
     async getAwards() {
-        return axios_1.default.get(CONFIG.rewardURL, { headers: this.header })
-            .then(res => res.data.data)
+        return fetch(CONFIG.rewardURL, { headers: this.header })
+            .then(res => res.json())
+            .then((data) => data.data)
             .catch(err => {
             LOGGER.error('failure in getter awards');
             throw err;
         });
     }
     async getInfo() {
-        const res = await axios_1.default.get(CONFIG.infoURL, { headers: this.header })
-            .then(res => res.data)
+        const res = await fetch(CONFIG.infoURL, { headers: this.header })
+            .then(res => res.json())
             .catch(err => {
             LOGGER.error('failure in getter info');
             throw err;
@@ -112,8 +113,8 @@ class Sign {
         return res.data;
     }
     async getRegion() {
-        const res = await axios_1.default.get(CONFIG.roleURL, { headers: this.header })
-            .then(res => res.data)
+        const res = await fetch(CONFIG.roleURL, { headers: this.header })
+            .then(res => res.json())
             .catch(err => {
             LOGGER.error('failure in getter region');
             throw err;
@@ -128,13 +129,12 @@ class Sign {
     async run() {
         LOGGER.log('Running sign in...');
         if (!this.notify) {
-            return (0, axios_1.default)({
+            return fetch(CONFIG.signURL, {
                 method: 'POST',
-                url: CONFIG.signURL,
-                headers: this.header,
-                data: { 'act_id': CONFIG.actID }
-            }).then(res => {
-                const risk_code = res.data.data?.gt_result?.risk_code;
+                headers: { ...this.header, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'act_id': CONFIG.actID })
+            }).then(res => res.json()).then((data) => {
+                const risk_code = data.data?.gt_result?.risk_code;
                 if (risk_code && risk_code !== 0) {
                     // Captcha verification required if risk_code is not 0.
                     LOGGER.error('Captcha verification required.');
@@ -217,10 +217,10 @@ async function collect() {
         LOGGER.error('With errors...');
     }
     // Send message to be received by index.ts
-    return (0, axios_1.default)({
+    return fetch(`http://localhost:${_config_1.default.port}`, {
         method: 'POST',
-        url: `http://localhost:${_config_1.default.port}`,
-        data: message
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
     });
 }
 (async () => {
