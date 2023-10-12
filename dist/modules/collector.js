@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const axios_1 = __importDefault(require("axios"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const hoyolab_1 = require("./hoyolab");
 const pg_1 = require("pg");
@@ -169,12 +168,11 @@ class Sign {
             result.check_in_result = '> Please check in manually once ❎';
             return result;
         }
-        const res = await (0, axios_1.default)({
+        const res = await fetch(CONFIG.signURL, {
             method: 'POST',
-            url: CONFIG.signURL,
-            headers: this.header,
-            data: { 'act_id': CONFIG.actID }
-        }).then(res => res.data);
+            headers: { ...this.header, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'act_id': CONFIG.actID })
+        }).then(res => res.json());
         // Checking for last minute failures/anti-bot
         const risk_code = res.data?.gt_result?.risk_code;
         if (res.retcode !== 0) {
