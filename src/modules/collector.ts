@@ -1,4 +1,3 @@
-import axios from 'axios';
 import config from '@config';
 import { getUID } from '@modules/hoyolab';
 import { Client } from 'pg';
@@ -255,12 +254,11 @@ class Sign {
             return result;
         }
 
-        const res = await axios<SignAPIResponse>({
+        const res = await fetch(CONFIG.signURL, {
             method: 'POST',
-            url: CONFIG.signURL,
-            headers: this.header,
-            data: { 'act_id': CONFIG.actID }
-        }).then(res => res.data);
+            headers: { ...this.header, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'act_id': CONFIG.actID })
+        }).then(res => res.json() as Promise<SignAPIResponse>);
 
         // Checking for last minute failures/anti-bot
         const risk_code = res.data?.gt_result?.risk_code;
