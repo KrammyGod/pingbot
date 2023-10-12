@@ -177,16 +177,17 @@ class Sign {
         };
     }
     async getAwards() {
-        return axios.get<RewardAPIResponse>(CONFIG.rewardURL, { headers: this.header })
-            .then(res => res.data.data)
+        return fetch(CONFIG.rewardURL, { headers: this.header })
+            .then(res => res.json())
+            .then((data: RewardAPIResponse) => data.data)
             .catch(err => {
                 LOGGER.error('failure in getter awards');
                 throw err;
             });
     }
     async getInfo() {
-        const res = await axios.get<InfoAPIResponse>(CONFIG.infoURL, { headers: this.header })
-            .then(res  => res.data)
+        const res = await fetch(CONFIG.infoURL, { headers: this.header })
+            .then(res => res.json() as Promise<InfoAPIResponse>)
             .catch(err => {
                 LOGGER.error('failure in getter info');
                 throw err;
@@ -198,8 +199,8 @@ class Sign {
         return res.data!;
     }
     async getRegion(): Promise<[string, string]> {
-        const res = await axios.get<RoleAPIResponse>(CONFIG.roleURL, { headers: this.header })
-            .then(res => res.data)
+        const res = await fetch(CONFIG.roleURL, { headers: this.header })
+            .then(res => res.json() as Promise<RoleAPIResponse>)
             .catch(err => {
                 LOGGER.error('failure in getter region');
                 throw err;
@@ -214,13 +215,12 @@ class Sign {
     async run(): Promise<CollectResult | undefined> {
         LOGGER.log('Running sign in...');
         if (!this.notify) {
-            return axios<SignAPIResponse>({
+            return fetch(CONFIG.signURL, {
                 method: 'POST',
-                url: CONFIG.signURL,
-                headers: this.header,
-                data: { 'act_id': CONFIG.actID }
-            }).then(res => {
-                const risk_code = res.data.data?.gt_result?.risk_code;
+                headers: { ...this.header, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'act_id': CONFIG.actID })
+            }).then(res => res.json()).then((data: SignAPIResponse) => {
+                const risk_code = data.data?.gt_result?.risk_code;
                 if (risk_code && risk_code !== 0) {
                     // Captcha verification required if risk_code is not 0.
                     LOGGER.error('Captcha verification required.');
@@ -315,10 +315,10 @@ async function collect() {
         LOGGER.error('With errors...');
     }
     // Send message to be received by index.ts
-    return axios({
+    return fetch(`http://localhost:${config.port}`, {
         method: 'POST',
-        url: `http://localhost:${config.port}`,
-        data: message
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
     });
 }
 
