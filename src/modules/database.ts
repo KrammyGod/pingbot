@@ -1,3 +1,4 @@
+import config from '@classes/config';
 import * as Utils from '@modules/utils';
 import { Pool } from 'pg';
 import { Colors, EmbedBuilder } from 'discord.js';
@@ -282,8 +283,13 @@ export class Character {
 }
 export function getSource(img: string) {
     if (img.match(/^https:\/\/i\.imgur\.(?:com|io)\//)) {
+        // Old deprecated imgur - compatibility until migration complete
         return img.slice(0, img.lastIndexOf('.')).replace('//i.', '//');
+    } else if (!img.match(/^https?:\/\//)) {
+        // Using our CDN
+        return `${config.cdn}/source/${img}`;
     }
+    // Common characters have no source
     return img;
 }
 
@@ -346,13 +352,11 @@ function getClient() {
 // automatically wrapped inside a transaction.
 async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
     const client = await getClient();
-    let res: R[] = [];
     try {
-        res = await client.query<R, I[]>(query, values).then(res => res.rows);
+        return client.query<R, I[]>(query, values).then(res => res.rows);
     } finally {
         client.release();
     }
-    return res;
 }
 // This makes a bunch of queries atomic.
 type IsolationLevels = 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
@@ -362,20 +366,20 @@ async function multi_query<R extends QueryResultRow = object, I = unknown>(
     level: IsolationLevels = 'READ COMMITTED'
 ) {
     const client = await getClient();
-    const res: R[][] = [];
     try {
+        const res: R[][] = [];
         await client.query(`BEGIN TRANSACTION ISOLATION LEVEL ${level}`);
         for (const query of queries) {
             res.push(await client.query<R, I[]>(query, values.shift()).then(res => res.rows));
         }
         await client.query('COMMIT');
-    } catch (res) {
+        return res;
+    } catch (err) {
         await client.query('ROLLBACK');
-        throw res;
+        throw err;
     } finally {
         client.release();
     }
-    return res;
 }
 export function start() {
     // We want to be able to still live even if database is not available.
@@ -385,7 +389,7 @@ export function start() {
         throw err;
     });
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
-    return query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false).catch(() => true);
+    return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
 export function end() {
     return pool.end();
@@ -533,15 +537,13 @@ export type PartialWaifu = {
 };
 /**
  * Ensure the waifu provided does not contain old images, only new images that are to be added
- * @param {PartialWaifu} waifu
- * @returns {Waifu} The waifu object with total # of images
  * @throws {Error} If waifu gets too many images
  */
-export async function insertWaifu(waifu: PartialWaifu) {
+export function insertWaifu(waifu: PartialWaifu) {
     // With this query, we must make sure we are not appending to img array
     // We will return the waifu object, and it will raise an exception
     // if the waifu's images goes out of bounds (due to our check constraint)
-    const res = await multi_query<WaifuDetails>(
+    return multi_query<WaifuDetails>(
         [
             `INSERT INTO waifus(name, gender, origin, img, nimg)
                 VALUES ($1, $2, $3, $4, $5) 
@@ -554,7 +556,6 @@ export async function insertWaifu(waifu: PartialWaifu) {
         ],
         [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]
     ).then(res => new Waifu(res[0][0]));
-    return res;
 }
 export function fetchWaifuByDetails(details: PartialWaifu) {
     return query<WaifuDetails>(

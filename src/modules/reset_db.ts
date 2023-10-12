@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { from } from 'pg-copy-streams';
 import { inspect } from 'util';
+import { pipeline } from 'stream/promises'
 import { Pool, QueryResultRow } from 'pg';
 
 const LOGGER = {
@@ -118,27 +119,16 @@ async function copy() {
         // Do a call within rate limits
         await new Promise(resolve => setTimeout(resolve, 200));
     }
-    const dumpFile = path.resolve(__dirname, '../../files/update.dump');
-    fs.writeFile(dumpFile, s, () => { });
+    const dumpFile = path.resolve(__dirname, 'update.dump');
+    await fs.promises.writeFile(dumpFile, s);
     LOGGER.log(`Retrieved up to id ${i}`);
-
+    
     LOGGER.log('Starting file dump...');
     const client = await pool.connect();
     try {
-        await client.query('BEGIN');
-        const stream = client.query(from('COPY commons (iid, name, gender, origin, img) FROM STDIN'));
         const fileStream = fs.createReadStream(dumpFile);
-        stream.on('finish', () => {
-            LOGGER.log('Finished dump!');
-        });
-        stream.on('error', err => {
-            throw err;
-        });
-        fileStream.pipe(stream);
-        await client.query('COMMIT');
-    } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
+        const stream = client.query(from('COPY commons (iid, name, gender, origin, img) FROM STDIN'));
+        await pipeline(fileStream, stream);
     } finally {
         client.release();
         await fs.promises.unlink(dumpFile).catch(() => { });
@@ -150,9 +140,7 @@ if (require.main === module) {
     (async () => {
         LOGGER.start();
         await reset();
-        const result = await copy().catch(ret => {
-            LOGGER.error(ret);
-        });
+        const result = await copy().catch(ret => LOGGER.error(ret));
         if (result) {
             LOGGER.log(`Added ${result} commons.`);
         }

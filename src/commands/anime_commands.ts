@@ -2753,8 +2753,8 @@ export const submit: CachedSlashCommand<{
             }).catch(() => { });
         } else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) ||
-                nimg.some(i => !i.startsWith('https://d1irvsiobt1r8d.cloudfront.net/'))) {
+            if (img.some(i => i.match(/^https?:\/\//)) ||
+                nimg.some(i => i.match(/^https?:\/\//))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2803,7 +2803,7 @@ export const submit: CachedSlashCommand<{
             const imgs: string[] = [];
             for (const url of [...img, ...nimg]) {
                 // Do not reupload CDN images.
-                if (url.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) {
+                if (url.startsWith(config.cdn)) {
                     imgs.push(url);
                     continue;
                 }

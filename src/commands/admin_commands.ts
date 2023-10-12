@@ -390,7 +390,6 @@ export const update: MessageCommand = {
     desc: 'Updates the sources of images in the CDN.',
 
     async execute(message, args) {
-        console.log(args);
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(() => { }), 200);
@@ -405,7 +404,7 @@ export const update: MessageCommand = {
         await message.channel.sendTyping();
         const urls = args.splice(0, args.length / 2);
         const res = await updateCDN(
-            urls.map(a => a.replace('https://d1irvsiobt1r8d.cloudfront.net/images/', '')),
+            urls.map(a => a.replace(`${config.cdn}/images/`, '')),
             args // Rest of the args are new sources
         );
         return message.reply({ content: `API replied with: ${res}` });
@@ -426,7 +425,7 @@ export const del: MessageCommand = {
         }
         await message.channel.sendTyping();
         // Remove CDN url to get the filename
-        const res = await deleteFromCDN(args.map(a => a.replace('https://d1irvsiobt1r8d.cloudfront.net/images/', '')));
+        const res = await deleteFromCDN(args.map(a => a.replace(`${config.cdn}/images/`, '')));
         return message.reply({ content: `API replied with: ${res}` });
     }
 };

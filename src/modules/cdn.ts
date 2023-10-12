@@ -2,11 +2,11 @@ import config from '@config';
 import path from 'path';
 const headers = new Headers();
 headers.append('Authorization', config.secret);
-export async function uploadToCDN(form: FormData): Promise<string[]> {
+export async function uploadToCDN(body: FormData): Promise<string[]> {
     const { urls } = await fetch(`${config.origin}/api/upload`, {
         method: 'POST',
-        body: form,
-        headers
+        headers,
+        body
     }).then(res => {
         if (res.status === 200) return res.json();
         return { urls: [] };
@@ -54,4 +54,20 @@ export async function getImage(url: string): Promise<Image> {
         if (ext === 'jpeg') ext = 'jpg';
         return res.blob().then(blob => ({ ext, blob }));
     }).catch(() => ({ ext: '', blob: new Blob([]) }));
+}
+
+/**
+ * Helper to get the ID from a CDN link.
+ * Returns the same thing back if link is invalid
+ */
+export async function getCDNId(url: string) {
+    if (!url.startsWith(config.cdn)) {
+        return url;
+    }
+    const res = await fetch(url);
+    if (!res.headers.get('Content-Type')?.startsWith('image')) {
+        return url;
+    }
+    // Confirmed valid image
+    return url.replace(`${config.cdn}/images/`, '');
 }
