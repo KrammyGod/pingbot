@@ -2820,7 +2820,11 @@ export const submit: CachedSlashCommand<{
                 
                 const formdata = new FormData();
                 formdata.append('images', blob, `tmp.${ext}`);
-                formdata.append('sources', url);
+                // Won't automatically add url as source
+                // if the url is to a raw image; must be manually updated.
+                if (sources[0] !== url) {
+                    formdata.append('sources', url);
+                }
                 // Upload to our CDN and get url back.
                 const [uploaded_url] = await uploadToCDN(formdata);
                 if (uploaded_url) {
