@@ -72,7 +72,7 @@ manager.on('shardCreate', shard => {
     shard.once(discord_js_1.ShardEvents.Death, () => {
         // Exit parent process once all shards are down
         if (++deadShards === manager.totalShards) {
-            process.exit(0);
+            DB.end().then(() => process.exit(0));
         }
     });
     shard.once(discord_js_1.ShardEvents.Message, async (message) => {
@@ -139,8 +139,9 @@ async function sendCollectorResults(body) {
                         name: acc.award.name,
                         roles: [role],
                         reason: `New emoji for ${name} auto collect.`
-                    }).then(emoji => emoji.toString());
-                }).catch(() => acc.award.name);
+                    });
+                }).then(emoji => emoji.toString(), () => acc.award.name);
+                // If it is in discord's emoji string format
                 if (emoji !== acc.award.name) {
                     retEmoji = emoji;
                 }

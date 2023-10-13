@@ -8,6 +8,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const pg_copy_streams_1 = require("pg-copy-streams");
 const util_1 = require("util");
+const promises_1 = require("stream/promises");
 const pg_1 = require("pg");
 const LOGGER = {
     today: new Date().toLocaleDateString(),
@@ -103,27 +104,15 @@ async function copy() {
         // Do a call within rate limits
         await new Promise(resolve => setTimeout(resolve, 200));
     }
-    const dumpFile = path_1.default.resolve(__dirname, '../../files/update.dump');
-    fs_1.default.writeFile(dumpFile, s, () => { });
+    const dumpFile = path_1.default.resolve(__dirname, 'update.dump');
+    await fs_1.default.promises.writeFile(dumpFile, s);
     LOGGER.log(`Retrieved up to id ${i}`);
     LOGGER.log('Starting file dump...');
     const client = await pool.connect();
     try {
-        await client.query('BEGIN');
-        const stream = client.query((0, pg_copy_streams_1.from)('COPY commons (iid, name, gender, origin, img) FROM STDIN'));
         const fileStream = fs_1.default.createReadStream(dumpFile);
-        stream.on('finish', () => {
-            LOGGER.log('Finished dump!');
-        });
-        stream.on('error', err => {
-            throw err;
-        });
-        fileStream.pipe(stream);
-        await client.query('COMMIT');
-    }
-    catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
+        const stream = client.query((0, pg_copy_streams_1.from)('COPY commons (iid, name, gender, origin, img) FROM STDIN'));
+        await (0, promises_1.pipeline)(fileStream, stream);
     }
     finally {
         client.release();
@@ -135,9 +124,7 @@ if (require.main === module) {
     (async () => {
         LOGGER.start();
         await reset();
-        const result = await copy().catch(ret => {
-            LOGGER.error(ret);
-        });
+        const result = await copy().catch(ret => LOGGER.error(ret));
         if (result) {
             LOGGER.log(`Added ${result} commons.`);
         }

@@ -21,6 +21,10 @@ exports.default = {
      */
     prefix: process.env.PREFIX || '',
     /**
+     * The base url of the CDN that hosts images.
+     */
+    cdn: process.env.CDN_URL,
+    /**
      * The url for uploading images to AWS CDN.
      */
     origin: process.env.ORIGIN_URL,

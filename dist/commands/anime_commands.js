@@ -2460,8 +2460,8 @@ exports.submit = {
         }
         else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) ||
-                nimg.some(i => !i.startsWith('https://d1irvsiobt1r8d.cloudfront.net/'))) {
+            if (img.some(i => i.match(/^https?:\/\//)) ||
+                nimg.some(i => i.match(/^https?:\/\//))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2469,6 +2469,13 @@ exports.submit = {
                 await interaction.editReply({ components: [this.secretButtons] });
                 return;
             }
+            // Use IDs for images instead of full link
+            submission.data.img.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
+            });
+            submission.data.nimg.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
+            });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
                 if (err instanceof exceptions_1.DatabaseMaintenanceError)
@@ -2510,7 +2517,7 @@ exports.submit = {
             const imgs = [];
             for (const url of [...img, ...nimg]) {
                 // Do not reupload CDN images.
-                if (url.startsWith('https://d1irvsiobt1r8d.cloudfront.net/')) {
+                if (url.startsWith(_config_1.default.cdn)) {
                     imgs.push(url);
                     continue;
                 }
@@ -2529,10 +2536,8 @@ exports.submit = {
                     imgs.push(url);
                 }
             }
-            await Promise.all(imgs).then(imgs => {
-                submission.data.img = imgs.splice(0, img.length);
-                submission.data.nimg = imgs.splice(0, nimg.length);
-            });
+            submission.data.img = imgs.splice(0, img.length);
+            submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = discord_js_1.EmbedBuilder.from(interaction.message.embeds[0]);
             await this.setWaifuInfoEmbed(embed, submission.data);

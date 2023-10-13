@@ -22,9 +22,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchUserLewdList = exports.fetchUserUpList = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.Character = exports.fromGenderTypes = exports.toGenderTypes = void 0;
 exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = void 0;
+const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
 const discord_js_1 = require("discord.js");
@@ -240,8 +244,14 @@ class Character {
 exports.Character = Character;
 function getSource(img) {
     if (img.match(/^https:\/\/i\.imgur\.(?:com|io)\//)) {
+        // Old deprecated imgur - compatibility until migration complete
         return img.slice(0, img.lastIndexOf('.')).replace('//i.', '//');
     }
+    else if (!img.match(/^https?:\/\//)) {
+        // Using our CDN
+        return `${config_1.default.cdn}/source/${img}`;
+    }
+    // Common characters have no source
     return img;
 }
 exports.getSource = getSource;
@@ -299,33 +309,31 @@ function getClient() {
 // automatically wrapped inside a transaction.
 async function query(query, values) {
     const client = await getClient();
-    let res = [];
     try {
-        res = await client.query(query, values).then(res => res.rows);
+        return client.query(query, values).then(res => res.rows);
     }
     finally {
         client.release();
     }
-    return res;
 }
 async function multi_query(queries, values = [], level = 'READ COMMITTED') {
     const client = await getClient();
-    const res = [];
     try {
+        const res = [];
         await client.query(`BEGIN TRANSACTION ISOLATION LEVEL ${level}`);
         for (const query of queries) {
             res.push(await client.query(query, values.shift()).then(res => res.rows));
         }
         await client.query('COMMIT');
+        return res;
     }
-    catch (res) {
+    catch (err) {
         await client.query('ROLLBACK');
-        throw res;
+        throw err;
     }
     finally {
         client.release();
     }
-    return res;
 }
 function start() {
     // We want to be able to still live even if database is not available.
@@ -336,7 +344,7 @@ function start() {
         throw err;
     });
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
-    return query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false).catch(() => true);
+    return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
 exports.start = start;
 function end() {
@@ -450,15 +458,13 @@ function getStarLeaderboards(start) {
 exports.getStarLeaderboards = getStarLeaderboards;
 /**
  * Ensure the waifu provided does not contain old images, only new images that are to be added
- * @param {PartialWaifu} waifu
- * @returns {Waifu} The waifu object with total # of images
  * @throws {Error} If waifu gets too many images
  */
-async function insertWaifu(waifu) {
+function insertWaifu(waifu) {
     // With this query, we must make sure we are not appending to img array
     // We will return the waifu object, and it will raise an exception
     // if the waifu's images goes out of bounds (due to our check constraint)
-    const res = await multi_query([
+    return multi_query([
         `INSERT INTO waifus(name, gender, origin, img, nimg)
                 VALUES ($1, $2, $3, $4, $5) 
             ON CONFLICT (name, gender, origin)
@@ -468,7 +474,6 @@ async function insertWaifu(waifu) {
             RETURNING *`,
         'REFRESH MATERIALIZED VIEW chars'
     ], [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]).then(res => new Waifu(res[0][0]));
-    return res;
 }
 exports.insertWaifu = insertWaifu;
 function fetchWaifuByDetails(details) {

@@ -3,16 +3,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = void 0;
+exports.getCDNId = exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const path_1 = __importDefault(require("path"));
 const headers = new Headers();
 headers.append('Authorization', _config_1.default.secret);
-async function uploadToCDN(form) {
+async function uploadToCDN(body) {
     const { urls } = await fetch(`${_config_1.default.origin}/api/upload`, {
         method: 'POST',
-        body: form,
-        headers
+        headers,
+        body
     }).then(res => {
         if (res.status === 200)
             return res.json();
@@ -63,4 +63,20 @@ async function getImage(url) {
     }).catch(() => ({ ext: '', blob: new Blob([]) }));
 }
 exports.getImage = getImage;
+/**
+ * Helper to get the ID from a CDN link.
+ * Returns the same thing back if link is invalid
+ */
+async function getCDNId(url) {
+    if (!url.startsWith(_config_1.default.cdn)) {
+        return url;
+    }
+    const res = await fetch(url);
+    if (!res.headers.get('Content-Type')?.startsWith('image')) {
+        return url;
+    }
+    // Confirmed valid image
+    return url.replace(`${_config_1.default.cdn}/images/`, '');
+}
+exports.getCDNId = getCDNId;
 //# sourceMappingURL=cdn.js.map
