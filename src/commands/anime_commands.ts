@@ -2762,6 +2762,13 @@ export const submit: CachedSlashCommand<{
                 await interaction.editReply({ components: [this.secretButtons] });
                 return;
             }
+            // Use IDs for images instead of full link
+            submission.data.img.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${config.cdn}/images/`, '');
+            });
+            submission.data.nimg.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${config.cdn}/images/`, '');
+            });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
                 if (err instanceof DatabaseMaintenanceError) throw err;
@@ -2822,10 +2829,8 @@ export const submit: CachedSlashCommand<{
                     imgs.push(url);
                 }
             }
-            await Promise.all(imgs).then(imgs => {
-                submission.data.img = imgs.splice(0, img.length);
-                submission.data.nimg = imgs.splice(0, nimg.length);
-            });
+            submission.data.img = imgs.splice(0, img.length);
+            submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = EmbedBuilder.from(interaction.message!.embeds[0]);
             await this.setWaifuInfoEmbed(embed, submission.data);
