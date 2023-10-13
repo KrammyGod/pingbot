@@ -167,7 +167,7 @@ CREATE TABLE user_chars (
     wid bigint NOT NULL REFERENCES char_mapping ON DELETE CASCADE,
     lvl int NOT NULL DEFAULT 1,
     _img int NOT NULL DEFAULT 1,
-    _nimg int NOT NULL DEFAULT 0,
+    _nimg int NOT NULL DEFAULT 1,
     nsfw boolean NOT NULL DEFAULT FALSE,
     idx bigint NOT NULL,
     -- idx is not unique, there can be reordering
@@ -176,8 +176,7 @@ CREATE TABLE user_chars (
     UNIQUE (uid, idx) DEFERRABLE INITIALLY IMMEDIATE,
     CHECK (lvl > 0),
     CHECK (_img > 0),
-    CHECK (_nimg >= 0),
-    CHECK (NOT nsfw OR _nimg > 0),
+    CHECK (_nimg > 0),
     CHECK (idx > 0)
 );
 
