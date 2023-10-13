@@ -90,7 +90,13 @@ class Waifu {
     }
     get nimg() {
         // Commons don't have nimgs so we don't have to check here
-        return this._nimg.map(i => `${config_1.default.cdn}/images/${i}`);
+        return this._nimg.map(i => {
+            // Backwards compatibility
+            if (i.startsWith('https://i.imgur')) {
+                return i;
+            }
+            return `${config_1.default.cdn}/images/${i}`;
+        });
     }
     getGender() {
         return ' ' + this.gender;
@@ -161,10 +167,10 @@ class Character {
     }
     get nimg() {
         // Backwards compatibility
-        if (this.__img.startsWith('https://i.imgur')) {
-            return this.__img;
+        if (this.__nimg.startsWith('https://i.imgur')) {
+            return this.__nimg;
         }
-        return `${config_1.default.cdn}/images/${this.__img}`;
+        return `${config_1.default.cdn}/images/${this.__nimg}`;
     }
     get unlockedImages() { return this.lvl === 5; }
     get unlockedNMode() { return this.lvl === 8; }
