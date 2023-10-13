@@ -377,7 +377,7 @@ function getClient() {
 }
 // Single queries MUST use this because all single queries are
 // automatically wrapped inside a transaction.
-async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
+async function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
     const client = await getClient();
     try {
         return client.query<R, I[]>(query, values).then(res => res.rows);

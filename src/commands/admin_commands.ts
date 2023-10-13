@@ -1,5 +1,4 @@
 import config from '@config';
-import fs from 'fs';
 import reset from '@modules/reset_db';
 import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
@@ -336,23 +335,10 @@ export const add: MessageCommand = {
     }
 };
 
-type UploadPrivates = {
-    uniqueFileName: (ext: string) => string;
-};
-export const upload: MessageCommand & UploadPrivates = {
+export const upload: MessageCommand = {
     name: 'upload',
     admin: true,
     desc: 'Uses latest tech to upload images without {/submit}.',
-
-    // Helper to generate a random, unique filename
-    uniqueFileName(ext) {
-        let id = 0;
-        let test = `./files/tmp${id++}${ext}`;
-        while (fs.existsSync(test)) {
-            test = `./files/tmp${id++}${ext}`;
-        }
-        return test;
-    },
 
     async execute(message, args) {
         if (args.length < 1) {
@@ -366,8 +352,7 @@ export const upload: MessageCommand & UploadPrivates = {
         const all: { sources: string[], url: string }[] = [];
         for (const url of args) {
             // Use our helper to get the image data.
-            const sources = await scrape(url).catch(() => []);
-            all.push({ sources, url });
+            all.push(await scrape(url).catch(() => ({ sources: [], url })));
         }
         if (all.length) {
             const formdata = new FormData();

@@ -9,13 +9,13 @@ let pixiv: Pixiv;
  * Returns all images scraped from the given url.
  */
 export default async function scrape(url: string) {
-    const retval: string[] = [];
+    const sources: string[] = [];
 
     // Let a separate server handle the parsing of twitter images with playwright.
     const { imgs } = await fetch(`${config.scraper}?url=${url}`).then(res => res.json()).catch(() => ({ imgs: [url] }));
     // Server returns original image if it couldn't find twitter images.
     if (imgs[0] !== url) {
-        retval.push(...imgs);
+        sources.push(...imgs);
     }
 
     // This part is parsing pixiv images.
@@ -43,6 +43,7 @@ export default async function scrape(url: string) {
             });
         });
         if (res) {
+            url = res.url!;
             // Try to find given imageNumber, choose first if not found.
             const new_url = res.meta_pages.at(imageNumber)?.image_urls.original ??
                 res.meta_pages.at(0)?.image_urls.original ??
@@ -50,9 +51,9 @@ export default async function scrape(url: string) {
                 res.image_urls.medium;
             // There are multiple images, and did not specify an image, return all available.
             if (res.meta_pages.length && isNaN(imageNumber)) {
-                retval.push(...res.meta_pages.map(p => p.image_urls.original));
+                sources.push(...res.meta_pages.map(p => p.image_urls.original));
             } else {
-                retval.push(new_url);
+                sources.push(new_url);
             }
         }
     }
@@ -66,12 +67,12 @@ export default async function scrape(url: string) {
         const source = sectionTag.attr('data-file-url') ?? sectionTag.attr('data-source') ??
             imgTag.attr('src')?.replace('/sample/', '/original/').replace('sample-', '');
         if (source) {
-            retval.push(source);
+            sources.push(source);
         }
     }
 
     // Everything fails, just return original url.
-    if (!retval.length) retval.push(url);
+    if (!sources.length) sources.push(url);
 
-    return retval;
+    return { sources, url };
 }
