@@ -28,18 +28,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.submit = exports.move = exports.swap = exports.users = exports.top = exports.stars = exports.dall = exports.whale = exports.multi = exports.roll = exports.high = exports.list_menu = exports.list = exports.profile_menu = exports.profile = exports.daily = exports.lb = exports.bal = exports.anime = exports.animes = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
-const axios_1 = __importDefault(require("axios"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
-const form_data_1 = __importDefault(require("form-data"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
+const cdn_1 = require("../modules/cdn");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
-// Setup ffmpeg
-const ffmpeg_1 = require("@ffmpeg-installer/ffmpeg");
-const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
-fluent_ffmpeg_1.default.setFfmpegPath(_config_1.default.ffmpeg || ffmpeg_1.path);
 exports.name = 'Animes/Gacha';
 exports.desc = 'This category is for commands that deal with the character gacha.';
 const NO_NUM = -1;
@@ -2336,7 +2331,7 @@ exports.submit = {
                 style: discord_js_1.ButtonStyle.Primary
             }),
             new discord_js_1.ButtonBuilder({
-                label: 'Upload to Imgur',
+                label: 'Upload to CDN',
                 customId: 'submit/0/upload',
                 style: discord_js_1.ButtonStyle.Secondary
             }),
@@ -2465,7 +2460,8 @@ exports.submit = {
         }
         else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith('https://i.imgur')) || nimg.some(i => !i.startsWith('https://i.imgur'))) {
+            if (img.some(i => i.match(/^https?:\/\//)) ||
+                nimg.some(i => i.match(/^https?:\/\//))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2473,6 +2469,13 @@ exports.submit = {
                 await interaction.editReply({ components: [this.secretButtons] });
                 return;
             }
+            // Use IDs for images instead of full link
+            submission.data.img.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
+            });
+            submission.data.nimg.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
+            });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
                 if (err instanceof exceptions_1.DatabaseMaintenanceError)
@@ -2513,66 +2516,28 @@ exports.submit = {
             // All image uploads go here.
             const imgs = [];
             for (const url of [...img, ...nimg]) {
-                let imageData = url;
-                let headers; // Custom headers for ffmpeg in case of pixiv images.
-                let description = undefined;
-                const formdata = new form_data_1.default();
-                // Do not reupload imgur images.
-                if (url.startsWith('https://i.imgur.com/')) {
+                // Do not reupload CDN images.
+                if (url.startsWith(_config_1.default.cdn)) {
                     imgs.push(url);
                     continue;
                 }
                 // Use our helper to get the image data.
-                await (0, scraper_1.default)(url).then(res => {
-                    imageData = res.source;
-                    description = res.sauce;
-                }).catch(() => { });
-                // For now, we only ignore gifs (all animated will be ignored)
-                if (!imageData.includes('.gif')) {
-                    // Add headers to prevent 403.
-                    if (imageData.startsWith('https://i.pximg.net/')) {
-                        headers = 'Referer: https://www.pixiv.net/';
-                    }
-                    // Use ffmpeg to quickly convert into jpg.
-                    const filePath = this.uniqueFileName('.jpg');
-                    // This allows us to block until ffmpeg is done.
-                    await new Promise(resolve => {
-                        const cmd = (0, fluent_ffmpeg_1.default)().input(imageData);
-                        if (headers)
-                            cmd.inputOption('-headers', headers);
-                        cmd.save(filePath).on('end', () => {
-                            // Clean up after reading file.
-                            imageData = fs_1.default.createReadStream(filePath).on('end', async () => {
-                                return fs_1.default.promises.unlink(filePath).catch(() => { });
-                            });
-                            resolve(undefined);
-                        }).on('error', () => {
-                            fs_1.default.promises.unlink(filePath).catch(() => { });
-                            resolve(undefined); // If ffmpeg fails, we can still try imgur.
-                        });
-                    });
+                const [image] = await (0, scraper_1.default)(url).catch(() => []);
+                const { ext, blob } = await (0, cdn_1.getImage)(image);
+                const formdata = new FormData();
+                formdata.append('images', blob, `tmp.${ext}`);
+                formdata.append('sources', url);
+                // Upload to our CDN and get url back.
+                const [uploaded_url] = await (0, cdn_1.uploadToCDN)(formdata);
+                if (uploaded_url) {
+                    imgs.push(uploaded_url);
                 }
-                // Post to imgur to upload and send back the link.
-                formdata.append('image', imageData);
-                formdata.append('title', name);
-                if (description)
-                    formdata.append('description', description);
-                const request_config = {
-                    method: 'POST',
-                    maxBodyLength: Infinity,
-                    url: 'https://api.imgur.com/3/image',
-                    headers: {
-                        'Authorization': `Client-ID ${_config_1.default.imgur}`,
-                        ...formdata.getHeaders()
-                    },
-                    data: formdata
-                };
-                imgs.push((0, axios_1.default)(request_config).then(i => i.data.data.link).catch(() => url));
+                else {
+                    imgs.push(url);
+                }
             }
-            await Promise.all(imgs).then(imgs => {
-                submission.data.img = imgs.splice(0, img.length);
-                submission.data.nimg = imgs.splice(0, nimg.length);
-            });
+            submission.data.img = imgs.splice(0, img.length);
+            submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = discord_js_1.EmbedBuilder.from(interaction.message.embeds[0]);
             await this.setWaifuInfoEmbed(embed, submission.data);

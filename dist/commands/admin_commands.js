@@ -26,21 +26,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stop = exports.start = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
+exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
+const _config_1 = __importDefault(require("../classes/config.js"));
 const fs_1 = __importDefault(require("fs"));
-const axios_1 = __importDefault(require("axios"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
-const _config_1 = __importDefault(require("../classes/config.js"));
-const form_data_1 = __importDefault(require("form-data"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const exceptions_1 = require("../classes/exceptions");
+const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
-// Setup ffmpeg
-const ffmpeg_1 = require("@ffmpeg-installer/ffmpeg");
-const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
-fluent_ffmpeg_1.default.setFfmpegPath(_config_1.default.ffmpeg || ffmpeg_1.path);
 exports.name = 'Admin Message Commands';
 exports.desc = "You shouldn't be seeing this";
 exports.purge = {
@@ -363,57 +358,6 @@ exports.upload = {
         }
         return test;
     },
-    async uploadToImgur(message, url, title, description) {
-        let headers = undefined; // Custom headers for ffmpeg in case of pixiv images.
-        let imageData = url;
-        // For now, we only ignore gifs (all animated will be ignored)
-        if (!imageData.includes('.gif')) {
-            // Add headers to prevent 403.
-            if (imageData.startsWith('https://i.pximg.net/')) {
-                headers = 'Referer: https://www.pixiv.net/';
-            }
-            // Use ffmpeg to quickly convert into jpg.
-            const filePath = this.uniqueFileName('.jpg');
-            // This allows us to block until ffmpeg is done.
-            await new Promise(resolve => {
-                const cmd = (0, fluent_ffmpeg_1.default)().input(imageData);
-                if (headers)
-                    cmd.inputOption('-headers', headers);
-                cmd.save(filePath).on('end', () => {
-                    // Clean up after reading file.
-                    imageData = fs_1.default.createReadStream(filePath).on('end', () => {
-                        return fs_1.default.promises.unlink(filePath).catch(() => { });
-                    });
-                    resolve(undefined);
-                }).on('error', async (err) => {
-                    await message.reply(`FFmpeg error: ${err}`);
-                    resolve(undefined);
-                });
-            });
-        }
-        // Post to imgur to upload and send back the link.
-        const formdata = new form_data_1.default();
-        formdata.append('image', imageData);
-        if (title)
-            formdata.append('title', title);
-        if (description)
-            formdata.append('description', description);
-        const request_config = {
-            method: 'POST',
-            maxBodyLength: Infinity,
-            url: 'https://api.imgur.com/3/image',
-            headers: {
-                'Authorization': `Client-ID ${_config_1.default.imgur}`,
-                ...formdata.getHeaders()
-            },
-            data: formdata
-        };
-        // Gave up w/ fetch and had to use axios.
-        return (0, axios_1.default)(request_config)
-            .then(i => i.data.data.link)
-            .catch(err => err.response.data.data.error.message ??
-            err.response.data.data.error);
-    },
     async execute(message, args) {
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
@@ -421,26 +365,67 @@ exports.upload = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        let url = args[0];
-        const title = args[1];
-        let description = args[2];
-        await message.channel.sendTyping();
-        // Use our helper to get the image data.
-        const all = [];
-        await (0, scraper_1.default)(url, all).then(res => {
-            url = res.source;
-            if (res.sauce)
-                description = res.sauce;
-        }).catch(() => { });
         const res = [];
-        if (!all.length) {
-            res.push(await this.uploadToImgur(message, url, title, description));
+        await message.channel.sendTyping();
+        const all = [];
+        for (const url of args) {
+            // Use our helper to get the image data.
+            const sources = await (0, scraper_1.default)(url).catch(() => []);
+            all.push({ sources, url });
         }
-        // All is defined for multiple images in twitter or pixiv.
-        for (const url of all) {
-            res.push(await this.uploadToImgur(message, url, title, description));
+        if (all.length) {
+            const formdata = new FormData();
+            for (const obj of all) {
+                for (const url of obj.sources) {
+                    const { ext, blob } = await (0, cdn_1.getImage)(url);
+                    formdata.append('images', blob, `tmp.${ext}`);
+                    formdata.append('sources', obj.url);
+                }
+            }
+            res.push(...await (0, cdn_1.uploadToCDN)(formdata));
         }
         return message.reply({ content: `<${res.join('>\n<')}>` });
+    }
+};
+exports.update = {
+    name: 'update',
+    admin: true,
+    desc: 'Updates the sources of images in the CDN.',
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        else if (args.length % 2 !== 0) {
+            return message.channel.send({ content: 'Arguments must be in pairs.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        const urls = args.splice(0, args.length / 2);
+        const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')), args // Rest of the args are new sources
+        );
+        return message.reply({ content: `API replied with: ${res}` });
+    }
+};
+exports.del = {
+    name: 'delete',
+    admin: true,
+    desc: 'Deletes images from the CDN.',
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        // Remove CDN url to get the filename
+        const res = await (0, cdn_1.deleteFromCDN)(args.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')));
+        return message.reply({ content: `API replied with: ${res}` });
     }
 };
 exports.start = {
