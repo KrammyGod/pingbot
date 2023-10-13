@@ -383,7 +383,7 @@ function handle_error(err, opts = {}) {
         // Discord only allows 2000 characters per message, 6 more for backticks, 3 for dots
         // 2000 - 6 - 3 = 1991
         const keepLength = Math.min(error_str.length + err_str.length, 1991) - error_str.length;
-        error_str += '```' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
+        error_str += '```\n' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
         // We catch so there are no recursive errors.
         client.log_channel.send({ content: error_str }).catch(() => { });
     }

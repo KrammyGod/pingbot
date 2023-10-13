@@ -160,8 +160,11 @@ class Character {
         return `${config_1.default.cdn}/images/${this.__img}`;
     }
     get nimg() {
-        // Commons don't have nimgs so we don't have to check here
-        return `${config_1.default.cdn}/images/${this.__nimg}`;
+        // Backwards compatibility
+        if (this.__img.startsWith('https://i.imgur')) {
+            return this.__img;
+        }
+        return `${config_1.default.cdn}/images/${this.__img}`;
     }
     get unlockedImages() { return this.lvl === 5; }
     get unlockedNMode() { return this.lvl === 8; }
