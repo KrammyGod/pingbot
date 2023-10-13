@@ -27,4 +27,5 @@ tools/
 .github
 .eslintrc.json
 tsconfig.json
-sqls
+sqls/
+scripts/
