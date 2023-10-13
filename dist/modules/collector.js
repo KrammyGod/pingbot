@@ -57,7 +57,7 @@ function on_account_error(err, aid, uid) {
     LOGGER.error(msg);
     LOGGER.error();
     LOGGER.error(err);
-    msg += '\n```' + (0, util_1.inspect)(err) + '```';
+    msg += '\n```\n' + (0, util_1.inspect)(err) + '```';
     add(msg + '\n\n');
 }
 const CONFIG = {
@@ -229,7 +229,7 @@ async function collect() {
     }
     catch (e) {
         LOGGER.error(e);
-        add('I encountered a really bad error... save me...\n```' + (0, util_1.inspect)(e) + '```');
+        add('I encountered a really bad error... save me...\n```\n' + (0, util_1.inspect)(e) + '```');
     }
     finally {
         await client.end().catch(() => { });
