@@ -2753,8 +2753,8 @@ export const submit: CachedSlashCommand<{
             }).catch(() => { });
         } else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => i.match(/^https?:\/\//)) ||
-                nimg.some(i => i.match(/^https?:\/\//))) {
+            if (img.some(i => !i.startsWith(config.cdn)) ||
+                nimg.some(i => !i.startsWith(config.cdn))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2820,7 +2820,11 @@ export const submit: CachedSlashCommand<{
                 
                 const formdata = new FormData();
                 formdata.append('images', blob, `tmp.${ext}`);
-                formdata.append('sources', url);
+                // Won't automatically add url as source
+                // if the url is to a raw image; must be manually updated.
+                if (sources[0] !== url) {
+                    formdata.append('sources', url);
+                }
                 // Upload to our CDN and get url back.
                 const [uploaded_url] = await uploadToCDN(formdata);
                 if (uploaded_url) {
