@@ -14,6 +14,9 @@ node_modules/
 .vscode
 .vscode-test
 
+# Private waifus list
+waifus.txt
+
 # Build distribution directory
 dist/
 
