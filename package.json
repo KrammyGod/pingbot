@@ -30,6 +30,10 @@
     "prebuild": "npm run clean:dist",
     "build": "tsc && tsc-alias",
     "deploy": "npm run build && node dist/deployment/deploy-commands.js --enable-source-maps",
+    "build:helper": "tsc scripts/create_waifus_txt.ts",
+    "run:helper": "node scripts/create_waifus_txt.js --enable-source-maps",
+    "clean:helper": "rimraf scripts/create_waifus_txt.js",
+    "txt": "npm run build:helper && npm run run:helper && npm run clean:helper",
     "start": "node . --enable-source-maps"
   },
   "devDependencies": {
