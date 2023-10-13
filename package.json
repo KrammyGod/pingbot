@@ -30,10 +30,12 @@
     "prebuild": "npm run clean:dist",
     "build": "tsc && tsc-alias",
     "deploy": "npm run build && node dist/deployment/deploy-commands.js --enable-source-maps",
-    "build:helper": "tsc scripts/create_waifus_txt.ts",
-    "run:helper": "node scripts/create_waifus_txt.js --enable-source-maps",
-    "clean:helper": "rimraf scripts/create_waifus_txt.js",
-    "txt": "npm run build:helper && npm run run:helper && npm run clean:helper",
+    "predownload": "tsc scripts/download_waifus_txt.ts",
+    "download": "node scripts/download_waifus_txt.js --enable-source-maps || exit 0",
+    "postdownload": "rimraf scripts/download_waifus_txt.js",
+    "preupload": "tsc scripts/upload_waifus_txt.ts",
+    "upload": "node scripts/upload_waifus_txt.js --enable-source-maps || exit 0",
+    "postupload": "rimraf scripts/upload_waifus_txt.js",
     "start": "node . --enable-source-maps"
   },
   "devDependencies": {
