@@ -2460,8 +2460,8 @@ exports.submit = {
         }
         else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => i.match(/^https?:\/\//)) ||
-                nimg.some(i => i.match(/^https?:\/\//))) {
+            if (img.some(i => !i.startsWith(_config_1.default.cdn)) ||
+                nimg.some(i => !i.startsWith(_config_1.default.cdn))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
