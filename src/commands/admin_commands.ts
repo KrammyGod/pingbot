@@ -1,23 +1,17 @@
+import config from '@config';
 import fs from 'fs';
-import axios from 'axios';
 import reset from '@modules/reset_db';
 import scrape from '@modules/scraper';
-import config from '@config';
-import FormData from 'form-data';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import { PermissionError } from '@classes/exceptions';
+import { deleteFromCDN, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
     MessageMentions, PermissionsBitField
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type { MessageCommand } from '@classes/client';
-
-// Setup ffmpeg
-import { path } from '@ffmpeg-installer/ffmpeg';
-import ffmpeg from 'fluent-ffmpeg';
-ffmpeg.setFfmpegPath(config.ffmpeg || path);
 
 export const name = 'Admin Message Commands';
 export const desc = "You shouldn't be seeing this";
@@ -344,7 +338,6 @@ export const add: MessageCommand = {
 
 type UploadPrivates = {
     uniqueFileName: (ext: string) => string;
-    uploadToImgur: (message: DTypes.Message, url: string, title?: string, description?: string) => Promise<string>;
 };
 export const upload: MessageCommand & UploadPrivates = {
     name: 'upload',
@@ -361,55 +354,67 @@ export const upload: MessageCommand & UploadPrivates = {
         return test;
     },
 
-    async uploadToImgur(message, url, title, description) {
-        let headers: string | undefined = undefined; // Custom headers for ffmpeg in case of pixiv images.
-        let imageData: string | fs.ReadStream = url;
-
-        // For now, we only ignore gifs (all animated will be ignored)
-        if (!imageData.includes('.gif')) {
-            // Add headers to prevent 403.
-            if (imageData.startsWith('https://i.pximg.net/')) {
-                headers = 'Referer: https://www.pixiv.net/';
-            }
-            // Use ffmpeg to quickly convert into jpg.
-            const filePath = this.uniqueFileName('.jpg');
-            // This allows us to block until ffmpeg is done.
-            await new Promise(resolve => {
-                const cmd = ffmpeg().input(imageData);
-                if (headers) cmd.inputOption('-headers', headers);
-                cmd.save(filePath).on('end', () => {
-                    // Clean up after reading file.
-                    imageData = fs.createReadStream(filePath).on('end', () => {
-                        return fs.promises.unlink(filePath).catch(() => { });
-                    });
-                    resolve(undefined);
-                }).on('error', async err => {
-                    await message.reply(`FFmpeg error: ${err}`);
-                    resolve(undefined);
-                });
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
             });
         }
-        // Post to imgur to upload and send back the link.
-        const formdata = new FormData();
-        formdata.append('image', imageData);
-        if (title) formdata.append('title', title);
-        if (description) formdata.append('description', description);
-        const request_config = {
-            method: 'POST',
-            maxBodyLength: Infinity,
-            url: 'https://api.imgur.com/3/image',
-            headers: {
-                'Authorization': `Client-ID ${config.imgur}`,
-                ...formdata.getHeaders()
-            },
-            data: formdata
-        };
-        // Gave up w/ fetch and had to use axios.
-        return axios(request_config)
-            .then(i => i.data.data.link)
-            .catch(err => err.response.data.data.error.message ??
-                err.response.data.data.error);
-    },
+        const res = [];
+        await message.channel.sendTyping();
+        const all: { sources: string[], url: string }[] = [];
+        for (const url of args) {
+            // Use our helper to get the image data.
+            const sources = await scrape(url).catch(() => []);
+            all.push({ sources, url });
+        }
+        if (all.length) {
+            const formdata = new FormData();
+            for (const obj of all) {
+                for (const url of obj.sources) {
+                    const { ext, blob } = await getImage(url);
+                    formdata.append('images', blob, `tmp.${ext}`);
+                    formdata.append('sources', obj.url);
+                }
+            }
+            res.push(...await uploadToCDN(formdata));
+        }
+        return message.reply({ content: `<${res.join('>\n<')}>` });
+    }
+};
+
+export const update: MessageCommand = {
+    name: 'update',
+    admin: true,
+    desc: 'Updates the sources of images in the CDN.',
+
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        } else if (args.length % 2 !== 0) {
+            return message.channel.send({ content: 'Arguments must be in pairs.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        const urls = args.splice(0, args.length / 2);
+        const res = await updateCDN(
+            urls.map(a => a.replace(`${config.cdn}/images/`, '')),
+            args // Rest of the args are new sources
+        );
+        return message.reply({ content: `API replied with: ${res}` });
+    }
+};
+
+export const del: MessageCommand = {
+    name: 'delete',
+    admin: true,
+    desc: 'Deletes images from the CDN.',
 
     async execute(message, args) {
         if (args.length < 1) {
@@ -418,27 +423,10 @@ export const upload: MessageCommand & UploadPrivates = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        let url = args[0];
-        const title = args[1];
-        let description = args[2];
         await message.channel.sendTyping();
-
-        // Use our helper to get the image data.
-        const all: string[] = [];
-        await scrape(url, all).then(res => {
-            url = res.source;
-            if (res.sauce) description = res.sauce;
-        }).catch(() => { });
-
-        const res: string[] = [];
-        if (!all.length) {
-            res.push(await this.uploadToImgur(message, url, title, description));
-        }
-        // All is defined for multiple images in twitter or pixiv.
-        for (const url of all) {
-            res.push(await this.uploadToImgur(message, url, title, description));
-        }
-        return message.reply({ content: `<${res.join('>\n<')}>` });
+        // Remove CDN url to get the filename
+        const res = await deleteFromCDN(args.map(a => a.replace(`${config.cdn}/images/`, '')));
+        return message.reply({ content: `API replied with: ${res}` });
     }
 };
 

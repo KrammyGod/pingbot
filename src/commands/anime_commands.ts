@@ -1,10 +1,9 @@
 import fs from 'fs';
-import axios from 'axios';
 import config from '@config';
 import scrape from '@modules/scraper';
-import FormData from 'form-data';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import { getImage, uploadToCDN } from '@modules/cdn';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -15,13 +14,7 @@ import {
     ApplicationCommandType
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { Readable } from 'stream';
 import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
-
-// Setup ffmpeg
-import { path } from '@ffmpeg-installer/ffmpeg';
-import ffmpeg from 'fluent-ffmpeg';
-ffmpeg.setFfmpegPath(config.ffmpeg || path);
 
 export const name = 'Animes/Gacha';
 export const desc = 'This category is for commands that deal with the character gacha.';
@@ -2629,7 +2622,7 @@ export const submit: CachedSlashCommand<{
                 style: ButtonStyle.Primary
             }),
             new ButtonBuilder({
-                label: 'Upload to Imgur',
+                label: 'Upload to CDN',
                 customId: 'submit/0/upload',
                 style: ButtonStyle.Secondary
             }),
@@ -2760,7 +2753,8 @@ export const submit: CachedSlashCommand<{
             }).catch(() => { });
         } else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith('https://i.imgur')) || nimg.some(i => !i.startsWith('https://i.imgur'))) {
+            if (img.some(i => i.match(/^https?:\/\//)) ||
+                nimg.some(i => i.match(/^https?:\/\//))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2768,6 +2762,13 @@ export const submit: CachedSlashCommand<{
                 await interaction.editReply({ components: [this.secretButtons] });
                 return;
             }
+            // Use IDs for images instead of full link
+            submission.data.img.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${config.cdn}/images/`, '');
+            });
+            submission.data.nimg.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${config.cdn}/images/`, '');
+            });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
                 if (err instanceof DatabaseMaintenanceError) throw err;
@@ -2806,70 +2807,30 @@ export const submit: CachedSlashCommand<{
         } else if (action === 'upload') {
             await interaction.update({ components: [] });
             // All image uploads go here.
-            const imgs = [];
+            const imgs: string[] = [];
             for (const url of [...img, ...nimg]) {
-                let imageData: Readable | string = url;
-                let headers: string; // Custom headers for ffmpeg in case of pixiv images.
-                let description = undefined;
-                const formdata = new FormData();
-
-                // Do not reupload imgur images.
-                if (url.startsWith('https://i.imgur.com/')) {
+                // Do not reupload CDN images.
+                if (url.startsWith(config.cdn)) {
                     imgs.push(url);
                     continue;
                 }
-
                 // Use our helper to get the image data.
-                await scrape(url).then(res => {
-                    imageData = res.source;
-                    description = res.sauce;
-                }).catch(() => { });
-
-                // For now, we only ignore gifs (all animated will be ignored)
-                if (!imageData.includes('.gif')) {
-                    // Add headers to prevent 403.
-                    if (imageData.startsWith('https://i.pximg.net/')) {
-                        headers = 'Referer: https://www.pixiv.net/';
-                    }
-                    // Use ffmpeg to quickly convert into jpg.
-                    const filePath = this.uniqueFileName('.jpg');
-                    // This allows us to block until ffmpeg is done.
-                    await new Promise(resolve => {
-                        const cmd = ffmpeg().input(imageData);
-                        if (headers) cmd.inputOption('-headers', headers);
-                        cmd.save(filePath).on('end', () => {
-                            // Clean up after reading file.
-                            imageData = fs.createReadStream(filePath).on('end', async () => {
-                                return fs.promises.unlink(filePath).catch(() => { });
-                            });
-                            resolve(undefined);
-                        }).on('error', () => {
-                            fs.promises.unlink(filePath).catch(() => { });
-                            resolve(undefined); // If ffmpeg fails, we can still try imgur.
-                        });
-                    });
+                const [image] = await scrape(url).catch(() => []);
+                const { ext, blob } = await getImage(image);
+                
+                const formdata = new FormData();
+                formdata.append('images', blob, `tmp.${ext}`);
+                formdata.append('sources', url);
+                // Upload to our CDN and get url back.
+                const [uploaded_url] = await uploadToCDN(formdata);
+                if (uploaded_url) {
+                    imgs.push(uploaded_url);
+                } else {
+                    imgs.push(url);
                 }
-
-                // Post to imgur to upload and send back the link.
-                formdata.append('image', imageData);
-                formdata.append('title', name);
-                if (description) formdata.append('description', description);
-                const request_config = {
-                    method: 'POST',
-                    maxBodyLength: Infinity,
-                    url: 'https://api.imgur.com/3/image',
-                    headers: {
-                        'Authorization': `Client-ID ${config.imgur}`,
-                        ...formdata.getHeaders()
-                    },
-                    data: formdata
-                };
-                imgs.push(axios(request_config).then(i => i.data.data.link).catch(() => url));
             }
-            await Promise.all(imgs).then(imgs => {
-                submission.data.img = imgs.splice(0, img.length);
-                submission.data.nimg = imgs.splice(0, nimg.length);
-            });
+            submission.data.img = imgs.splice(0, img.length);
+            submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = EmbedBuilder.from(interaction.message!.embeds[0]);
             await this.setWaifuInfoEmbed(embed, submission.data);
