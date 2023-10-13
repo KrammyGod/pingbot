@@ -2753,8 +2753,8 @@ export const submit: CachedSlashCommand<{
             }).catch(() => { });
         } else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => i.match(/^https?:\/\//)) ||
-                nimg.some(i => i.match(/^https?:\/\//))) {
+            if (img.some(i => !i.startsWith(config.cdn)) ||
+                nimg.some(i => !i.startsWith(config.cdn))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
