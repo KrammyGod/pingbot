@@ -5,12 +5,13 @@ import { Pool, QueryResultRow } from 'pg';
 const pool = new Pool({
     host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
 });
-function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
+function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
     return pool.query<R, I[]>(query, values).then(res => res.rows);
 }
 
 // Copied necessary stuff from database.ts
 type WaifuDetails = {
+    iid: string;
     name: string;
     gender: 'Female' | 'Male' | 'Unknown';
     origin: string;
@@ -18,6 +19,7 @@ type WaifuDetails = {
     nimg: string[];
 };
 class Waifu {
+    iid: string;
     name: string;
     gender: 'Female' | 'Male' | 'Unknown';
     origin: string;
@@ -34,6 +36,7 @@ class Waifu {
 
     constructor(row: WaifuDetails) {
         if (!row) throw new Error('Waifu details partial');
+        this.iid = row.iid;
         this.name = row.name;
         this.gender = row.gender;
         this.origin = row.origin;
@@ -64,24 +67,29 @@ function center(str: string, size: number) {
 if (require.main === module) {
     (async () => {
         const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY iid').then(Waifu.fromRows);
-        const headers = ['name', 'gender', 'origin', 'img', 'nimg'];
+        const headers = ['iid', 'name', 'gender', 'origin', 'img', 'nimg'];
+        const maxIIDLength = Math.max(...waifus.map(w => w.iid.length)) + 2;
         const maxNameLength = Math.max(...waifus.map(w => w.name.length)) + 2;
         const maxOriginLength = Math.max(...waifus.map(w => w.origin.length)) + 2;
         const maxGenderLength = 7 + 2; // 'Unknown'.length
         const maxImgLength = Math.max(...waifus.map(w => w.img.length)) + 2;
         const maxNimgLength = Math.max(...waifus.map(w => w.nimg.length)) + 2;
-        const headerLengths = [maxNameLength, maxGenderLength, maxOriginLength, maxImgLength, maxNimgLength];
+        const headerLengths = [
+            maxIIDLength, maxNameLength, maxGenderLength, maxOriginLength, maxImgLength, maxNimgLength
+        ];
         let headerStr = '';
         for (let i = 0; i < headers.length; ++i) {
             headerStr += `${verticalLine}${center(headers[i], headerLengths[i])}`;
         }
         // Header
         writer.write(
-            `${connector}${horizontalLine.repeat(maxNameLength)}${connector}${horizontalLine.repeat(maxGenderLength)}` +
+            `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
+            `${connector}${horizontalLine.repeat(maxGenderLength)}` +
             `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
             `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n` +
             `${headerStr}${verticalLine}\n` +
-            `${connector}${horizontalLine.repeat(maxNameLength)}${connector}${horizontalLine.repeat(maxGenderLength)}` +
+            `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
+            `${connector}${horizontalLine.repeat(maxGenderLength)}` +
             `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
             `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`
         );
@@ -89,6 +97,7 @@ if (require.main === module) {
         // Body
         for (const waifu of waifus) {
             writer.write(
+                `${verticalLine} ${waifu.iid.padEnd(maxIIDLength - 1)}` +
                 `${verticalLine} ${waifu.name.padEnd(maxNameLength - 1)}` +
                 `${verticalLine} ${waifu.gender.padEnd(maxGenderLength - 1)}` +
                 `${verticalLine} ${waifu.origin.padEnd(maxOriginLength - 1)}` +
@@ -99,7 +108,8 @@ if (require.main === module) {
 
         // Footer
         writer.write(
-            `${connector}${horizontalLine.repeat(maxNameLength)}${connector}${horizontalLine.repeat(maxGenderLength)}` +
+            `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
+            `${connector}${horizontalLine.repeat(maxGenderLength)}` +
             `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
             `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`
         );
