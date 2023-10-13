@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { from } from 'pg-copy-streams';
 import { inspect } from 'util';
-import { pipeline } from 'stream/promises'
+import { pipeline } from 'stream/promises';
 import { Pool, QueryResultRow } from 'pg';
 
 const LOGGER = {
