@@ -58,7 +58,7 @@ function on_account_error(err: object, aid: string, uid: string) {
     LOGGER.error(msg);
     LOGGER.error();
     LOGGER.error(err);
-    msg += '\n```' + inspect(err) + '```';
+    msg += '\n```\n' + inspect(err) + '```';
     add(msg + '\n\n');
 }
 
@@ -327,7 +327,7 @@ async function collect() {
         await collect();
     } catch (e) {
         LOGGER.error(e);
-        add('I encountered a really bad error... save me...\n```' + inspect(e) + '```');
+        add('I encountered a really bad error... save me...\n```\n' + inspect(e) + '```');
     } finally {
         await client.end().catch(() => { });
         LOGGER.end();
