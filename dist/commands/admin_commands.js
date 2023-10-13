@@ -28,7 +28,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
-const fs_1 = __importDefault(require("fs"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
@@ -349,15 +348,6 @@ exports.upload = {
     name: 'upload',
     admin: true,
     desc: 'Uses latest tech to upload images without {/submit}.',
-    // Helper to generate a random, unique filename
-    uniqueFileName(ext) {
-        let id = 0;
-        let test = `./files/tmp${id++}${ext}`;
-        while (fs_1.default.existsSync(test)) {
-            test = `./files/tmp${id++}${ext}`;
-        }
-        return test;
-    },
     async execute(message, args) {
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
@@ -370,8 +360,7 @@ exports.upload = {
         const all = [];
         for (const url of args) {
             // Use our helper to get the image data.
-            const sources = await (0, scraper_1.default)(url).catch(() => []);
-            all.push({ sources, url });
+            all.push(await (0, scraper_1.default)(url).catch(() => ({ sources: [], url })));
         }
         if (all.length) {
             const formdata = new FormData();
