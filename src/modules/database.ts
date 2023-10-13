@@ -1,3 +1,4 @@
+import config from '@classes/config';
 import * as Utils from '@modules/utils';
 import { Pool } from 'pg';
 import { Colors, EmbedBuilder } from 'discord.js';
@@ -49,8 +50,8 @@ class Waifu {
     name: string;
     gender: GenderTypes;
     origin: string;
-    img: string[];
-    nimg: string[];
+    _img: string[];
+    _nimg: string[];
     fc: boolean;
 
     static fromRows(rows: unknown[]) {
@@ -67,9 +68,24 @@ class Waifu {
         this.name = row.name;
         this.gender = toGenderTypes(row.gender);
         this.origin = row.origin;
-        this.img = row.img;
-        this.nimg = row.nimg;
+        // TEMPORARY SOLUTION: For now we use this to include get for img/nimg for our CDN
+        this._img = row.img;
+        this._nimg = row.nimg;
         this.fc = row.fc;
+    }
+
+    get img() {
+        return this._img.map(i => {
+            // Commons are not uploaded to CDN
+            if (i.match(/^https?:\/\//)) {
+                return i;
+            }
+            return `${config.cdn}/images/${i}`;
+        });
+    }
+    get nimg() {
+        // Commons don't have nimgs so we don't have to check here
+        return this._nimg.map(i => `${config.cdn}/images/${i}`);
     }
 
     getGender() {
@@ -77,15 +93,15 @@ class Waifu {
     }
 
     thisIsUpgradable() {
-        return this.img.length > 1;
+        return this._img.length > 1;
     }
 
     thisIsNToggleable() {
-        return this.nimg.length !== 0;
+        return this._nimg.length !== 0;
     }
 
     thisIsNSwitchable() {
-        return this.nimg.length > 1;
+        return this._nimg.length > 1;
     }
 
     getUStatus(l = '', r = '') {
@@ -98,8 +114,8 @@ class Waifu {
     fullClone() {
         return new Waifu({
             ...this,
-            img: this.img.slice(),
-            nimg: this.nimg.slice()
+            img: this._img.slice(),
+            nimg: this._nimg.slice()
         });
     }
 }
@@ -130,8 +146,8 @@ export class Character {
     fc: boolean;
     _img: number;
     _nimg: number;
-    img: string;
-    nimg: string;
+    __img: string;
+    __nimg: string;
     nsfw: boolean;
     displayLvl: string;
     waifu?: Waifu;
@@ -168,12 +184,24 @@ export class Character {
         // _img and _nimg are used to store the index of the image
         this._img = row._img ?? 1;
         this._nimg = row._nimg ?? 1;
-        this.img = row.img;
-        this.nimg = row.nimg;
+        // TEMPORARY SOLUTION: For now we use this to include get for img/nimg for our CDN
+        this.__img = row.img;
+        this.__nimg = row.nimg;
         this.nsfw = row.nsfw;
         this.displayLvl = this.lvl < 0 ? '∞' : this.lvl.toString();
     }
 
+    get img() {
+        // Commons are not uploaded to CDN
+        if (this.__img.match(/^https?:\/\//)) {
+            return this.__img;
+        }
+        return `${config.cdn}/images/${this.__img}`;
+    }
+    get nimg() {
+        // Commons don't have nimgs so we don't have to check here
+        return `${config.cdn}/images/${this.__nimg}`;
+    }
     get unlockedImages() { return this.lvl === 5; }
     get unlockedNMode() { return this.lvl === 8; }
     get unlockedNImages() { return this.lvl === 10; }
@@ -185,14 +213,14 @@ export class Character {
     async setImg(new_img: number) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
         this._img = _img ?? this._img;
-        this.img = img;
+        this.__img = img;
         return _img !== undefined;
     }
 
     async setNImg(new_nimg: number) {
         const { _nimg, nimg } = await setUserCharacterNImage(this.uid, this.wid, new_nimg);
         this._nimg = _nimg ?? this._nimg;
-        this.nimg = nimg;
+        this.__nimg = nimg;
         return _nimg !== undefined;
     }
 
@@ -200,7 +228,7 @@ export class Character {
         const retval = await setUserCharacterNsfw(this.uid, this.wid, !this.nsfw);
         this.nsfw = retval[1].nsfw;
         this._nimg = retval[1]._nimg;
-        this.nimg = retval[1].nimg;
+        this.__nimg = retval[1].nimg;
         return retval[0] === undefined;
     }
 
@@ -282,8 +310,13 @@ export class Character {
 }
 export function getSource(img: string) {
     if (img.match(/^https:\/\/i\.imgur\.(?:com|io)\//)) {
+        // Old deprecated imgur - compatibility until migration complete
         return img.slice(0, img.lastIndexOf('.')).replace('//i.', '//');
+    } else if (img.startsWith(config.cdn)) {
+        // Using our CDN
+        return img.replace('/images/', '/source/');
     }
+    // Common characters have no source
     return img;
 }
 
@@ -346,13 +379,11 @@ function getClient() {
 // automatically wrapped inside a transaction.
 async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
     const client = await getClient();
-    let res: R[] = [];
     try {
-        res = await client.query<R, I[]>(query, values).then(res => res.rows);
+        return client.query<R, I[]>(query, values).then(res => res.rows);
     } finally {
         client.release();
     }
-    return res;
 }
 // This makes a bunch of queries atomic.
 type IsolationLevels = 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
@@ -362,20 +393,20 @@ async function multi_query<R extends QueryResultRow = object, I = unknown>(
     level: IsolationLevels = 'READ COMMITTED'
 ) {
     const client = await getClient();
-    const res: R[][] = [];
     try {
+        const res: R[][] = [];
         await client.query(`BEGIN TRANSACTION ISOLATION LEVEL ${level}`);
         for (const query of queries) {
             res.push(await client.query<R, I[]>(query, values.shift()).then(res => res.rows));
         }
         await client.query('COMMIT');
-    } catch (res) {
+        return res;
+    } catch (err) {
         await client.query('ROLLBACK');
-        throw res;
+        throw err;
     } finally {
         client.release();
     }
-    return res;
 }
 export function start() {
     // We want to be able to still live even if database is not available.
@@ -385,7 +416,7 @@ export function start() {
         throw err;
     });
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
-    return query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false).catch(() => true);
+    return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
 export function end() {
     return pool.end();
@@ -533,15 +564,13 @@ export type PartialWaifu = {
 };
 /**
  * Ensure the waifu provided does not contain old images, only new images that are to be added
- * @param {PartialWaifu} waifu
- * @returns {Waifu} The waifu object with total # of images
  * @throws {Error} If waifu gets too many images
  */
-export async function insertWaifu(waifu: PartialWaifu) {
+export function insertWaifu(waifu: PartialWaifu) {
     // With this query, we must make sure we are not appending to img array
     // We will return the waifu object, and it will raise an exception
     // if the waifu's images goes out of bounds (due to our check constraint)
-    const res = await multi_query<WaifuDetails>(
+    return multi_query<WaifuDetails>(
         [
             `INSERT INTO waifus(name, gender, origin, img, nimg)
                 VALUES ($1, $2, $3, $4, $5) 
@@ -554,7 +583,6 @@ export async function insertWaifu(waifu: PartialWaifu) {
         ],
         [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]
     ).then(res => new Waifu(res[0][0]));
-    return res;
 }
 export function fetchWaifuByDetails(details: PartialWaifu) {
     return query<WaifuDetails>(

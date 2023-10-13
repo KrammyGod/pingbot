@@ -117,8 +117,8 @@ async function handle_command(message: DTypes.Message) {
     if (command && (client.is_listening || command.admin)) {
         const args = [];
         message.content = message.content.replace(message.content.split(/\s/)[0], '').trim();
-        // Split by spaces, strip quotes
-        for (const reply of message.content.split(/(?!\B"[^"]*) (?![^"]*"\B)/)) {
+        // Split by whitespace, strip quotes
+        for (const reply of message.content.split(/(?!\B"[^"]*)\s(?![^"]*"\B)/)) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
