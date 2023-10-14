@@ -66,12 +66,12 @@ function center(str: string, size: number) {
 }
 if (require.main === module) {
     (async () => {
-        const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY iid').then(Waifu.fromRows);
+        const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);
         const headers = ['iid', 'name', 'gender', 'origin', 'img', 'nimg'];
         const maxIIDLength = Math.max(...waifus.map(w => w.iid.length)) + 2;
         const maxNameLength = Math.max(...waifus.map(w => w.name.length)) + 2;
         const maxOriginLength = Math.max(...waifus.map(w => w.origin.length)) + 2;
-        const maxGenderLength = 7 + 2; // 'Unknown'.length
+        const maxGenderLength = 7 + 2; // 'Unknown'.length + 2
         const maxImgLength = Math.max(...waifus.map(w => w.img.length)) + 2;
         const maxNimgLength = Math.max(...waifus.map(w => w.nimg.length)) + 2;
         const headerLengths = [
