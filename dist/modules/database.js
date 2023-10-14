@@ -26,8 +26,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchUserLewdList = exports.fetchUserUpList = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.Character = exports.fromGenderTypes = exports.toGenderTypes = void 0;
-exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = void 0;
+exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchUserLewdList = exports.fetchUserUpList = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
+exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = void 0;
 const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
@@ -42,7 +42,7 @@ function toGenderTypes(gend) {
         case 'Unknown':
             return "\u2754" /* GenderTypes.Unknown */;
         default:
-            throw new Error('Invalid gender string');
+            throw new Error(`Invalid gender string: ${gend}`);
     }
 }
 exports.toGenderTypes = toGenderTypes;
@@ -55,10 +55,18 @@ function fromGenderTypes(gend) {
         case "\u2754" /* GenderTypes.Unknown */:
             return 'Unknown';
         default:
-            throw new Error('Invalid gender type');
+            throw new Error(`Invalid gender type: ${gend}`);
     }
 }
 exports.fromGenderTypes = fromGenderTypes;
+// Used to transform any image into a CDN link
+function transformImage(img) {
+    if (img.match(/^https?:\/\//)) {
+        // Commons are not uploaded to CDN
+        return img;
+    }
+    return `${config_1.default.cdn}/images/${img}`;
+}
 class Waifu {
     static fromRows(rows) {
         const rets = [];
@@ -74,54 +82,27 @@ class Waifu {
         this.name = row.name;
         this.gender = toGenderTypes(row.gender);
         this.origin = row.origin;
-        // TEMPORARY SOLUTION: For now we use this to include get for img/nimg for our CDN
-        this._img = row.img;
-        this._nimg = row.nimg;
+        this.img = row.img.map(transformImage);
+        this.nimg = row.nimg.map(transformImage);
         this.fc = row.fc;
-    }
-    get img() {
-        return this._img.map(i => {
-            // Commons are not uploaded to CDN
-            if (i.match(/^https?:\/\//)) {
-                return i;
-            }
-            return `${config_1.default.cdn}/images/${i}`;
-        });
-    }
-    get nimg() {
-        // Commons don't have nimgs so we don't have to check here
-        return this._nimg.map(i => {
-            // Backwards compatibility
-            if (i.startsWith('https://i.imgur')) {
-                return i;
-            }
-            return `${config_1.default.cdn}/images/${i}`;
-        });
     }
     getGender() {
         return ' ' + this.gender;
     }
     thisIsUpgradable() {
-        return this._img.length > 1;
+        return this.img.length > 1;
     }
     thisIsNToggleable() {
-        return this._nimg.length !== 0;
+        return this.nimg.length !== 0;
     }
     thisIsNSwitchable() {
-        return this._nimg.length > 1;
+        return this.nimg.length > 1;
     }
     getUStatus(l = '', r = '') {
         if (this.thisIsUpgradable()) {
             return `${l}⏫${r}`;
         }
         return '';
-    }
-    fullClone() {
-        return new Waifu({
-            ...this,
-            img: this._img.slice(),
-            nimg: this._nimg.slice()
-        });
     }
 }
 class Character {
@@ -152,25 +133,13 @@ class Character {
         // _img and _nimg are used to store the index of the image
         this._img = row._img ?? 1;
         this._nimg = row._nimg ?? 1;
-        // TEMPORARY SOLUTION: For now we use this to include get for img/nimg for our CDN
-        this.__img = row.img;
-        this.__nimg = row.nimg;
+        // Transform img and nimg to their actual links
+        // In our database, we only store the ID if they are in our CDN
+        // Thus, we need to convert it into an available link
+        this.img = transformImage(row.img);
+        this.nimg = transformImage(row.nimg);
         this.nsfw = row.nsfw;
         this.displayLvl = this.lvl < 0 ? '∞' : this.lvl.toString();
-    }
-    get img() {
-        // Commons are not uploaded to CDN
-        if (this.__img.match(/^https?:\/\//)) {
-            return this.__img;
-        }
-        return `${config_1.default.cdn}/images/${this.__img}`;
-    }
-    get nimg() {
-        // Backwards compatibility
-        if (this.__nimg.startsWith('https://i.imgur')) {
-            return this.__nimg;
-        }
-        return `${config_1.default.cdn}/images/${this.__nimg}`;
     }
     get unlockedImages() { return this.lvl === 5; }
     get unlockedNMode() { return this.lvl === 8; }
@@ -182,20 +151,20 @@ class Character {
     async setImg(new_img) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
         this._img = _img ?? this._img;
-        this.__img = img;
+        this.img = img;
         return _img !== undefined;
     }
     async setNImg(new_nimg) {
         const { _nimg, nimg } = await setUserCharacterNImage(this.uid, this.wid, new_nimg);
         this._nimg = _nimg ?? this._nimg;
-        this.__nimg = nimg;
+        this.nimg = nimg;
         return _nimg !== undefined;
     }
     async toggleNsfw() {
         const retval = await setUserCharacterNsfw(this.uid, this.wid, !this.nsfw);
         this.nsfw = retval[1].nsfw;
         this._nimg = retval[1]._nimg;
-        this.__nimg = retval[1].nimg;
+        this.nimg = retval[1].nimg;
         return retval[0] === undefined;
     }
     async upgrade(cost) {
@@ -237,6 +206,10 @@ class Character {
     getGender() {
         return ' ' + this.gender;
     }
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     getUStatus(l = '', r = '') {
         if (!this.loaded)
             throw new Error('Getting ustatus before waifu is loaded');
@@ -259,6 +232,10 @@ class Character {
         }
         return '';
     }
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     getEmbed(channel) {
         if (!this.loaded)
             throw new Error('Getting embed before waifu is loaded');
@@ -276,17 +253,12 @@ class Character {
         }).setImage(img);
     }
 }
-exports.Character = Character;
 function getSource(img) {
-    if (img.match(/^https:\/\/i\.imgur\.(?:com|io)\//)) {
-        // Old deprecated imgur - compatibility until migration complete
-        return img.slice(0, img.lastIndexOf('.')).replace('//i.', '//');
-    }
-    else if (img.startsWith(config_1.default.cdn)) {
+    if (img.startsWith(config_1.default.cdn)) {
         // Using our CDN
         return img.replace('/images/', '/source/');
     }
-    // Common characters have no source
+    // Common characters source is the raw image itself.
     return img;
 }
 exports.getSource = getSource;
