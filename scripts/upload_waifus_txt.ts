@@ -85,9 +85,11 @@ function loadFromFile() {
 }
 
 function findDiff(old: Waifu, updated: Waifu) {
-    let diff = `\x1b[96mID: ${old.iid} | Old name: ${old.name}\x1b[0m\n`;
+    let diff = `\x1b[96mID: ${old.iid}\x1b[0m\n`;
     if (old.name !== updated.name) {
         diff += `\x1b[96mName:\x1b[0m \x1b[31m${old.name}\x1b[0m -> \x1b[92m${updated.name}\x1b[0m\n`;
+    } else {
+        diff += `\x1b[96mOld name: ${old.name}\x1b[0m\n`;
     }
     if (old.gender !== updated.gender) {
         diff += `\x1b[96mGender:\x1b[0m \x1b[31m${old.gender}\x1b[0m -> \x1b[92m${updated.gender}\x1b[0m\n`;
@@ -112,8 +114,7 @@ async function upload() {
     const modified: { old: Waifu, updated: Waifu }[] = [];
     for (const waifu of database_waifus) {
         const match = file_waifus.find(w => w.iid === waifu.iid);
-        if (!match) throw new Error('Inconsistent or outdated waifus.txt. Cannot delete waifus using this script.');
-        if (!waifu.equal(match)) {
+        if (match && !waifu.equal(match)) {
             modified.push({ old: waifu, updated: match });
         }
     }
