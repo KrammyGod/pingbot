@@ -297,7 +297,8 @@ exports.hoyolab = {
     async getAccount(interaction, pageOrIdx) {
         const max_pages = await DB.fetchAutocollectLength(interaction.user.id);
         let account = undefined;
-        if (typeof pageOrIdx === 'number') {
+        // If there exists an account and we're getting a page #
+        if (typeof pageOrIdx === 'number' && max_pages !== 0) {
             if (pageOrIdx < 1)
                 pageOrIdx = 1;
             else if (pageOrIdx > max_pages)

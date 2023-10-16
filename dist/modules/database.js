@@ -587,7 +587,7 @@ function fetchAutocollectByPage(userID, page) {
 exports.fetchAutocollectByPage = fetchAutocollectByPage;
 function fetchAutocollectLength(userID) {
     return query(`SELECT COUNT(*) FROM hoyolab_cookies_list
-            WHERE id = $1`, [userID]).then(res => parseInt(res[0]?.count ?? '0'));
+            WHERE id = $1`, [userID]).then(res => parseInt(res[0].count));
 }
 exports.fetchAutocollectLength = fetchAutocollectLength;
 function toggleAutocollect(userID, game, type, idx) {
