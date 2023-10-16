@@ -363,9 +363,7 @@ export const upload: MessageCommand = {
                     formdata.append('sources', obj.source);
                 }
             }
-            if (formdata.has('images')) {
-                res.push(...await uploadToCDN(formdata));
-            }
+            res.push(...await uploadToCDN(formdata));
         }
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
