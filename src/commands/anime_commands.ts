@@ -2815,12 +2815,7 @@ export const submit: CachedSlashCommand<{
                     continue;
                 }
                 // Use our helper to get the image data.
-                const { images, source } = await scrape(url).catch(() => ({ images: [], source: url }));
-                // No images found; go next
-                if (!images.length) {
-                    imgs.push(url);
-                    continue;
-                }
+                const { images, source } = await scrape(url).catch(() => ({ images: [url], source: url }));
                 const { ext, blob } = await getImage(images[0]);
                 
                 const formdata = new FormData();
