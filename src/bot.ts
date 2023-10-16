@@ -486,7 +486,7 @@ function cleanup() {
         '💨 My apologies, it appears my instruments are out of tune. ' +
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
-    const promises = [DB.end().catch(() => { })];
+    const promises = [DB.end().catch(() => { }), client.destroy()];
     for (const guildVoice of GuildVoices.values()) {
         promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }).catch(() => { }));
         guildVoice.destroy();
@@ -495,7 +495,6 @@ function cleanup() {
         for (const id of client.shard?.ids ?? []) {
             console.log(`Finished cleaning up shard ${id}`);
         }
-        client.destroy();
         process.exit(0);
     });
 }
