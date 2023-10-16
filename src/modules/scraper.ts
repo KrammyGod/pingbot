@@ -9,17 +9,17 @@ let pixiv: Pixiv;
  * Returns all images scraped from the given url.
  */
 export default async function scrape(url: string) {
-    const sources: string[] = [];
+    const images: string[] = [];
 
     // Let a separate server handle the parsing of twitter images with playwright.
     const { imgs } = await fetch(`${config.scraper}?url=${url}`).then(res => res.json()).catch(() => ({ imgs: [url] }));
     // Server returns original image if it couldn't find twitter images.
     if (imgs[0] !== url) {
-        sources.push(...imgs);
+        images.push(...imgs);
     }
 
     // This part is parsing pixiv images.
-    if (url.startsWith('https://www.pixiv.net/en/artworks/')) {
+    if (url.startsWith('https://www.pixiv.net/')) {
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
             pixiv = await Pixiv.refreshLogin(config.pixiv).catch(() => {
@@ -51,9 +51,9 @@ export default async function scrape(url: string) {
                 res.image_urls.medium;
             // There are multiple images, and did not specify an image, return all available.
             if (res.meta_pages.length && isNaN(imageNumber)) {
-                sources.push(...res.meta_pages.map(p => p.image_urls.original));
+                images.push(...res.meta_pages.map(p => p.image_urls.original));
             } else {
-                sources.push(new_url);
+                images.push(new_url);
             }
         }
     }
@@ -67,12 +67,9 @@ export default async function scrape(url: string) {
         const source = sectionTag.attr('data-file-url') ?? sectionTag.attr('data-source') ??
             imgTag.attr('src')?.replace('/sample/', '/original/').replace('sample-', '');
         if (source) {
-            sources.push(source);
+            images.push(source);
         }
     }
 
-    // Everything fails, just return original url.
-    if (!sources.length) sources.push(url);
-
-    return { sources, url };
+    return { images, source: url };
 }

@@ -2815,14 +2815,19 @@ export const submit: CachedSlashCommand<{
                     continue;
                 }
                 // Use our helper to get the image data.
-                const { sources } = await scrape(url).catch(() => ({ sources: [], url }));
-                const { ext, blob } = await getImage(sources[0]);
+                const { images, source } = await scrape(url).catch(() => ({ images: [], source: url }));
+                // No images found; go next
+                if (!images.length) {
+                    imgs.push(url);
+                    continue;
+                }
+                const { ext, blob } = await getImage(images[0]);
                 
                 const formdata = new FormData();
                 formdata.append('images', blob, `tmp.${ext}`);
                 // Won't automatically add url as source
                 // if the url is to a raw image; must be manually updated.
-                if (sources[0] !== url) {
+                if (images[0] !== source) {
                     formdata.append('sources', url);
                 }
                 // Upload to our CDN and get url back.

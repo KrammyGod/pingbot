@@ -349,21 +349,23 @@ export const upload: MessageCommand = {
         }
         const res = [];
         await message.channel.sendTyping();
-        const all: { sources: string[], url: string }[] = [];
+        const all: { images: string[], source: string }[] = [];
         for (const url of args) {
             // Use our helper to get the image data.
-            all.push(await scrape(url).catch(() => ({ sources: [], url })));
+            all.push(await scrape(url).catch(() => ({ images: [], source: url })));
         }
         if (all.length) {
             const formdata = new FormData();
             for (const obj of all) {
-                for (const url of obj.sources) {
+                for (const url of obj.images) {
                     const { ext, blob } = await getImage(url);
                     formdata.append('images', blob, `tmp.${ext}`);
-                    formdata.append('sources', obj.url);
+                    formdata.append('sources', obj.source);
                 }
             }
-            res.push(...await uploadToCDN(formdata));
+            if (formdata.has('images')) {
+                res.push(...await uploadToCDN(formdata));
+            }
         }
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
