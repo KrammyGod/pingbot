@@ -19,7 +19,7 @@ export default async function scrape(url: string) {
     }
 
     // This part is parsing pixiv images.
-    if (url.startsWith('https://www.pixiv.net/en/artworks/')) {
+    if (url.startsWith('https://www.pixiv.net/')) {
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
             pixiv = await Pixiv.refreshLogin(config.pixiv).catch(() => {
