@@ -32,6 +32,7 @@ const DB = __importStar(require("./modules/database"));
 const discord_js_1 = require("discord.js");
 const manager = new discord_js_1.ShardingManager('./dist/bot.js', {
     token: _config_1.default.token,
+    respawn: false,
     silent: true,
     execArgv: ['--enable-source-maps']
 });
