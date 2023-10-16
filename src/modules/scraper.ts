@@ -8,18 +8,15 @@ let pixiv: Pixiv;
 /**
  * Returns all images scraped from the given url.
  */
-export default async function scrape(url: string) {
+export default async function scrape(source: string) {
     const images: string[] = [];
 
     // Let a separate server handle the parsing of twitter images with playwright.
-    const { imgs } = await fetch(`${config.scraper}?url=${url}`).then(res => res.json()).catch(() => ({ imgs: [url] }));
-    // Server returns original image if it couldn't find twitter images.
-    if (imgs[0] !== url) {
-        images.push(...imgs);
-    }
+    const { imgs } = await fetch(`${config.scraper}?url=${source}`).then(res => res.json()).catch(() => ({ imgs: [] }));
+    images.push(...imgs);
 
     // This part is parsing pixiv images.
-    if (url.startsWith('https://www.pixiv.net/')) {
+    if (source.startsWith('https://www.pixiv.net/')) {
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
             pixiv = await Pixiv.refreshLogin(config.pixiv).catch(() => {
@@ -31,19 +28,19 @@ export default async function scrape(url: string) {
         // We attempt to extract the image # from the url
         // Image number is always after /artworks/id, and at the end
         // @ts-expect-error parseInt can handle undefined
-        let imageNumber = parseInt(url.match(/\/artworks\/\d{8,}\/(?<id>-?[0-9]+)$/)?.groups.id);
+        let imageNumber = parseInt(source.match(/\/artworks\/\d{8,}\/(?<id>-?[0-9]+)$/)?.groups.id);
         if (imageNumber > 0) --imageNumber; // Positive indexes start at 0
 
-        const res = await pixiv.illust.get(url).catch(() => {
+        const res = await pixiv.illust.get(source).catch(() => {
             // We try to refresh token to hopefully fix the error.
             return pixiv.refreshToken().then(() => {
-                return pixiv.illust.get(url);
+                return pixiv.illust.get(source);
             }).catch(() => {
                 console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!');
             });
         });
         if (res) {
-            url = res.url!;
+            source = res.url!;
             // Try to find given imageNumber, choose first if not found.
             const new_url = res.meta_pages.at(imageNumber)?.image_urls.original ??
                 res.meta_pages.at(0)?.image_urls.original ??
@@ -59,17 +56,20 @@ export default async function scrape(url: string) {
     }
 
     // This part is parsing danbooru images.
-    if (url.startsWith('https://danbooru.donmai.us/')) {
-        const $ = await fetch(url).then(res => res.text()).then(load);
+    if (source.startsWith('https://danbooru.donmai.us/')) {
+        const $ = await fetch(source).then(res => res.text()).then(load);
         const sectionTag = $('section').find('.image-container');
         // Backup in case there is no section/image source
         const imgTag = $('img#image');
-        const source = sectionTag.attr('data-file-url') ?? sectionTag.attr('data-source') ??
+        const raw_image = sectionTag.attr('data-file-url') ?? sectionTag.attr('data-source') ??
             imgTag.attr('src')?.replace('/sample/', '/original/').replace('sample-', '');
-        if (source) {
-            images.push(source);
+        if (raw_image) {
+            images.push(raw_image);
         }
     }
 
-    return { images, source: url };
+    // No images could be found, tell caller to try uploading source
+    if (!images.length) images.push(source);
+
+    return { images, source };
 }
