@@ -352,7 +352,7 @@ export const upload: MessageCommand = {
         const all: { images: string[], source: string }[] = [];
         for (const url of args) {
             // Use our helper to get the image data.
-            all.push(await scrape(url).catch(() => ({ images: [], source: url })));
+            all.push(await scrape(url).catch(() => ({ images: [url], source: url })));
         }
         if (all.length) {
             const formdata = new FormData();
