@@ -7,6 +7,7 @@ import type { CustomClient } from '@classes/client';
 
 const manager = new ShardingManager('./dist/bot.js', {
     token: config.token,
+    respawn: false,
     silent: true,
     execArgv: ['--enable-source-maps']
 });
