@@ -38,6 +38,8 @@ export function fromGenderTypes(gend: GenderTypes) {
 
 // Used to transform any image into a CDN link
 function transformImage(img: string) {
+    // Better fix in future; nimg can be undefined.
+    if (!img) return img;
     if (img.match(/^https?:\/\//)) {
         // Commons are not uploaded to CDN
         return img;
