@@ -727,7 +727,7 @@ export function fetchAutocollectLength(userID: string) {
         `SELECT COUNT(*) FROM hoyolab_cookies_list
             WHERE id = $1`,
         [userID]
-    ).then(res => parseInt(res[0]?.count ?? '0'));
+    ).then(res => parseInt(res[0].count));
 }
 export function toggleAutocollect(userID: string, game: GameType, type: CheckinType, idx: string) {
     return query(
