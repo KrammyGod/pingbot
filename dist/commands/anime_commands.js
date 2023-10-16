@@ -2522,12 +2522,7 @@ exports.submit = {
                     continue;
                 }
                 // Use our helper to get the image data.
-                const { images, source } = await (0, scraper_1.default)(url).catch(() => ({ images: [], source: url }));
-                // No images found; go next
-                if (!images.length) {
-                    imgs.push(url);
-                    continue;
-                }
+                const { images, source } = await (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url }));
                 const { ext, blob } = await (0, cdn_1.getImage)(images[0]);
                 const formdata = new FormData();
                 formdata.append('images', blob, `tmp.${ext}`);
