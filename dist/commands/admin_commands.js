@@ -360,7 +360,7 @@ exports.upload = {
         const all = [];
         for (const url of args) {
             // Use our helper to get the image data.
-            all.push(await (0, scraper_1.default)(url).catch(() => ({ images: [], source: url })));
+            all.push(await (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url })));
         }
         if (all.length) {
             const formdata = new FormData();
@@ -371,9 +371,7 @@ exports.upload = {
                     formdata.append('sources', obj.source);
                 }
             }
-            if (formdata.has('images')) {
-                res.push(...await (0, cdn_1.uploadToCDN)(formdata));
-            }
+            res.push(...await (0, cdn_1.uploadToCDN)(formdata));
         }
         return message.reply({ content: `<${res.join('>\n<')}>` });
     }
