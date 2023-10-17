@@ -2499,14 +2499,14 @@ exports.submit = {
             const new_characters_log = await interaction.client.channels.fetch(new_characters_log_id);
             if (waifu) {
                 await new_characters_log.send({
-                    content: `Images added to character by @${user.tag} ` +
-                        `(accepted by @${interaction.user.tag}):\n${newCharacterInfo}`
+                    content: `Images added to character by ${user} ` +
+                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
             else {
                 await new_characters_log.send({
-                    content: `New character added by @${user.tag} ` +
-                        `(accepted by @${interaction.user.tag}):\n${newCharacterInfo}`
+                    content: `New character added by @${user} ` +
+                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
             return msg.delete();

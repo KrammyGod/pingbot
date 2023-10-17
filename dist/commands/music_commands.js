@@ -325,7 +325,7 @@ const play = {
         if (member.voice.channelId !== guildVoice.voiceChannel.id) {
             return interaction.editReply({ content: 'I am not with you, b-baka.' });
         }
-        const link = interaction.options.getString('query');
+        const link = interaction.options.getString('query').trim();
         const shuffle = interaction.options.getBoolean('shuffle') || false;
         // Only host can modify loop settings.
         if (guildVoice.host.id === member.id) {
@@ -410,7 +410,7 @@ const play = {
             }
         }
         else {
-            const infoData = await play_dl_1.default.search(exports.name, {
+            const infoData = await play_dl_1.default.search(link, {
                 source: { youtube: 'video' },
                 limit: 1,
                 unblurNSFWThumbnails: isNsfw
