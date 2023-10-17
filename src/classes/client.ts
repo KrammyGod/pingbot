@@ -60,52 +60,36 @@ export interface MessageCommand {
     execute: (msg: DTypes.Message & { readonly client: CustomClient }, args: string[]) => Promise<unknown>;
 }
 
-export interface SlashSubcommand {
-    data: DTypes.SlashCommandSubcommandBuilder;
-    desc: string; // Long description for help command
-    execute: (i: DTypes.ChatInputCommandInteraction & { client: CustomClient; }) => Promise<unknown>;
-    buttonReact?: (i: DTypes.ButtonInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-    menuReact?: (i: DTypes.AnySelectMenuInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-    textInput?: (i: DTypes.ModalSubmitInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-}
-
-export interface SlashSubcommandGroup {
-    data: DTypes.SlashCommandSubcommandGroupBuilder;
-    desc: string;
-    subcommands: Map<string, SlashSubcommand>;
-    execute: (i: DTypes.ChatInputCommandInteraction & { readonly client: CustomClient; }) => Promise<unknown>;
-    buttonReact?: (i: DTypes.ButtonInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-    menuReact?: (i: DTypes.AnySelectMenuInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-    textInput?: (i: DTypes.ModalSubmitInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-}
-
 // Basics that every slash command must have
-export interface SlashCommand {
-    data: DTypes.SlashCommandBuilder;
+interface Command {
+    data: DTypes.SlashCommandBuilder | DTypes.SlashCommandSubcommandBuilder | DTypes.SlashCommandSubcommandGroupBuilder;
     desc: string; // Long description for help command
-    subcommands?: Map<string, SlashSubcommandGroup | SlashSubcommand>;
     execute: (i: DTypes.ChatInputCommandInteraction & { readonly client: CustomClient; }) => Promise<unknown>;
     buttonReact?: (i: DTypes.ButtonInteraction & { readonly client: CustomClient }) => Promise<unknown>;
     menuReact?: (i: DTypes.AnySelectMenuInteraction & { readonly client: CustomClient }) => Promise<unknown>;
     textInput?: (i: DTypes.ModalSubmitInteraction & { readonly client: CustomClient }) => Promise<unknown>;
 }
-
-export interface CachedSlashCommand<T extends object> extends SlashCommand {
-    cache: Cache<T>;
+export interface SlashSubcommand extends Command {
+    data: DTypes.SlashCommandSubcommandBuilder;
+}
+export interface SlashSubcommandGroup extends Command {
+    data: DTypes.SlashCommandSubcommandGroupBuilder;
+    subcommands: Map<string, SlashSubcommand>;
+}
+export interface SlashCommand extends Command {
+    data: DTypes.SlashCommandBuilder;
+    subcommands?: Map<string, SlashSubcommandGroup | SlashSubcommand>;
 }
 
-export interface CachedSlashSubcommand<T extends object> extends SlashSubcommand {
-    cache: Cache<T>;
-}
-
-export interface CachedSlashSubcommandGroup<T extends object> extends SlashSubcommandGroup {
-    cache: Cache<T>;
-}
+type CacheData<T extends object> = { cache: Cache<T> };
+export type CachedSlashCommand<T extends object> = SlashCommand & CacheData<T>;
+export type CachedSlashSubcommand<T extends object> = SlashCommand & CacheData<T>;
+export type CachedSlashSubcommandGroup<T extends object> = SlashCommand & CacheData<T>;
 
 // Basics that every context command must have
 export interface ContextCommand {
     data: DTypes.ContextMenuCommandBuilder;
-    execute: (i: DTypes.ContextMenuCommandInteraction & { client: CustomClient; }) => Promise<unknown>;
+    execute: (i: DTypes.ContextMenuCommandInteraction & { readonly client: CustomClient; }) => Promise<unknown>;
 }
 
 export type InteractionCommand = SlashCommand | ContextCommand;
