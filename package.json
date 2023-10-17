@@ -44,8 +44,8 @@
     "@types/node": "^20.8.6",
     "@types/pg": "^8.10.5",
     "@types/pg-copy-streams": "^1.2.3",
-    "@typescript-eslint/eslint-plugin": "^6.7.5",
-    "@typescript-eslint/parser": "^6.7.5",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
     "eslint": "^8.51.0",
     "rimraf": "^5.0.5",
     "tsc-alias": "^1.8.8",
@@ -59,10 +59,10 @@
     "discord.js": "^14.13.0",
     "dotenv": "^16.3.1",
     "env-cmd": "^10.1.0",
-    "libsodium-wrappers": "^0.7.13",
     "pg": "^8.11.3",
     "pg-copy-streams": "^6.0.6",
     "pixiv.ts": "github:KrammyGod/pixiv.ts",
-    "play-dl": "^1.9.7"
+    "play-dl": "^1.9.7",
+    "sodium-native": "^4.0.4"
   }
 }
