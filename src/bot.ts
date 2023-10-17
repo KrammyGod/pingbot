@@ -358,6 +358,16 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
         let nameCommand = commandName;
         if (nameCommand && interaction) {
+            // Using this to include subcommands and subcommand groups for slash commands
+            // This is especially helpful for commands like music where they are all grouped up.
+            if (interaction.isCommand() && !interaction.isContextMenuCommand()) {
+                nameCommand = interaction.commandName;
+                const sub_cmd_group_name = interaction.options.getSubcommandGroup(false);
+                const sub_cmd_name = interaction.options.getSubcommand(false);
+                if (sub_cmd_group_name) nameCommand += ` ${sub_cmd_group_name}`;
+                if (sub_cmd_name) nameCommand += ` ${sub_cmd_name}`;
+                nameCommand = `</${nameCommand}:${interaction.commandId}>`;
+            }
             nameCommand += interaction.isButton() ? ' (button)' :
                 interaction.isAnySelectMenu() ? ' (select menu)' :
                     interaction.isModalSubmit() ? ' (modal)' :
