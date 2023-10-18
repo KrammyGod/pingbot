@@ -343,7 +343,7 @@ function handle_error(err, opts = {}) {
     // Send the error to the log channel and don't log when testing
     if (!_config_1.default.testing && client.is_ready) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
-        let nameCommand = commandName;
+        let nameCommand = `\`${commandName}\``;
         if (nameCommand && interaction) {
             // Using this to include subcommands and subcommand groups for slash commands
             // This is especially helpful for commands like music where they are all grouped up.
@@ -357,15 +357,20 @@ function handle_error(err, opts = {}) {
                     nameCommand += ` ${sub_cmd_name}`;
                 nameCommand = `</${nameCommand}:${interaction.commandId}>`;
             }
-            nameCommand += interaction.isButton() ? ' (button)' :
-                interaction.isAnySelectMenu() ? ' (select menu)' :
-                    interaction.isModalSubmit() ? ' (modal)' :
-                        interaction.isContextMenuCommand() ? ' (menu)' : '';
+            else if (!interaction.isContextMenuCommand()) {
+                nameCommand += interaction.isButton() ? ' (button)' :
+                    interaction.isAnySelectMenu() ? ' (select menu)' :
+                        interaction.isModalSubmit() ? ' (modal)' : '';
+                nameCommand += ` __Custom id: \`${interaction.customId}\`__`;
+            }
+            else {
+                nameCommand += ' (menu)';
+            }
         }
         let error_str = `${client.admin}\n`;
         // Command exists, log that too, otherwise generic error
         if (nameCommand)
-            error_str += `**Error in command \`${nameCommand}\`!**\n`;
+            error_str += `**Error in ${nameCommand}!**\n`;
         else
             error_str += '**Error occured in bot!**\n';
         // From an interaction, lets also include that information
