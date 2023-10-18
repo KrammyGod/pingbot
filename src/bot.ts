@@ -356,7 +356,7 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
     // Send the error to the log channel and don't log when testing
     if (!config.testing && client.is_ready) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
-        let nameCommand = commandName;
+        let nameCommand = `\`${commandName}\``;
         if (nameCommand && interaction) {
             // Using this to include subcommands and subcommand groups for slash commands
             // This is especially helpful for commands like music where they are all grouped up.
@@ -367,15 +367,18 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
                 if (sub_cmd_group_name) nameCommand += ` ${sub_cmd_group_name}`;
                 if (sub_cmd_name) nameCommand += ` ${sub_cmd_name}`;
                 nameCommand = `</${nameCommand}:${interaction.commandId}>`;
+            } else if (!interaction.isContextMenuCommand()) {
+                nameCommand += interaction.isButton() ? ' (button)' :
+                    interaction.isAnySelectMenu() ? ' (select menu)' :
+                        interaction.isModalSubmit() ? ' (modal)': '';
+                nameCommand += ` __Custom id: \`${interaction.customId}\`__`;
+            } else {
+                nameCommand += ' (menu)';
             }
-            nameCommand += interaction.isButton() ? ' (button)' :
-                interaction.isAnySelectMenu() ? ' (select menu)' :
-                    interaction.isModalSubmit() ? ' (modal)' :
-                        interaction.isContextMenuCommand() ? ' (menu)' : '';
         }
         let error_str = `${client.admin}\n`;
         // Command exists, log that too, otherwise generic error
-        if (nameCommand) error_str += `**Error in command \`${nameCommand}\`!**\n`;
+        if (nameCommand) error_str += `**Error in ${nameCommand}!**\n`;
         else error_str += '**Error occured in bot!**\n';
         // From an interaction, lets also include that information
         if (interaction) {
