@@ -39,11 +39,11 @@
     "start": "node . --enable-source-maps"
   },
   "devDependencies": {
-    "@types/cookie": "^0.5.2",
+    "@types/cookie": "^0.5.3",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.8.6",
-    "@types/pg": "^8.10.5",
-    "@types/pg-copy-streams": "^1.2.3",
+    "@types/node": "^20.8.7",
+    "@types/pg": "^8.10.7",
+    "@types/pg-copy-streams": "^1.2.4",
     "@typescript-eslint/eslint-plugin": "^6.8.0",
     "@typescript-eslint/parser": "^6.8.0",
     "eslint": "^8.51.0",
