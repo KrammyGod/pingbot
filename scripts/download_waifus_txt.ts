@@ -2,6 +2,15 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import { Pool, QueryResultRow } from 'pg';
 
+// The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
+const filePath = './files/waifus.txt';
+const imgReplacer = (i: string) => {
+    if (i.startsWith('https://i.imgur')) return i;
+    // Just to make it look prettier, include full link
+    // Change this to change output
+    return `${process.env.CDN_URL}/images/${i}`;
+};
+
 const pool = new Pool({
     host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
 });
@@ -40,23 +49,15 @@ class Waifu {
         this.name = row.name;
         this.gender = row.gender;
         this.origin = row.origin;
-        this.img = `[${row.img.map(i => {
-            if (i.startsWith('https://i.imgur')) return i;
-            // Just to make it look prettier, include full link
-            return `${process.env.CDN_URL}/images/${i}`;
-        }).join(', ')}]`;
-        this.nimg = `[${row.nimg.map(i => {
-            if (i.startsWith('https://i.imgur')) return i;
-            // Just to make it look prettier, include full link
-            return `${process.env.CDN_URL}/images/${i}`;
-        }).join(', ')}]`;
+        this.img = `[${row.img.map(imgReplacer).join(', ')}]`;
+        this.nimg = `[${row.nimg.map(imgReplacer).join(', ')}]`;
     }
 }
 
 const connector = '+';
 const horizontalLine = '―';
 const verticalLine = '|';
-const writer = fs.createWriteStream('./files/waifus.txt');
+const writer = fs.createWriteStream(filePath);
 function center(str: string, size: number) {
     // Not asserted, but assuming size >= str.length
     const len = size - str.length;
