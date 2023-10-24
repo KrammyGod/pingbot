@@ -7,6 +7,9 @@ import * as fs from 'fs';
 import * as rl from 'readline';
 import { Pool, QueryResultRow } from 'pg';
 
+// The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
+const filePath = './files/waifus.txt';
+
 // Copied necessary stuff from database.ts
 type WaifuDetails = {
     iid: string;
@@ -39,7 +42,7 @@ class Waifu {
         this.gender = row.gender;
         this.origin = row.origin;
         this.img = row.img.map(i => {
-            // reverse of create_waifus_txt.ts
+            // reverse of download_waifus_txt.ts
             // We want to keep IDs of images to upload to database
             if (i.startsWith(process.env.CDN_URL!)) {
                 return i.replace(`${process.env.CDN_URL}/images/`, '');
@@ -47,7 +50,7 @@ class Waifu {
             return i;
         });
         this.nimg = row.nimg.map(i => {
-            // reverse of create_waifus_txt.ts
+            // reverse of download_waifus_txt.ts
             // We want to keep IDs of images to upload to database
             if (i.startsWith(process.env.CDN_URL!)) {
                 return i.replace(`${process.env.CDN_URL}/images/`, '');
@@ -71,7 +74,7 @@ function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: st
 
 function loadFromFile() {
     // Header takes up 3 lines, footer takes up 1 line.
-    const toParse = fs.readFileSync('./files/waifus.txt', 'utf8').split('\n').slice(3, -2);
+    const toParse = fs.readFileSync(filePath, 'utf8').split('\n').slice(3, -2);
     const backupWaifus: Waifu[] = [];
     for (const line of toParse) {
         // Remove first and last connector
@@ -98,12 +101,12 @@ function findDiff(old: Waifu, updated: Waifu) {
         diff += `\x1b[96mOrigin\x1b[0m: \x1b[31m${old.origin}\x1b[0m -> \x1b[92m${updated.origin}\x1b[0m\n`;
     }
     if (old.img.join() !== updated.img.join()) {
-        diff += `\x1b[96mNormal Images:\x1b[0m \x1b[31m[${old.img.join(', ')}]\x1b[0m -> ` +
-            `\x1b[92m[${updated.img.join(', ')}]\x1b[0m\n`;
+        diff += `\x1b[96mNormal Images:\x1b[0m \x1b[31m[${old.img.join(', ')}] (${old.img.length})\x1b[0m -> ` +
+            `\x1b[92m[${updated.img.join(', ')}] (${updated.img.length})\x1b[0m\n`;
     }
     if (old.nimg.join() !== updated.nimg.join()) {
-        diff += `\x1b[96mLewd Images:\x1b[0m \x1b[31m[${old.nimg.join(', ')}]\x1b[0m -> ` +
-            `\x1b[92m[${updated.nimg.join(', ')}]\x1b[0m\n`;
+        diff += `\x1b[96mLewd Images:\x1b[0m \x1b[31m[${old.nimg.join(', ')}] (${old.nimg.length})\x1b[0m -> ` +
+            `\x1b[92m[${updated.nimg.join(', ')}] (${updated.nimg.length})\x1b[0m\n`;
     }
     return diff;
 }
