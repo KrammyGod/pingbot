@@ -1,4 +1,3 @@
-import axios from 'axios';
 import config from '@config';
 import { getUID } from '@modules/hoyolab';
 import { Client } from 'pg';
@@ -9,22 +8,38 @@ const client = new Client({ connectionTimeoutMillis: 2000 });
 const LOGGER = {
     today: new Date().toLocaleDateString(),
     start() {
-        console.log(`START ${process.env.name} [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC`);
+        console.log(
+            '\x1b[92m%s\x1b[0m',
+            `BGN [${LOGGER.today}]: BEGIN ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC`
+        );
     },
     log(msg?: unknown) {
-        if (!msg) return console.log(`LOG [${LOGGER.today}]:`);
-        for (const line of inspect(msg).split('\n')) {
-            console.log(`LOG [${LOGGER.today}]: ${line}`);
+        if (!msg) return console.log('\x1b[96m%s\x1b[0m', `LOG [${LOGGER.today}]:`);
+        const lines = typeof msg === 'string' ? msg : inspect(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
+            console.log('\x1b[96m%s\x1b[0m%s', `LOG [${LOGGER.today}]: `, line);
         }
     },
     error(msg?: unknown) {
-        if (!msg) return console.log(`ERROR [${LOGGER.today}]:`);
-        for (const line of inspect(msg).split('\n')) {
-            console.log(`ERROR [${LOGGER.today}]: ${line}`);
+        if (!msg) return console.log('\x1b[31m%s\x1b[0m', `ERR [${LOGGER.today}]:`);
+        const lines = typeof msg === 'string' ? msg : inspect(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
+            console.log('\x1b[31m%s\x1b[0m%s', `ERR [${LOGGER.today}]: `, line);
         }
     },
     end() {
-        console.log(`END [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC\n\n`);
+        console.log(
+            '\x1b[95m%s\x1b[0m',
+            `END [${LOGGER.today}]: END ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC\n`
+        );
     }
 };
 
@@ -43,7 +58,7 @@ function on_account_error(err: object, aid: string, uid: string) {
     LOGGER.error(msg);
     LOGGER.error();
     LOGGER.error(err);
-    msg += '\n```' + inspect(err) + '```';
+    msg += '\n```\n' + inspect(err) + '```';
     add(msg + '\n\n');
 }
 
@@ -67,6 +82,8 @@ type RewardAPIResponse = {
             readonly name: string;
             readonly cnt: string;
         }[]
+        readonly resign: boolean;
+        readonly now: string; // Epoch format
     };
 };
 type InfoAPIResponse = {
@@ -79,6 +96,7 @@ type InfoAPIResponse = {
         readonly first_bind: boolean;
         readonly is_sub: boolean;
         readonly region: string;
+        readonly month_last_day: boolean;
     } | null;
 };
 type RoleAPIResponse = {
@@ -158,16 +176,17 @@ class Sign {
         };
     }
     async getAwards() {
-        return axios.get<RewardAPIResponse>(CONFIG.rewardURL, { headers: this.header })
-            .then(res => res.data.data)
+        return fetch(CONFIG.rewardURL, { headers: this.header })
+            .then(res => res.json())
+            .then((data: RewardAPIResponse) => data.data)
             .catch(err => {
                 LOGGER.error('failure in getter awards');
                 throw err;
             });
     }
     async getInfo() {
-        const res = await axios.get<InfoAPIResponse>(CONFIG.infoURL, { headers: this.header })
-            .then(res  => res.data)
+        const res = await fetch(CONFIG.infoURL, { headers: this.header })
+            .then(res => res.json() as Promise<InfoAPIResponse>)
             .catch(err => {
                 LOGGER.error('failure in getter info');
                 throw err;
@@ -179,8 +198,8 @@ class Sign {
         return res.data!;
     }
     async getRegion(): Promise<[string, string]> {
-        const res = await axios.get<RoleAPIResponse>(CONFIG.roleURL, { headers: this.header })
-            .then(res => res.data)
+        const res = await fetch(CONFIG.roleURL, { headers: this.header })
+            .then(res => res.json() as Promise<RoleAPIResponse>)
             .catch(err => {
                 LOGGER.error('failure in getter region');
                 throw err;
@@ -195,13 +214,12 @@ class Sign {
     async run(): Promise<CollectResult | undefined> {
         LOGGER.log('Running sign in...');
         if (!this.notify) {
-            return axios<SignAPIResponse>({
+            return fetch(CONFIG.signURL, {
                 method: 'POST',
-                url: CONFIG.signURL,
-                headers: this.header,
-                data: { 'act_id': CONFIG.actID }
-            }).then(res => {
-                const risk_code = res.data.data?.gt_result?.risk_code;
+                headers: { ...this.header, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'act_id': CONFIG.actID })
+            }).then(res => res.json()).then((data: SignAPIResponse) => {
+                const risk_code = data.data?.gt_result?.risk_code;
                 if (risk_code && risk_code !== 0) {
                     // Captcha verification required if risk_code is not 0.
                     LOGGER.error('Captcha verification required.');
@@ -236,12 +254,11 @@ class Sign {
             return result;
         }
 
-        const res = await axios<SignAPIResponse>({
+        const res = await fetch(CONFIG.signURL, {
             method: 'POST',
-            url: CONFIG.signURL,
-            headers: this.header,
-            data: { 'act_id': CONFIG.actID }
-        }).then(res => res.data);
+            headers: { ...this.header, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'act_id': CONFIG.actID })
+        }).then(res => res.json() as Promise<SignAPIResponse>);
 
         // Checking for last minute failures/anti-bot
         const risk_code = res.data?.gt_result?.risk_code;
@@ -296,10 +313,10 @@ async function collect() {
         LOGGER.error('With errors...');
     }
     // Send message to be received by index.ts
-    return axios({
+    return fetch(`http://localhost:${config.port}`, {
         method: 'POST',
-        url: `http://localhost:${config.port}`,
-        data: message
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
     });
 }
 
@@ -310,7 +327,7 @@ async function collect() {
         await collect();
     } catch (e) {
         LOGGER.error(e);
-        add('I encountered a really bad error... save me...\n```' + inspect(e) + '```');
+        add('I encountered a really bad error... save me...\n```\n' + inspect(e) + '```');
     } finally {
         await client.end().catch(() => { });
         LOGGER.end();

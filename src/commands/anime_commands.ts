@@ -1,10 +1,9 @@
 import fs from 'fs';
-import axios from 'axios';
 import config from '@config';
 import scrape from '@modules/scraper';
-import FormData from 'form-data';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import { getImage, uploadToCDN } from '@modules/cdn';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -15,13 +14,7 @@ import {
     ApplicationCommandType
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { Readable } from 'stream';
 import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
-
-// Setup ffmpeg
-import { path } from '@ffmpeg-installer/ffmpeg';
-import ffmpeg from 'fluent-ffmpeg';
-ffmpeg.setFfmpegPath(config.ffmpeg || path);
 
 export const name = 'Animes/Gacha';
 export const desc = 'This category is for commands that deal with the character gacha.';
@@ -425,7 +418,7 @@ export const anime: SlashCommand = {
           'Usage: `/anime anime: <anime_name> user: [user]`\n\n' +
           '__**Options**__\n' +
           '*anime:* The name of the anime to search for. (Required)\n' +
-          '*user:* Check a different user\'s list. (Default: You)\n\n' +
+          "*user:* Check a different user's list. (Default: You)\n\n" +
           'Examples: `/anime anime: COTE`, `/anime anime: Genshin user: @krammygod`',
 
     async execute(interaction) {
@@ -494,7 +487,7 @@ export const bal: SlashCommand = {
                 .setDescription('The user to stalk.'))
         .setDescription('Show your current balance.'),
 
-    desc: 'Check anyone\'s current balance of brons!\n\n' +
+    desc: "Check anyone's current balance of brons!\n\n" +
           'Usage: `/bal user: [user]`\n\n' +
           '__**Options**__\n' +
           '*user:* The user to stalk. (Default: You)\n\n' +
@@ -748,9 +741,9 @@ export const daily: SlashCommand = {
     desc: 'What is {/daily} you ask?  Well, here you will learn\n' +
           'That once in a day, 200 bron you may earn.\n\n' +
           'And if a waifu is at level 5 or more,\n' +
-          'Then there\'s a chance extra bron is in store!\n\n' +
+          "Then there's a chance extra bron is in store!\n\n" +
           'But if you are new, use {/daily} to start,\n' +
-          'And 1000 bron just this once I\'ll impart.\n\n' +
+          "And 1000 bron just this once I'll impart.\n\n" +
           'So when does your next {/daily} go live?\n' +
           'The answer is midnight, UTC -5!\n' +
           '\\- *A prose by @ryu_minoru*\n\n' +
@@ -807,7 +800,7 @@ export const profile: SlashCommand = {
     desc: 'All stats combined into one simple and clean display!\n\n' +
           'Usage: `/profile user: [user]`\n\n' +
           '__**Options**__\n' +
-          '*user:* The user\'s profile to see. (Default: You)\n\n' +
+          "*user:* The user's profile to see. (Default: You)\n\n" +
           'Examples: `/profile`, `/profile user: @krammygod`',
 
     async execute(interaction) {
@@ -1260,13 +1253,12 @@ async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Ch
             new ButtonBuilder()
                 .setCustomId('upgrade_char/confirm')
                 .setLabel('Yes!')
-                .setEmoji('✅')
+                .setEmoji('⏫')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId('upgrade_char/cancel')
-                .setLabel('No.')
-                .setEmoji('❎')
-                .setStyle(ButtonStyle.Danger));
+                .setLabel('No')
+                .setStyle(ButtonStyle.Secondary));
     embed.setColor(Colors.Gold).setTitle(
         `Are you sure you want to use ${costs[char.lvl]} ` +
         `${(interaction.client as CustomClient).bot_emojis.brons} to upgrade ${char.name} ` +
@@ -1384,13 +1376,12 @@ async function delete_char(interaction: DTypes.AnySelectMenuInteraction, char: D
             new ButtonBuilder()
                 .setCustomId('delete_char/confirm')
                 .setLabel('Yes... :(')
-                .setEmoji('✅')
+                .setEmoji('🚮')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('delete_char/cancel')
                 .setLabel('No! Take me back!')
-                .setEmoji('❌')
-                .setStyle(ButtonStyle.Success));
+                .setStyle(ButtonStyle.Secondary));
     const message = await interaction.followUp({
         embeds: [embed],
         components: [buttons],
@@ -1727,38 +1718,41 @@ async function generateCharacterDisplay(
 ) {
     await character.loadWaifu();
     const img = character.getImage(channel);
-    let add_on = '';
     let refund = 0;
+    let add_on = '';
+    let add_emoji = '';
     if (!character.new) {
-        // Duplicate, refund brons
-        refund += character.fc ? 4 : 2; // CONSTANT: Refund brons
-        add_on = `Already obtained +${refund} ${(channel.client as CustomClient).bot_emojis.brons}.`;
+        // CONSTANT: Refund brons
+        refund = character.fc ? 4 : 2;
+        const refund_str = `+${refund} ${(channel.client as CustomClient).bot_emojis.brons}`;
         if (character.lvl > 1) {
-            add_on += ` Leveled up! 🆙 (Now Lvl. ${character.lvl})`;
+            add_emoji = ` 🆙 ${refund_str}`;
+            add_on = `**Reached level ${character.lvl}!**\n`;
             if (character.unlockedImages) {
-                add_on += `\nReached level ${character.lvl}! You unlocked new image(s)! 🎉`;
-                add_on += '\nFind the waifu to switch to the image!';
+                add_on += 'You unlocked new image(s)! 🎉\n';
+                add_on += 'Find the waifu to switch the image!\n';
             } else if (character.unlockedNMode && character.thisIsNToggleable()) {
-                add_on += `\nReached level ${character.lvl}! You unlocked a new mode! 🎉`;
-                add_on += '\nFind the waifu to switch to lewd mode!';
+                add_on += 'You unlocked a new mode! 🎉\n';
+                add_on += 'Find the waifu to switch to lewd mode!\n';
             } else if (character.unlockedNImages && character.thisIsNSwitchable()) {
-                add_on += `\nReached level ${character.lvl}! You unlocked new lewd image(s)! 🎉`;
-                add_on += '\nFind the waifu to switch to the image!';
+                add_on += 'You unlocked new lewd image(s)! 🎉\n';
+                add_on += 'Find the waifu to switch the image!\n';
             }
         } else {
-            add_on += ' Max level.';
+            add_emoji = ` 🆒 ${refund_str}`;
         }
+    } else {
+        add_emoji = ' 🆕';
     }
     const embed = new EmbedBuilder({
-        title: '**Results:**',
         description:
-            `You got ${character.getWFC(channel)}**` +
-            `${character.name.replace('*', '\\*')}` +
-            `**${character.getGender()}! ${character.new ? '🆕' : ''}\n` +
-            `__From:__ *${character.origin.replace('*', '\\*')}*\n` +
-            `${add_on}${add_on ? '\n' : ''}` +
-            `[Source](${DB.getSource(img)})\n[Raw Image](${img})`
-    }).setColor(character.fc ? Colors.Gold : Colors.LightGrey).setAuthor({
+            `## ${character.getWFC(channel)}${character.name}${character.getGender()}${add_emoji}\n` +
+            `**__From:__ *${character.origin.replace('*', '\\*')}***\n` +
+            `${add_on}` +
+            `[Source](${DB.getSource(img)})\n` +
+            `[Raw Image](${img})`,
+        color: character.fc ? Colors.Gold : Colors.LightGrey
+    }).setAuthor({
         name: `@${user.tag}`,
         iconURL: user.displayAvatarURL()
     }).setImage(img);
@@ -1980,13 +1974,12 @@ export const dall: SlashCommand = {
                 new ButtonBuilder()
                     .setCustomId('dall/confirm')
                     .setLabel('Yes... :(')
-                    .setEmoji('✅')
+                    .setEmoji('🚮')
                     .setStyle(ButtonStyle.Danger),
                 new ButtonBuilder()
                     .setCustomId('dall/cancel')
                     .setLabel('No! Take me back!')
-                    .setEmoji('❌')
-                    .setStyle(ButtonStyle.Success));
+                    .setStyle(ButtonStyle.Secondary));
         // Setup confirmation
         const message = await interaction.editReply({
             embeds: [embed],
@@ -2590,7 +2583,7 @@ export const submit: CachedSlashCommand<{
           '__**Character Submission Rules:**__\n' +
           '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
           '2. If the character is from an **anime** that already exists, it must use the exact same name.\n' +
-          '3. The character\'s **gender** must be one of: `Male`, `Female`, `Unknown`.\n' +
+          "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
           '4. If its a new character, the character must have at least **one normal image**.\n' +
           '5. If its a new character, and you include a lewd image, the character must have at least ' +
           '**two normal images**.\n' +
@@ -2629,7 +2622,7 @@ export const submit: CachedSlashCommand<{
                 style: ButtonStyle.Primary
             }),
             new ButtonBuilder({
-                label: 'Upload to Imgur',
+                label: 'Upload to CDN',
                 customId: 'submit/0/upload',
                 style: ButtonStyle.Secondary
             }),
@@ -2648,9 +2641,9 @@ export const submit: CachedSlashCommand<{
         components: [
             new ActionRowBuilder<DTypes.TextInputBuilder>({
                 components: [new TextInputBuilder({
-                    label: 'Character\'s name',
+                    label: "Character's name",
                     customId: 'name',
-                    placeholder: 'Enter the character\'s name',
+                    placeholder: "Enter the character's name",
                     style: TextInputStyle.Short,
                     maxLength: 100,
                     required: true
@@ -2658,7 +2651,7 @@ export const submit: CachedSlashCommand<{
             }),
             new ActionRowBuilder<DTypes.TextInputBuilder>({
                 components: [new TextInputBuilder({
-                    label: 'Character\'s gender',
+                    label: "Character's gender",
                     customId: 'gender',
                     placeholder: 'Female, Male, or Unknown',
                     style: TextInputStyle.Short,
@@ -2670,7 +2663,7 @@ export const submit: CachedSlashCommand<{
                 components: [new TextInputBuilder({
                     label: 'Anime name',
                     customId: 'origin',
-                    placeholder: 'Enter the anime\'s name',
+                    placeholder: "Enter the anime's name",
                     style: TextInputStyle.Short,
                     maxLength: 100,
                     required: true
@@ -2760,7 +2753,8 @@ export const submit: CachedSlashCommand<{
             }).catch(() => { });
         } else if (action === 'approve') {
             await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith('https://i.imgur')) || nimg.some(i => !i.startsWith('https://i.imgur'))) {
+            if (img.some(i => !i.startsWith(config.cdn)) ||
+                nimg.some(i => !i.startsWith(config.cdn))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
                     ephemeral: true
@@ -2768,6 +2762,13 @@ export const submit: CachedSlashCommand<{
                 await interaction.editReply({ components: [this.secretButtons] });
                 return;
             }
+            // Use IDs for images instead of full link
+            submission.data.img.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${config.cdn}/images/`, '');
+            });
+            submission.data.nimg.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${config.cdn}/images/`, '');
+            });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
                 if (err instanceof DatabaseMaintenanceError) throw err;
@@ -2793,83 +2794,47 @@ export const submit: CachedSlashCommand<{
             ) as DTypes.TextBasedChannel;
             if (waifu) {
                 await new_characters_log.send({
-                    content: `Images added to character by @${user.tag} ` +
-                        `(accepted by @${interaction.user.tag}):\n${newCharacterInfo}`
+                    content: `Images added to character by ${user} ` +
+                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             } else {
                 await new_characters_log.send({
-                    content: `New character added by @${user.tag} ` +
-                        `(accepted by @${interaction.user.tag}):\n${newCharacterInfo}`
+                    content: `New character added by @${user} ` +
+                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
             return msg.delete();
         } else if (action === 'upload') {
             await interaction.update({ components: [] });
             // All image uploads go here.
-            const imgs = [];
+            const imgs: string[] = [];
             for (const url of [...img, ...nimg]) {
-                let imageData: Readable | string = url;
-                let headers: string; // Custom headers for ffmpeg in case of pixiv images.
-                let description = undefined;
-                const formdata = new FormData();
-
-                // Do not reupload imgur images.
-                if (url.startsWith('https://i.imgur.com/')) {
+                // Do not reupload CDN images.
+                if (url.startsWith(config.cdn)) {
                     imgs.push(url);
                     continue;
                 }
-
                 // Use our helper to get the image data.
-                await scrape(url).then(res => {
-                    imageData = res.source;
-                    description = res.sauce;
-                }).catch(() => { });
-
-                // For now, we only ignore gifs (all animated will be ignored)
-                if (!imageData.includes('.gif')) {
-                    // Add headers to prevent 403.
-                    if (imageData.startsWith('https://i.pximg.net/')) {
-                        headers = 'Referer: https://www.pixiv.net/';
-                    }
-                    // Use ffmpeg to quickly convert into jpg.
-                    const filePath = this.uniqueFileName('.jpg');
-                    // This allows us to block until ffmpeg is done.
-                    await new Promise(resolve => {
-                        const cmd = ffmpeg().input(imageData);
-                        if (headers) cmd.inputOption('-headers', headers);
-                        cmd.save(filePath).on('end', () => {
-                            // Clean up after reading file.
-                            imageData = fs.createReadStream(filePath).on('end', async () => {
-                                return fs.promises.unlink(filePath).catch(() => { });
-                            });
-                            resolve(undefined);
-                        }).on('error', () => {
-                            fs.promises.unlink(filePath).catch(() => { });
-                            resolve(undefined); // If ffmpeg fails, we can still try imgur.
-                        });
-                    });
+                const { images, source } = await scrape(url).catch(() => ({ images: [url], source: url }));
+                const { ext, blob } = await getImage(images[0]);
+                
+                const formdata = new FormData();
+                formdata.append('images', blob, `tmp.${ext}`);
+                // Won't automatically add url as source
+                // if the url is to a raw image; must be manually updated.
+                if (images[0] !== source) {
+                    formdata.append('sources', url);
                 }
-
-                // Post to imgur to upload and send back the link.
-                formdata.append('image', imageData);
-                formdata.append('title', name);
-                if (description) formdata.append('description', description);
-                const request_config = {
-                    method: 'POST',
-                    maxBodyLength: Infinity,
-                    url: 'https://api.imgur.com/3/image',
-                    headers: {
-                        'Authorization': `Client-ID ${config.imgur}`,
-                        ...formdata.getHeaders()
-                    },
-                    data: formdata
-                };
-                imgs.push(axios(request_config).then(i => i.data.data.link).catch(() => url));
+                // Upload to our CDN and get url back.
+                const [uploaded_url] = await uploadToCDN(formdata);
+                if (uploaded_url) {
+                    imgs.push(uploaded_url);
+                } else {
+                    imgs.push(url);
+                }
             }
-            await Promise.all(imgs).then(imgs => {
-                submission.data.img = imgs.splice(0, img.length);
-                submission.data.nimg = imgs.splice(0, nimg.length);
-            });
+            submission.data.img = imgs.splice(0, img.length);
+            submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = EmbedBuilder.from(interaction.message!.embeds[0]);
             await this.setWaifuInfoEmbed(embed, submission.data);
@@ -3121,7 +3086,7 @@ export const submit: CachedSlashCommand<{
                     customId: `submitSearchWaifu${id++}`, // Fixes a very specific bug
                     components: [new ActionRowBuilder<TextInputBuilder>({
                         components: [new TextInputBuilder({
-                            label: 'Character\'s name',
+                            label: "Character's name",
                             customId: 'name',
                             placeholder: 'Enter the name of the character',
                             style: TextInputStyle.Short,

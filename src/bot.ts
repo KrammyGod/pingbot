@@ -117,8 +117,8 @@ async function handle_command(message: DTypes.Message) {
     if (command && (client.is_listening || command.admin)) {
         const args = [];
         message.content = message.content.replace(message.content.split(/\s/)[0], '').trim();
-        // Split by spaces, strip quotes
-        for (const reply of message.content.split(/(?!\B"[^"]*) (?![^"]*"\B)/)) {
+        // Split by whitespace, strip quotes
+        for (const reply of message.content.split(/(?!\B"[^"]*)\s(?![^"]*"\B)/)) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
@@ -356,16 +356,29 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
     // Send the error to the log channel and don't log when testing
     if (!config.testing && client.is_ready) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
-        let nameCommand = commandName;
+        let nameCommand = `\`${commandName}\``;
         if (nameCommand && interaction) {
-            nameCommand += interaction.isButton() ? ' (button)' :
-                interaction.isAnySelectMenu() ? ' (select menu)' :
-                    interaction.isModalSubmit() ? ' (modal)' :
-                        interaction.isContextMenuCommand() ? ' (menu)' : '';
+            // Using this to include subcommands and subcommand groups for slash commands
+            // This is especially helpful for commands like music where they are all grouped up.
+            if (interaction.isCommand() && !interaction.isContextMenuCommand()) {
+                nameCommand = interaction.commandName;
+                const sub_cmd_group_name = interaction.options.getSubcommandGroup(false);
+                const sub_cmd_name = interaction.options.getSubcommand(false);
+                if (sub_cmd_group_name) nameCommand += ` ${sub_cmd_group_name}`;
+                if (sub_cmd_name) nameCommand += ` ${sub_cmd_name}`;
+                nameCommand = `</${nameCommand}:${interaction.commandId}>`;
+            } else if (!interaction.isContextMenuCommand()) {
+                nameCommand += interaction.isButton() ? ' (button)' :
+                    interaction.isAnySelectMenu() ? ' (select menu)' :
+                        interaction.isModalSubmit() ? ' (modal)': '';
+                nameCommand += ` __Custom id: \`${interaction.customId}\`__`;
+            } else {
+                nameCommand += ' (menu)';
+            }
         }
         let error_str = `${client.admin}\n`;
         // Command exists, log that too, otherwise generic error
-        if (nameCommand) error_str += `**Error in command \`${nameCommand}\`!**\n`;
+        if (nameCommand) error_str += `**Error in ${nameCommand}!**\n`;
         else error_str += '**Error occured in bot!**\n';
         // From an interaction, lets also include that information
         if (interaction) {
@@ -391,7 +404,7 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
         // Discord only allows 2000 characters per message, 6 more for backticks, 3 for dots
         // 2000 - 6 - 3 = 1991
         const keepLength = Math.min(error_str.length + err_str.length, 1991) - error_str.length;
-        error_str += '```' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
+        error_str += '```\n' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
         // We catch so there are no recursive errors.
         client.log_channel.send({ content: error_str }).catch(() => { });
     }
@@ -486,7 +499,7 @@ function cleanup() {
         '💨 My apologies, it appears my instruments are out of tune. ' +
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
-    const promises = [DB.end().catch(() => { })];
+    const promises = [DB.end().catch(() => { }), client.destroy()];
     for (const guildVoice of GuildVoices.values()) {
         promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }).catch(() => { }));
         guildVoice.destroy();
@@ -495,7 +508,6 @@ function cleanup() {
         for (const id of client.shard?.ids ?? []) {
             console.log(`Finished cleaning up shard ${id}`);
         }
-        client.destroy();
         process.exit(0);
     });
 }

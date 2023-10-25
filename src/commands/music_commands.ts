@@ -103,7 +103,7 @@ async function nowPlaying(guildId: string) {
         client.bot_emojis.barempty.repeat(emptyBars);
     const embed = new EmbedBuilder({
         title: '🎶 Now Playing:',
-        description: `${guildVoice.paused ? '⏸' : '▶️'} ${song.linkedTitle} ` +
+        description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
                      `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
                      `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
         color: Colors.Blue
@@ -333,7 +333,7 @@ const play: SlashSubcommand & PlayPrivates = {
             return interaction.editReply({ content: 'I am not with you, b-baka.' });
         }
 
-        const link = interaction.options.getString('query')!;
+        const link = interaction.options.getString('query')!.trim();
         const shuffle = interaction.options.getBoolean('shuffle') || false;
         // Only host can modify loop settings.
         if (guildVoice.host.id === member.id) {
@@ -410,7 +410,7 @@ const play: SlashSubcommand & PlayPrivates = {
                 }
             }
         } else {
-            const infoData = await Play.search(name, {
+            const infoData = await Play.search(link, {
                 source: { youtube: 'video' },
                 limit: 1,
                 unblurNSFWThumbnails: isNsfw
@@ -500,7 +500,7 @@ const clear: SlashSubcommand = {
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply) return interaction.editReply(reply);
         guildVoice.fullReset();
-        return interaction.editReply({ content: '❌ **RIP Queue.**' });
+        return interaction.editReply({ content: '🚮 **RIP Queue.**' });
     }
 };
 
@@ -567,7 +567,7 @@ const pause: SlashSubcommand = {
         } else {
             guildVoice.player.pause();
             guildVoice.paused = true;
-            return interaction.editReply({ content: '⏸ Paused.' });
+            return interaction.editReply({ content: '⏸️ Paused.' });
         }
     }
 };
@@ -1022,19 +1022,21 @@ const restart: SlashSubcommand = {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply) return interaction.editReply(reply);
+        if (!guildVoice.fullQueue.length) {
+            return interaction.editReply({ content: 'There is no queue.' });
+        }
         const message = await interaction.editReply({
-            content: 'Are you sure you want to restart the queue?',
+            content: '# Are you sure you want to restart the queue?',
             components: [new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                     .setLabel('Yes!')
                     .setCustomId('restart/confirm')
-                    .setEmoji('👍')
+                    .setEmoji('🔄')
                     .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
-                    .setLabel('No!')
+                    .setLabel('No')
                     .setCustomId('restart/cancel')
-                    .setEmoji('👎')
-                    .setStyle(ButtonStyle.Danger)
+                    .setStyle(ButtonStyle.Secondary)
             )]
         });
         const i = await message.awaitMessageComponent({
@@ -1048,12 +1050,12 @@ const restart: SlashSubcommand = {
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
                 playNext(interaction.guildId!);
-                return i.editReply({ content: '✅ Successfully restarted the queue.', components: [] });
+                return i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             } else {
                 return i.editReply({ content: 'There is no queue.', components: [] });
             }
         } else {
-            return interaction.client.deleteFollowUp(interaction, message);
+            return interaction.deleteReply();
         }
     }
 };

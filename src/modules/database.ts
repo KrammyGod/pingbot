@@ -1,3 +1,4 @@
+import config from '@classes/config';
 import * as Utils from '@modules/utils';
 import { Pool } from 'pg';
 import { Colors, EmbedBuilder } from 'discord.js';
@@ -19,7 +20,7 @@ export function toGenderTypes(gend: string) {
         case 'Unknown':
             return GenderTypes.Unknown;
         default:
-            throw new Error('Invalid gender string');
+            throw new Error(`Invalid gender string: ${gend}`);
     }
 }
 export function fromGenderTypes(gend: GenderTypes) {
@@ -31,8 +32,19 @@ export function fromGenderTypes(gend: GenderTypes) {
         case GenderTypes.Unknown:
             return 'Unknown';
         default:
-            throw new Error('Invalid gender type');
+            throw new Error(`Invalid gender type: ${gend}`);
     }
+}
+
+// Used to transform any image into a CDN link
+function transformImage(img: string) {
+    // Better fix in future; nimg can be undefined.
+    if (!img) return img;
+    if (img.match(/^https?:\/\//)) {
+        // Commons are not uploaded to CDN
+        return img;
+    }
+    return `${config.cdn}/images/${img}`;
 }
 
 type WaifuDetails = {
@@ -67,8 +79,8 @@ class Waifu {
         this.name = row.name;
         this.gender = toGenderTypes(row.gender);
         this.origin = row.origin;
-        this.img = row.img;
-        this.nimg = row.nimg;
+        this.img = row.img.map(transformImage);
+        this.nimg = row.nimg.map(transformImage);
         this.fc = row.fc;
     }
 
@@ -94,14 +106,6 @@ class Waifu {
         }
         return '';
     }
-
-    fullClone() {
-        return new Waifu({
-            ...this,
-            img: this.img.slice(),
-            nimg: this.nimg.slice()
-        });
-    }
 }
 
 type CharacterDetails = {
@@ -119,7 +123,7 @@ type CharacterDetails = {
     nimg: string;
     nsfw: boolean;
 }
-export class Character {
+class Character {
     uid: string;
     wid: string;
     idx?: number;
@@ -134,6 +138,9 @@ export class Character {
     nimg: string;
     nsfw: boolean;
     displayLvl: string;
+    /**
+     * Only available if {@link loadWaifu} is called.
+     */
     waifu?: Waifu;
     private loaded: boolean;
 
@@ -168,8 +175,11 @@ export class Character {
         // _img and _nimg are used to store the index of the image
         this._img = row._img ?? 1;
         this._nimg = row._nimg ?? 1;
-        this.img = row.img;
-        this.nimg = row.nimg;
+        // Transform img and nimg to their actual links
+        // In our database, we only store the ID if they are in our CDN
+        // Thus, we need to convert it into an available link
+        this.img = transformImage(row.img);
+        this.nimg = transformImage(row.nimg);
         this.nsfw = row.nsfw;
         this.displayLvl = this.lvl < 0 ? '∞' : this.lvl.toString();
     }
@@ -245,6 +255,10 @@ export class Character {
         return ' ' + this.gender;
     }
 
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     getUStatus(l = '', r = '') {
         if (!this.loaded) throw new Error('Getting ustatus before waifu is loaded');
         // Character doesn't have a level, default waifus database.
@@ -264,6 +278,10 @@ export class Character {
         return '';
     }
 
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     getEmbed(channel: TextBasedChannel) {
         if (!this.loaded) throw new Error('Getting embed before waifu is loaded');
         const img = this.getImage(channel);
@@ -280,10 +298,14 @@ export class Character {
         }).setImage(img);
     }
 }
+// Don't want the class to be public, only the type itself.
+export type { Character };
 export function getSource(img: string) {
-    if (img.match(/^https:\/\/i\.imgur\.(?:com|io)\//)) {
-        return img.slice(0, img.lastIndexOf('.')).replace('//i.', '//');
+    if (img.startsWith(config.cdn)) {
+        // Using our CDN
+        return img.replace('/images/', '/source/');
     }
+    // Common characters source is the raw image itself.
     return img;
 }
 
@@ -344,15 +366,13 @@ function getClient() {
 }
 // Single queries MUST use this because all single queries are
 // automatically wrapped inside a transaction.
-async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
+async function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
     const client = await getClient();
-    let res: R[] = [];
     try {
-        res = await client.query<R, I[]>(query, values).then(res => res.rows);
+        return client.query<R, I[]>(query, values).then(res => res.rows);
     } finally {
         client.release();
     }
-    return res;
 }
 // This makes a bunch of queries atomic.
 type IsolationLevels = 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
@@ -362,20 +382,20 @@ async function multi_query<R extends QueryResultRow = object, I = unknown>(
     level: IsolationLevels = 'READ COMMITTED'
 ) {
     const client = await getClient();
-    const res: R[][] = [];
     try {
+        const res: R[][] = [];
         await client.query(`BEGIN TRANSACTION ISOLATION LEVEL ${level}`);
         for (const query of queries) {
             res.push(await client.query<R, I[]>(query, values.shift()).then(res => res.rows));
         }
         await client.query('COMMIT');
-    } catch (res) {
+        return res;
+    } catch (err) {
         await client.query('ROLLBACK');
-        throw res;
+        throw err;
     } finally {
         client.release();
     }
-    return res;
 }
 export function start() {
     // We want to be able to still live even if database is not available.
@@ -385,7 +405,7 @@ export function start() {
         throw err;
     });
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
-    return query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false).catch(() => true);
+    return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
 export function end() {
     return pool.end();
@@ -533,15 +553,13 @@ export type PartialWaifu = {
 };
 /**
  * Ensure the waifu provided does not contain old images, only new images that are to be added
- * @param {PartialWaifu} waifu
- * @returns {Waifu} The waifu object with total # of images
  * @throws {Error} If waifu gets too many images
  */
-export async function insertWaifu(waifu: PartialWaifu) {
+export function insertWaifu(waifu: PartialWaifu) {
     // With this query, we must make sure we are not appending to img array
     // We will return the waifu object, and it will raise an exception
     // if the waifu's images goes out of bounds (due to our check constraint)
-    const res = await multi_query<WaifuDetails>(
+    return multi_query<WaifuDetails>(
         [
             `INSERT INTO waifus(name, gender, origin, img, nimg)
                 VALUES ($1, $2, $3, $4, $5) 
@@ -554,7 +572,6 @@ export async function insertWaifu(waifu: PartialWaifu) {
         ],
         [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]
     ).then(res => new Waifu(res[0][0]));
-    return res;
 }
 export function fetchWaifuByDetails(details: PartialWaifu) {
     return query<WaifuDetails>(
@@ -712,7 +729,7 @@ export function fetchAutocollectLength(userID: string) {
         `SELECT COUNT(*) FROM hoyolab_cookies_list
             WHERE id = $1`,
         [userID]
-    ).then(res => parseInt(res[0]?.count ?? '0'));
+    ).then(res => parseInt(res[0].count));
 }
 export function toggleAutocollect(userID: string, game: GameType, type: CheckinType, idx: string) {
     return query(

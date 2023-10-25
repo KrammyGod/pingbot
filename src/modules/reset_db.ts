@@ -2,25 +2,45 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { from } from 'pg-copy-streams';
+import { inspect } from 'util';
+import { pipeline } from 'stream/promises';
 import { Pool, QueryResultRow } from 'pg';
 
 const LOGGER = {
     today: new Date().toLocaleDateString(),
-    start: () => {
-        console.log(`START RESET [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC`);
+    start() {
+        console.log(
+            '\x1b[92m%s\x1b[0m',
+            `BGN [${LOGGER.today}]: BEGIN RESET ON ${new Date().toLocaleTimeString()} UTC`
+        );
     },
-    log: (msg: string) => {
-        for (const line of msg.split('\n')) {
-            console.log(`LOG [${LOGGER.today}]: ${line}`);
+    log(msg?: unknown) {
+        if (!msg) return console.log('\x1b[96m%s\x1b[0m', `LOG [${LOGGER.today}]:`);
+        const lines = typeof msg === 'string' ? msg : inspect(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
+            console.log('\x1b[96m%s\x1b[0m%s', `LOG [${LOGGER.today}]: `, line);
         }
     },
-    error: (msg: string) => {
-        for (const line of msg.split('\n')) {
-            console.log(`ERROR [${LOGGER.today}]: ${line}`);
+    error(msg?: unknown) {
+        if (!msg) return console.log('\x1b[31m%s\x1b[0m', `ERR [${LOGGER.today}]:`);
+        const lines = typeof msg === 'string' ? msg : inspect(msg, {
+            colors: true,
+            depth: null,
+            compact: false
+        });
+        for (const line of lines.split('\n')) {
+            console.log('\x1b[31m%s\x1b[0m%s', `ERR [${LOGGER.today}]: `, line);
         }
     },
-    end: () => {
-        console.log(`END [${LOGGER.today}]: ${new Date().toLocaleTimeString()} UTC\n\n`);
+    end() {
+        console.log(
+            '\x1b[95m%s\x1b[0m',
+            `END [${LOGGER.today}]: END RESET ON ${new Date().toLocaleTimeString()} UTC\n`
+        );
     }
 };
 
@@ -50,6 +70,7 @@ export default async function reset() {
     LOGGER.log('Set collected and whales to false!');
 }
 
+// -1 is returned when the id is invalid
 type CommonData = {
     id: number;
     anime_id: number;
@@ -59,12 +80,12 @@ type CommonData = {
     gender: string;
     name: string;
     desc: string;
-} | -1; // -1 is returned when the id is invalid
+} | -1 | string;
 
 async function copy() {
     const API_URL = 'https://www.animecharactersdatabase.com/api_series_characters.php';
-    // eslint-disable-next-line max-len
-    const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
+    const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
     const HEADERS = { 'User-Agent': _USER_AGENT };
     let i = await query<{ id: number }>('SELECT MAX(iid) AS id FROM commons').then(r => ++r[0].id);
     let chars = 0;
@@ -72,7 +93,7 @@ async function copy() {
     LOGGER.log(`Retrieving from id ${i}`);
     // Add constant to prevent true infinite loop
     while (chars <= 100_000_000) {
-        let res: CommonData = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
+        let res: CommonData | void = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
             .then(res => res.json())
             .catch(() => { });
         // Rate limits/maintenance.
@@ -81,14 +102,14 @@ async function copy() {
         if (typeof res === 'string') {
             const bad: string = res;
             try {
-                res = JSON.parse(bad.replaceAll('	', '').replaceAll('\\', '\\\\'));
+                res = JSON.parse(bad.replaceAll('	', '').replaceAll('\\', '\\\\')) as Exclude<CommonData, string>;
             } catch (e) {
-                throw `Bad response at ${i}\n${e}`;
+                throw new Error(`Bad response at ${i}\n${e}`);
             }
         }
         if (res === -1) break;
         if (!res.name || !res.origin || !res.gender || !res.character_image) {
-            throw `Bad response at ${i}\n${res}`;
+            throw new Error(`Bad response at ${i}\n${inspect(res)}`);
         }
         if (res.gender !== 'Female' && res.gender !== 'Male') res.gender = 'Unknown';
         LOGGER.log(`Added common: id: ${i} name: ${res.name}`);
@@ -98,27 +119,19 @@ async function copy() {
         // Do a call within rate limits
         await new Promise(resolve => setTimeout(resolve, 200));
     }
-    const dumpFile = path.resolve(__dirname, '../../files/update.dump');
-    fs.writeFile(dumpFile, s, () => { });
+    const dumpFile = path.resolve(__dirname, 'update.dump');
+    await fs.promises.writeFile(dumpFile, s);
     LOGGER.log(`Retrieved up to id ${i}`);
-
+    
     LOGGER.log('Starting file dump...');
     const client = await pool.connect();
     try {
-        await client.query('BEGIN');
-        const stream = client.query(from('COPY commons (id, name, gender, origin, img) FROM STDIN'));
         const fileStream = fs.createReadStream(dumpFile);
-        stream.on('finish', () => {
-            fs.unlinkSync(dumpFile);
-            LOGGER.log('Finished dump!');
-        });
-        fileStream.pipe(stream);
-        await client.query('COMMIT');
-    } catch (err) {
-        await client.query('ROLLBACK');
-        throw (err as Error).stack;
+        const stream = client.query(from('COPY commons (iid, name, gender, origin, img) FROM STDIN'));
+        await pipeline(fileStream, stream);
     } finally {
         client.release();
+        await fs.promises.unlink(dumpFile).catch(() => { });
     }
     return chars;
 }
@@ -127,11 +140,9 @@ if (require.main === module) {
     (async () => {
         LOGGER.start();
         await reset();
-        const result = await copy().catch(ret => ret);
-        if (typeof result === 'number') {
+        const result = await copy().catch(ret => LOGGER.error(ret));
+        if (result) {
             LOGGER.log(`Added ${result} commons.`);
-        } else {
-            LOGGER.log(`Exited with error: ${result}`);
         }
         LOGGER.log('Done!');
         LOGGER.end();

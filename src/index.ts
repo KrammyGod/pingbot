@@ -7,6 +7,7 @@ import type { CustomClient } from '@classes/client';
 
 const manager = new ShardingManager('./dist/bot.js', {
     token: config.token,
+    respawn: false,
     silent: true,
     execArgv: ['--enable-source-maps']
 });
@@ -49,7 +50,7 @@ manager.on('shardCreate', shard => {
     shard.once(ShardEvents.Death, () => {
         // Exit parent process once all shards are down
         if (++deadShards === manager.totalShards) {
-            process.exit(0);
+            DB.end().then(() => process.exit(0));
         }
     });
     shard.once(ShardEvents.Message, async (message: string) => {
@@ -118,8 +119,9 @@ async function sendCollectorResults(body: SendMessage) {
                         name: acc.award.name,
                         roles: [role],
                         reason: `New emoji for ${name} auto collect.`
-                    }).then(emoji => emoji.toString());
-                }).catch(() => acc.award.name);
+                    });
+                }).then(emoji => emoji.toString(), () => acc.award.name);
+                // If it is in discord's emoji string format
                 if (emoji !== acc.award.name) {
                     retEmoji = emoji;
                 }
@@ -195,7 +197,7 @@ http.createServer((req, res) => {
         return sendCollectorResults(body);
     });
 }).listen(config.port, () => {
-    console.log(`Message server listening on ${config.port}`);
+    console.log(`Message server listening on ${config.port}\n`);
 });
 
 // Gracefully kill all shards and then exit
