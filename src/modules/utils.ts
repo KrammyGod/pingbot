@@ -242,6 +242,7 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
 export async function get_results<T>(
+    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     choices: T[],
     {
@@ -291,6 +292,6 @@ export async function get_results<T>(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    (interaction.client as CustomClient).deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }

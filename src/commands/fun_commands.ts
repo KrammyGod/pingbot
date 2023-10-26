@@ -100,11 +100,11 @@ export const invite: SlashCommand = {
 
     desc: invite_docs,
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         // Generated via discord's helper with the above permissions.
         const permissions = '1512670883152';
-        const url = interaction.client.generateInvite({
+        const url = client.generateInvite({
             permissions: permissions,
             scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands]
         });
@@ -157,12 +157,12 @@ export const getid: SlashCommand = {
           '*username:* The name of the user you would like to search for. (Required)\n\n' +
           'Examples: `/getid user: Krammy`, `/getid user: @Krammy`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         let query = interaction.options.getString('user')!;
         if (!query.startsWith('@')) {
             query = `@${query}`;
         }
-        const users = await interaction.client.shard?.broadcastEval(
+        const users = await client.shard?.broadcastEval(
             (client, query) => {
                 const u = client.users.cache.filter(u =>
                     u.displayName.toLowerCase().includes(query) ||
@@ -171,7 +171,7 @@ export const getid: SlashCommand = {
                 return u.map(u => ({ name: `@${u.username}`, id: u.id }));
             }, { context: query }
         ).then(results => results.flat()) ?? [];
-        const res = await Utils.get_results(interaction, users, {
+        const res = await Utils.get_results(client, interaction, users, {
             title_fmt: n => `Found ${n} users:`,
             desc_fmt: u => `${u.name}`,
             sel_fmt: u => `**${u.name}**`
@@ -238,7 +238,7 @@ function get_collector_buttons(cmd_name: string, hoyo: HoyoStrings[], idx: strin
 
 type HoyolabPrivates = {
     input: DTypes.ModalBuilder;
-    delete: (interaction: DTypes.RepliableInteraction, id: string) => Promise<void>;
+    delete: (client: CustomClient, interaction: DTypes.RepliableInteraction, id: string) => Promise<void>;
     toggleNotify: (interaction: DTypes.RepliableInteraction, type: string, g: string, idx: string) => Promise<void>;
     getAccount: (
         interaction: DTypes.RepliableInteraction,
@@ -268,7 +268,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         ]
     }),
 
-    async delete(interaction, id) {
+    async delete(client, interaction, id) {
         const buttons = [
             new ButtonBuilder({
                 label: 'Yes!',
@@ -297,7 +297,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             if (i.customId === 'hcancel') return;
             return true;
         }).catch(() => undefined);
-        await (interaction.client as CustomClient).deleteFollowUp(interaction, message);
+        await client.deleteFollowUp(interaction, message);
         if (!confirmed) return;
 
         const res = await DB.deleteCookie(interaction.user.id, id);
@@ -465,7 +465,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         }).then(() => { });
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [action, id] = interaction.customId.split('/').slice(2);
         if (action === 'add') {
             return interaction.showModal(this.input);
@@ -476,7 +476,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             const retval = await this.getAccount(interaction, page);
             return interaction.editReply(retval);
         } else if (action === 'delete') {
-            return this.delete(interaction, id);
+            return this.delete(client, interaction, id);
         }
         // Reached here means it is some sort of toggle.
         const type = action[0];
@@ -680,7 +680,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         return interaction.editReply(retval);
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const action = interaction.customId.split('/')[2];
         const pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo) return interaction.message.delete().catch(() => { }); // Somehow lost cache
@@ -688,7 +688,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         if (isNaN(idx)) {
             const send = async () => {
                 await interaction.deferUpdate();
-                const channel = await interaction.client.channels.fetch(pollInfo.cid) as TextChannel;
+                const channel = await client.channels.fetch(pollInfo.cid) as TextChannel;
                 const { embeds, components } = await this.getPoll(interaction.message.id);
                 let message: DTypes.Message | undefined = undefined;
                 if (pollInfo.mid) {
@@ -797,7 +797,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         return interaction.editReply(retval);
     },
 
-    async menuReact(interaction) {
+    async menuReact(interaction, client) {
         await interaction.deferUpdate();
         const pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo) return interaction.message.delete().catch(() => { }); // Somehow lost cache
@@ -809,7 +809,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                 content: `You don't have permissions to send messages in ${channel}.`,
                 ephemeral: true
             });
-        } else if (!channel.permissionsFor(interaction.client.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
+        } else if (!channel.permissionsFor(client.user!.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true

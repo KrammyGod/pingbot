@@ -11,27 +11,27 @@ import type { Cache } from '@modules/database';
 export function isSlashSubcommand(obj: any): obj is SlashSubcommand {
     return obj && obj.data instanceof SlashCommandSubcommandBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length === 1;
+        obj.execute.length === 2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isSlashSubcommandGroup(obj: any): obj is SlashSubcommandGroup {
     return obj && obj.data instanceof SlashCommandSubcommandGroupBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.subcommands && obj.execute.length === 1;
+        obj.subcommands && obj.execute.length === 2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isSlashCommand(obj: any): obj is SlashCommand {
     return obj && obj.data instanceof SlashCommandBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length === 1;
+        obj.execute.length === 2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isContextCommand(obj: any): obj is ContextCommand {
     return obj && obj.data instanceof ContextMenuCommandBuilder &&
-        typeof obj.execute === 'function' && obj.execute.length === 1;
+        typeof obj.execute === 'function' && obj.execute.length === 2;
 }
 
 export function isInteractionCommand(obj: unknown): obj is InteractionCommand {
@@ -40,8 +40,8 @@ export function isInteractionCommand(obj: unknown): obj is InteractionCommand {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isMessageCommand(obj: any): obj is MessageCommand {
-    return obj && typeof obj.name === 'string' &&
-        typeof obj.execute === 'function' && obj.execute.length <= 2;
+    return obj && typeof obj.name === 'string' && typeof obj.admin === 'boolean' &&
+        typeof obj.desc === 'string' && typeof obj.execute === 'function' && obj.execute.length <= 3;
 }
 
 export type CommandFile = {
@@ -57,17 +57,17 @@ export interface MessageCommand {
     name: string;
     admin: boolean;
     desc: string;
-    execute: (msg: DTypes.Message & { readonly client: CustomClient }, args: string[]) => Promise<unknown>;
+    execute: (msg: DTypes.Message, args: string[], client: CustomClient) => Promise<unknown>;
 }
 
 // Basics that every slash command must have
 interface Command {
     data: DTypes.SlashCommandBuilder | DTypes.SlashCommandSubcommandBuilder | DTypes.SlashCommandSubcommandGroupBuilder;
     desc: string; // Long description for help command
-    execute: (i: DTypes.ChatInputCommandInteraction & { readonly client: CustomClient; }) => Promise<unknown>;
-    buttonReact?: (i: DTypes.ButtonInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-    menuReact?: (i: DTypes.AnySelectMenuInteraction & { readonly client: CustomClient }) => Promise<unknown>;
-    textInput?: (i: DTypes.ModalSubmitInteraction & { readonly client: CustomClient }) => Promise<unknown>;
+    execute: (i: DTypes.ChatInputCommandInteraction, client: CustomClient) => Promise<unknown>;
+    buttonReact?: (i: DTypes.ButtonInteraction, client: CustomClient) => Promise<unknown>;
+    menuReact?: (i: DTypes.AnySelectMenuInteraction, client: CustomClient) => Promise<unknown>;
+    textInput?: (i: DTypes.ModalSubmitInteraction, client: CustomClient) => Promise<unknown>;
 }
 export interface SlashSubcommand extends Command {
     data: DTypes.SlashCommandSubcommandBuilder;
@@ -89,7 +89,7 @@ export type CachedSlashSubcommandGroup<T extends object> = SlashCommand & CacheD
 // Basics that every context command must have
 export interface ContextCommand {
     data: DTypes.ContextMenuCommandBuilder;
-    execute: (i: DTypes.ContextMenuCommandInteraction & { readonly client: CustomClient; }) => Promise<unknown>;
+    execute: (i: DTypes.ContextMenuCommandInteraction, client: CustomClient) => Promise<unknown>;
 }
 
 export type InteractionCommand = SlashCommand | ContextCommand;
@@ -100,7 +100,7 @@ export class CustomClient extends Client {
     // Predefine custom properties
     is_ready!: boolean;                              // Is fully loaded
     is_listening!: boolean;                          // Is currently listening for interactions
-    prefix!: string;                                 // Message prefix
+    readonly prefix!: string;                        // Message prefix
     admin!: DTypes.User;                             // Admin user
     log_channel!: DTypes.TextBasedChannel;           // Error logs
     bot_emojis!: Record<string, string>;             // All available emojis

@@ -62,6 +62,7 @@ const GLOBAL_HELP =
 
 // Global helper for searching for waifus using name
 async function search_waifu(
+    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     name: string
 ) {
@@ -69,7 +70,7 @@ async function search_waifu(
     const res = await DB.searchWaifuByName(name);
     if (!res.length) return undefined;
     return Utils.get_results(
-        interaction, res,
+        client, interaction, res,
         {
             title_fmt: (idx: number) => `Found ${idx} waifus. Please select one:`,
             desc_fmt: choice => `⭐ **${choice.name}** from *${choice.origin}*`,
@@ -80,6 +81,7 @@ async function search_waifu(
 
 // Global helper for searching for user characters using number/name
 async function search_character(
+    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     userID: string,
     number_or_name: string,
@@ -100,7 +102,7 @@ async function search_character(
         await DB.queryUserCharacter(userID, number_or_name);
     if (!res.length) return undefined;
     return Utils.get_results(
-        interaction, res,
+        client, interaction, res,
         {
             title_fmt: (idx: number) => `Found ${idx} characters in ` +
                 `${interaction.user.id === (userID) ? 'your' : 'their'} ` +
@@ -114,6 +116,7 @@ async function search_character(
 
 // Global helper that waits for a confirm/cancel interaction
 async function wait_for_button(
+    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     message: DTypes.Message,
     fn: string
@@ -125,7 +128,7 @@ async function wait_for_button(
             }
             return true;
         }).catch(() => false);
-    (interaction.client as CustomClient).deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }
 
@@ -309,12 +312,12 @@ export const animes: SlashCommand & AnimesPrivates = {
         return retval;
     },
 
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const [userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         const page = parseInt(value);
         if (isNaN(page)) {
@@ -328,7 +331,7 @@ export const animes: SlashCommand & AnimesPrivates = {
         if (followUp) return interaction.followUp(followUp);
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page, userID] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -359,27 +362,27 @@ export const animes: SlashCommand & AnimesPrivates = {
             }
         }
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
         return interaction.editReply({ embeds, components });
     },
 
-    async menuReact(interaction) {
+    async menuReact(interaction, client) {
         await interaction.deferUpdate();
         const [userID, page] = interaction.customId.split('/').splice(1);
         let gain = 0;
         for (const anime of interaction.values) {
             gain += await collect_anime(userID, anime);
         }
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
         await interaction.editReply({ embeds, components });
         if (gain) {
             return interaction.followUp({
                 content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
-                    `and gained +${gain} ${interaction.client.bot_emojis.brons}!`,
+                    `and gained +${gain} ${client.bot_emojis.brons}!`,
                 ephemeral: true
             }).catch(() => { });
         }
@@ -421,14 +424,14 @@ export const anime: SlashCommand = {
           "*user:* Check a different user's list. (Default: You)\n\n" +
           'Examples: `/anime anime: COTE`, `/anime anime: Genshin user: @krammygod`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const name = interaction.options.getString('anime');
         const user = interaction.options.getUser('user') ?? interaction.user;
         const embed = new EmbedBuilder({ title: 'Waiting for selection...' }).setColor('Gold');
         await interaction.reply({ embeds: [embed] });
         const res = await DB.searchOriginByName(name!);
         const series = await Utils.get_results(
-            interaction, res,
+            client, interaction, res,
             { title_fmt: (idx: number) => `Found ${idx} animes. Please select one:` }
         );
         if (series === null) {
@@ -469,7 +472,7 @@ export const anime: SlashCommand = {
                 if (gain) {
                     return interaction.followUp({
                         content: `You collected bonuses for \`${series}\`! ` +
-                            `+${gain} ${interaction.client.bot_emojis.brons}`,
+                            `+${gain} ${client.bot_emojis.brons}`,
                         ephemeral: true
                     });
                 }
@@ -493,7 +496,7 @@ export const bal: SlashCommand = {
           '*user:* The user to stalk. (Default: You)\n\n' +
           'Examples: `/bal`, `/bal user: @krammygod`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const user = interaction.options.getUser('user') ?? interaction.user;
         await interaction.deferReply();
         const brons = await DB.getBrons(user.id);
@@ -511,15 +514,15 @@ export const bal: SlashCommand = {
         }
         if (user.id === interaction.user.id) {
             return interaction.editReply({
-                content: `You currently have ${brons} ${interaction.client.bot_emojis.brons}.`
+                content: `You currently have ${brons} ${client.bot_emojis.brons}.`
             });
-        } else if (user.id === interaction.client.user.id) {
+        } else if (user.id === client.user!.id) {
             return interaction.editReply({
-                content: `I have ∞ ${interaction.client.bot_emojis.brons}.`
+                content: `I have ∞ ${client.bot_emojis.brons}.`
             });
         }
         return interaction.editReply({
-            content: `${user} has ${brons} ${interaction.client.bot_emojis.brons}.`,
+            content: `${user} has ${brons} ${client.bot_emojis.brons}.`,
             allowedMentions: { users: [] }
         });
     }
@@ -670,7 +673,7 @@ export const lb: SlashCommand & LbPrivates = {
         return retval;
     },
 
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
@@ -681,12 +684,12 @@ export const lb: SlashCommand & LbPrivates = {
                 ephemeral: true
             });
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) return interaction.followUp(followUp);
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -720,14 +723,14 @@ export const lb: SlashCommand & LbPrivates = {
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, val);
+        const { embeds, components } = await this.getPage(client, interaction.user.id, val);
         return interaction.editReply({ embeds, components });
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) return interaction.followUp(followUp);
     }
@@ -749,7 +752,7 @@ export const daily: SlashCommand = {
           '\\- *A prose by @ryu_minoru*\n\n' +
           'Usage: `/daily`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const { collect_success, amt } = await DB.getAndSetDaily(interaction.user.id);
         const embed = new EmbedBuilder({ color: Colors.Yellow });
@@ -758,11 +761,11 @@ export const daily: SlashCommand = {
             if (amt === 1000) {
                 // First sign up
                 embed.setColor(Colors.Gold).setTitle(
-                    `You have collected your first daily! +1000 ${interaction.client.bot_emojis.brons}!`
+                    `You have collected your first daily! +1000 ${client.bot_emojis.brons}!`
                 );
                 return interaction.editReply({ embeds: [embed] });
             }
-            embed.setTitle(`You have collected your daily! +200 ${interaction.client.bot_emojis.brons}!`);
+            embed.setTitle(`You have collected your daily! +200 ${client.bot_emojis.brons}!`);
             const chosen = await DB.fetchRandomStarred(interaction.user.id);
             let bonus_brons = 0;
             if (chosen) {
@@ -772,7 +775,7 @@ export const daily: SlashCommand = {
                     `Congrats on level ${chosen.lvl}!`;
                 embed.setColor(Colors.Gold).setTitle(
                     `${embed.data.title}\naaaaand ${chosen.name} gave you another +` +
-                    `${bonus_brons}${interaction.client.bot_emojis.brons}! ${level_str}`
+                    `${bonus_brons}${client.bot_emojis.brons}! ${level_str}`
                 );
                 DB.addBrons(interaction.user.id, bonus_brons);
             }
@@ -803,9 +806,9 @@ export const profile: SlashCommand = {
           "*user:* The user's profile to see. (Default: You)\n\n" +
           'Examples: `/profile`, `/profile user: @krammygod`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const me = interaction.client.user.id;
+        const me = client.user!.id;
         await interaction.deferReply();
         const promises = [
             DB.getCollected(user.id),
@@ -853,7 +856,7 @@ export const profile: SlashCommand = {
 
         const embed = new EmbedBuilder({
             title: `${user.displayName}'s Profile`,
-            description: `**「${brons < 0 ? '∞' : brons} ${interaction.client.bot_emojis.brons}」**`,
+            description: `**「${brons < 0 ? '∞' : brons} ${client.bot_emojis.brons}」**`,
             color: Colors.Gold
         }).addFields([
             { name: '__Daily Check-in:__ ', value: `**${c_str}**`, inline: true },
@@ -911,10 +914,8 @@ export const profile_menu: ContextCommand = {
         .setName('Profile')
         .setType(ApplicationCommandType.User),
 
-    execute(interaction) {
-        return profile.execute(interaction as unknown as
-            DTypes.ChatInputCommandInteraction & { client: CustomClient; }
-        );
+    execute(interaction, client) {
+        return profile.execute(interaction as unknown as DTypes.ChatInputCommandInteraction, client);
     }
 };
 
@@ -1224,7 +1225,11 @@ async function get_char_as_embed(
 }
 
 type FnMap = {
-    [key: string]: ((interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) => Promise<{
+    [key: string]: ((
+        client: CustomClient,
+        interaction: DTypes.AnySelectMenuInteraction,
+        char: DB.Character
+    ) => Promise<{
         embeds: DTypes.EmbedBuilder[],
         ephemeral: boolean
     } | undefined>) | undefined;
@@ -1237,7 +1242,7 @@ const fnMappings: FnMap = {
 };
 
 // Upgrades a character and returns a followup component
-async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
+async function upgrade(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
     const brons = await DB.getBrons(interaction.user.id);
     // Match gacha_docs
     const costs = [0, 100, 500, 1000];
@@ -1245,7 +1250,7 @@ async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Ch
     if (brons! < costs[char.lvl]) {
         embed.setTitle(`You don't have enough brons to upgrade ${char.name} ` +
             `to level ${char.lvl + 1}. Required: ${costs[char.lvl]} ` +
-            `${(interaction.client as CustomClient).bot_emojis.brons}`);
+            `${client.bot_emojis.brons}`);
         return { embeds: [embed], ephemeral: true };
     }
     const buttons = new ActionRowBuilder<ButtonBuilder>()
@@ -1261,7 +1266,7 @@ async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Ch
                 .setStyle(ButtonStyle.Secondary));
     embed.setColor(Colors.Gold).setTitle(
         `Are you sure you want to use ${costs[char.lvl]} ` +
-        `${(interaction.client as CustomClient).bot_emojis.brons} to upgrade ${char.name} ` +
+        `${client.bot_emojis.brons} to upgrade ${char.name} ` +
         `to level ${char.lvl + 1}?`
     );
     const message = await interaction.followUp({
@@ -1269,7 +1274,7 @@ async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Ch
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(interaction, message, 'upgrade_char');
+    const confirmed = await wait_for_button(client, interaction, message, 'upgrade_char');
     if (!confirmed) return;
 
     const ret = await char.upgrade(costs[char.lvl]);
@@ -1281,7 +1286,11 @@ async function upgrade(interaction: DTypes.AnySelectMenuInteraction, char: DB.Ch
     return { embeds: [embed], ephemeral: true };
 }
 
-async function switch_char_image(interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
+async function switch_char_image(
+    client: CustomClient,
+    interaction: DTypes.AnySelectMenuInteraction,
+    char: DB.Character
+) {
     const embed = new EmbedBuilder({ color: Colors.Gold });
     const menu = new StringSelectMenuBuilder()
         .setCustomId('toggle_char/menu')
@@ -1332,7 +1341,7 @@ async function switch_char_image(interaction: DTypes.AnySelectMenuInteraction, c
         if (i.values[0] === '-1') return;
         return parseInt(i.values[0]);
     }).catch(() => { });
-    (interaction.client as CustomClient).deleteFollowUp(interaction, message).then(() => { }).catch(() => { });
+    client.deleteFollowUp(interaction, message).then(() => { }).catch(() => { });
     let success = true;
     if (selected === undefined) {
         return;
@@ -1347,7 +1356,11 @@ async function switch_char_image(interaction: DTypes.AnySelectMenuInteraction, c
     }
 }
 
-async function toggle_char_nsfw(interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
+async function toggle_char_nsfw(
+    client: CustomClient,
+    interaction: DTypes.AnySelectMenuInteraction,
+    char: DB.Character
+) {
     const res = await char.toggleNsfw();
     // We only return stuff on failure
     if (res) {
@@ -1360,7 +1373,7 @@ async function toggle_char_nsfw(interaction: DTypes.AnySelectMenuInteraction, ch
     }
 }
 
-async function delete_char(interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
+async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
     await char.loadWaifu();
     const embed = new EmbedBuilder({
         description:
@@ -1387,7 +1400,7 @@ async function delete_char(interaction: DTypes.AnySelectMenuInteraction, char: D
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(interaction, message, 'delete_char');
+    const confirmed = await wait_for_button(client, interaction, message, 'delete_char');
     if (!confirmed) return;
     embed.setDescription(null);
 
@@ -1400,14 +1413,14 @@ async function delete_char(interaction: DTypes.AnySelectMenuInteraction, char: D
     DB.addBrons(interaction.user.id, refund);
     embed.setTitle(
         `Succesfully deleted ${char.getWFC(interaction.channel!)}${char.name} ` +
-        `${char.gender}! +${refund} ${(interaction.client as CustomClient).bot_emojis.brons}`
+        `${char.gender}! +${refund} ${client.bot_emojis.brons}`
     );
     return { embeds: [embed], ephemeral: true };
 }
 
 // This collection of helpers is because list and high are identical, with one parameter difference
 const listHelpers = {
-    async buttonReact(interaction: DTypes.ButtonInteraction, high: boolean) {
+    async buttonReact(interaction: DTypes.ButtonInteraction, high: boolean, client: CustomClient) {
         const [cmdName, page, userID] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -1465,7 +1478,7 @@ const listHelpers = {
             }
         }
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         const { embeds, components } = cmdName === 'list' ?
             await get_list_as_embed(
@@ -1478,7 +1491,7 @@ const listHelpers = {
             );
         return interaction.editReply({ embeds, components });
     },
-    async menuReact(interaction: DTypes.AnySelectMenuInteraction, high: boolean) {
+    async menuReact(interaction: DTypes.AnySelectMenuInteraction, high: boolean, client: CustomClient) {
         const [fn, wid] = interaction.values[0].split('/').splice(2);
         await interaction.deferUpdate();
         const char = high ?
@@ -1486,7 +1499,7 @@ const listHelpers = {
             await DB.fetchUserCharacter(interaction.user.id, wid);
         const callFn = fnMappings[fn];
         if (callFn) {
-            const res = await callFn(interaction, char);
+            const res = await callFn(client, interaction, char);
             if (res) {
                 await interaction.followUp(res);
             }
@@ -1512,12 +1525,12 @@ const listHelpers = {
         const { embeds, components } = await res;
         return interaction.editReply({ embeds, components });
     },
-    async textInput(interaction: DTypes.ModalSubmitInteraction, high: boolean) {
+    async textInput(interaction: DTypes.ModalSubmitInteraction, high: boolean, client: CustomClient) {
         const [cmdName, userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         if (cmdName === 'list') {
             const page = parseInt(value);
@@ -1540,7 +1553,7 @@ const listHelpers = {
             const error_embed = new EmbedBuilder({
                 color: Colors.Red
             });
-            const char = await search_character(interaction, userID, value, high);
+            const char = await search_character(client, interaction, userID, value, high);
             if (char === null) {
                 return;
             } else if (!char) {
@@ -1600,16 +1613,16 @@ export const list: SlashCommand = {
           '*page:* The page number you want to jump to. (Default: 1)\n\n' +
           'Examples: `/list`, `/list user: @krammygod`, `/list page: 2`',
 
-    async buttonReact(interaction) {
-        return listHelpers.buttonReact(interaction, false);
+    async buttonReact(interaction, client) {
+        return listHelpers.buttonReact(interaction, false, client);
     },
 
-    async menuReact(interaction) {
-        return listHelpers.menuReact(interaction, false);
+    async menuReact(interaction, client) {
+        return listHelpers.menuReact(interaction, false, client);
     },
 
-    async textInput(interaction) {
-        return listHelpers.textInput(interaction, false);
+    async textInput(interaction, client) {
+        return listHelpers.textInput(interaction, false, client);
     },
 
     async execute(interaction) {
@@ -1622,8 +1635,8 @@ export const list_menu: ContextCommand = {
         .setName('Character List')
         .setType(ApplicationCommandType.User),
 
-    execute(interaction) {
-        return list.execute(interaction as unknown as DTypes.ChatInputCommandInteraction & { client: CustomClient; });
+    execute(interaction, client) {
+        return list.execute(interaction as unknown as DTypes.ChatInputCommandInteraction, client);
     }
 };
 
@@ -1650,16 +1663,16 @@ export const high: SlashCommand = {
           '*page:* The page number to jump to. (Default: 1)\n\n' +
           'Examples: `/high`, `/high user: @krammygod`, `/high page: 2`',
 
-    async buttonReact(interaction) {
-        return listHelpers.buttonReact(interaction, true);
+    async buttonReact(interaction, client) {
+        return listHelpers.buttonReact(interaction, true, client);
     },
 
-    async menuReact(interaction) {
-        return listHelpers.menuReact(interaction, true);
+    async menuReact(interaction, client) {
+        return listHelpers.menuReact(interaction, true, client);
     },
 
-    async textInput(interaction) {
-        return listHelpers.textInput(interaction, true);
+    async textInput(interaction, client) {
+        return listHelpers.textInput(interaction, true, client);
     },
 
     async execute(interaction) {
@@ -1712,6 +1725,7 @@ __Level Up Cost:__
 
 // Helper to generate new character display
 async function generateCharacterDisplay(
+    client: CustomClient,
     character: DB.CharacterInsert,
     channel: DTypes.TextBasedChannel,
     user: DTypes.User
@@ -1724,7 +1738,7 @@ async function generateCharacterDisplay(
     if (!character.new) {
         // CONSTANT: Refund brons
         refund = character.fc ? 4 : 2;
-        const refund_str = `+${refund} ${(channel.client as CustomClient).bot_emojis.brons}`;
+        const refund_str = `+${refund} ${client.bot_emojis.brons}`;
         if (character.lvl > 1) {
             add_emoji = ` 🆙 ${refund_str}`;
             add_on = `**Reached level ${character.lvl}!**\n`;
@@ -1775,7 +1789,7 @@ export const roll: SlashCommand = {
           '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
           'Examples: `/roll`, `/roll ephemeral: True`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
         await interaction.deferReply({ ephemeral: eph }).catch(() => { });
         const amtTaken = { amt: 0 };
@@ -1787,6 +1801,7 @@ export const roll: SlashCommand = {
         }
         let total_refund = 0;
         const { embed, refund } = await generateCharacterDisplay(
+            client,
             res,
             interaction.channel!,
             interaction.user
@@ -1794,7 +1809,7 @@ export const roll: SlashCommand = {
         total_refund += refund;
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         // Reusing error_embed
         error_embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
@@ -1818,7 +1833,7 @@ export const multi: SlashCommand = {
           '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
           'Examples: `/multi`, `/multi ephemeral: True`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
         await interaction.deferReply({ ephemeral: eph }).catch(() => { });
         const amtTaken = { amt: 0 };
@@ -1832,6 +1847,7 @@ export const multi: SlashCommand = {
         const embeds = [];
         for (const character of res) {
             const { embed, refund } = await generateCharacterDisplay(
+                client,
                 character,
                 interaction.channel!,
                 interaction.user
@@ -1841,7 +1857,7 @@ export const multi: SlashCommand = {
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1870,7 +1886,7 @@ export const whale: SlashCommand = {
           '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
           'Examples: `/whale`, `/whale ephemeral: True`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
         await interaction.deferReply({ ephemeral: eph }).catch(() => { });
         const amtTaken = { amt: 0 };
@@ -1884,6 +1900,7 @@ export const whale: SlashCommand = {
         const embeds = [];
         for (const character of res) {
             const { embed, refund } = await generateCharacterDisplay(
+                client,
                 character,
                 interaction.channel!,
                 interaction.user
@@ -1893,7 +1910,7 @@ export const whale: SlashCommand = {
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1923,7 +1940,7 @@ export const dall: SlashCommand = {
           '*end_waifu:* The waifu to stop deleting from. (Default: last)\n\n' +
           'Examples: `/dall`, `/dall start: 5`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const begin = interaction.options.getString('start');
         const finish = interaction.options.getString('end');
         const embed = new EmbedBuilder({
@@ -1936,7 +1953,7 @@ export const dall: SlashCommand = {
         let start: number | undefined = undefined;
         let end: number | undefined = undefined;
         if (begin) {
-            first = await search_character(interaction, interaction.user.id, begin, false);
+            first = await search_character(client, interaction, interaction.user.id, begin, false);
             if (first === NO_NUM || !first) {
                 embed.setTitle(`Invalid waifu \`${begin}\`. ` +
                     'Defaulting to first waifu...');
@@ -1947,7 +1964,7 @@ export const dall: SlashCommand = {
             }
         }
         if (finish) {
-            last = await search_character(interaction, interaction.user.id, finish, false);
+            last = await search_character(client, interaction, interaction.user.id, finish, false);
             if (last === NO_NUM || !last) {
                 embed.setTitle(`Invalid waifu \`${finish}\`. ` +
                     'Defaulting to last waifu...');
@@ -1966,7 +1983,7 @@ export const dall: SlashCommand = {
         embed.setTitle('Confirm delete?').setDescription(
             `## Found ${commons} common(s).\n` +
             `## Total refund: +${commons} ` +
-            `${interaction.client.bot_emojis.brons}\n` +
+            `${client.bot_emojis.brons}\n` +
             '# **This action cannot be undone.**'
         );
         const buttons = new ActionRowBuilder<DTypes.ButtonBuilder>()
@@ -1985,13 +2002,13 @@ export const dall: SlashCommand = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(interaction, message, 'dall');
+        const confirmed = await wait_for_button(client, interaction, message, 'dall');
         if (!confirmed) return;
 
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
         embed.setDescription(`Succesfully deleted ${deleted} common(s)! ` +
-            `+${deleted} ${interaction.client.bot_emojis.brons}`);
+            `+${deleted} ${client.bot_emojis.brons}`);
         return interaction.editReply({ embeds: [embed] });
     }
 };
@@ -2011,10 +2028,10 @@ export const stars: SlashCommand = {
           '*user:* The user you want to find the number of stars for. (Default: You)\n\n' +
           'Examples: `/stars`, `/stars user: @krammygod`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const starsString = user.id === interaction.client.user.id ? '∞' :
+        const starsString = user.id === client.user!.id ? '∞' :
             await DB.fetchUserStarredCount(user.id);
         const stars = await DB.fetchWaifuCount();
         let starSymbol = '⭐';
@@ -2024,7 +2041,7 @@ export const stars: SlashCommand = {
         let whoHas = '';
         if (interaction.user.id === user.id) {
             whoHas += 'You have';
-        } else if (interaction.client.user.id === user.id) {
+        } else if (client.user!.id === user.id) {
             whoHas += 'I have';
         } else {
             whoHas += `${user} has`;
@@ -2161,7 +2178,7 @@ export const top: SlashCommand & TopPrivates = {
         return retval;
     },
 
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
@@ -2172,12 +2189,12 @@ export const top: SlashCommand & TopPrivates = {
                 ephemeral: true
             });
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) return interaction.followUp(followUp);
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -2211,14 +2228,14 @@ export const top: SlashCommand & TopPrivates = {
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, parseInt(page));
+        const { embeds, components } = await this.getPage(client, interaction.user.id, parseInt(page));
         return interaction.editReply({ embeds, components });
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) return interaction.followUp(followUp);
     }
@@ -2243,7 +2260,7 @@ export const users: SlashCommand = {
           '*waifu_name:* The name of the waifu you want details of. (Required)\n\n' +
           'Examples: `/users waifu_name: Kamisato Ayaka`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const waifu_name = interaction.options.getString('waifu_name')!;
         // If anything goes wrong with replying, don't do anything
         const embed = new EmbedBuilder({
@@ -2254,7 +2271,7 @@ export const users: SlashCommand = {
         await interaction.reply({ embeds: [embed] });
         embed.setTitle('Character Details:');
 
-        const waifu = await search_waifu(interaction, waifu_name);
+        const waifu = await search_waifu(client, interaction, waifu_name);
         if (waifu === null) {
             error_embed.setTitle('No character selected.');
             return interaction.editReply({ embeds: [error_embed] });
@@ -2280,7 +2297,7 @@ export const users: SlashCommand = {
         //           'and then use /trade to trade with them!'
         // });
         for (const [i, char] of users.entries()) {
-            const user = await interaction.client.users.fetch(char.uid).catch(() => null);
+            const user = await client.users.fetch(char.uid).catch(() => null);
             if (!user) return interaction.deleteReply();
             desc +=
                 `${i + 1}. **@${user?.tag ?? char.uid}** ` +
@@ -2366,7 +2383,7 @@ export const swap: SlashCommand = {
           '*char2:* The other character you would like to switch with. (Required)\n\n' +
           'Examples: `/swap char1: 1 char2: 2` <- Swaps characters at position 1 with 2.',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const c1 = interaction.options.getString('char1')!;
         const c2 = interaction.options.getString('char2')!;
         const embed = new EmbedBuilder({
@@ -2375,7 +2392,7 @@ export const swap: SlashCommand = {
         });
         await interaction.reply({ embeds: [embed], ephemeral: true });
         embed.setColor(Colors.Red);
-        const char1 = await search_character(interaction, interaction.user.id, c1, false);
+        const char1 = await search_character(client, interaction, interaction.user.id, c1, false);
         if (char1 === null) {
             return interaction.deleteReply();
         } else if (!char1) {
@@ -2385,7 +2402,7 @@ export const swap: SlashCommand = {
             embed.setTitle(`First character not found with index \`${c1}\`.`);
             return interaction.editReply({ embeds: [embed] });
         }
-        const char2 = await search_character(interaction, interaction.user.id, c2, false);
+        const char2 = await search_character(client, interaction, interaction.user.id, c2, false);
         if (char2 === null) {
             return;
         } else if (!char2) {
@@ -2433,7 +2450,7 @@ export const move: SlashCommand = {
           '*position:* The position to move the character to. (Required)\n\n' +
           'Examples: `/move char: 1 position: 2`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const c = interaction.options.getString('char')!;
         const pos = interaction.options.getInteger('position')!;
         const embed = new EmbedBuilder({
@@ -2442,7 +2459,7 @@ export const move: SlashCommand = {
         });
         await interaction.reply({ embeds: [embed], ephemeral: true });
         embed.setColor(Colors.Red);
-        const char = await search_character(interaction, interaction.user.id, c, false);
+        const char = await search_character(client, interaction, interaction.user.id, c, false);
         if (char === null) {
             return interaction.deleteReply();
         } else if (!char) {
@@ -2484,14 +2501,21 @@ type SubmitPrivates = {
         data: DB.PartialWaifu
     ) => Promise<DTypes.EmbedBuilder>;
     searchWaifu: (
+        client: CustomClient,
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
     searchAnime: (
+        client: CustomClient,
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
-    startSelector: (interaction: DTypes.CommandInteraction, img: string[], nimg: string[]) => Promise<void>
+    startSelector: (
+        client: CustomClient,
+        interaction: DTypes.CommandInteraction,
+        img: string[],
+        nimg: string[]
+    ) => Promise<void>
     startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu) => Promise<void>;
 };
 export const submit: CachedSlashCommand<{
@@ -2706,13 +2730,13 @@ export const submit: CachedSlashCommand<{
         );
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         // This handles the button presses from me, the owner that will approve/reject submissions
         const msg = interaction.message;
         if (!msg) return interaction.update({ content: 'Removed.' }).then(m => m.delete());
         const submission = await this.cache.get(msg.id);
         if (!submission) return interaction.update({ content: 'Cache lost.' }).then(m => m.delete());
-        const user = await interaction.client.users.fetch(submission.uid).catch(() => { });
+        const user = await client.users.fetch(submission.uid).catch(() => { });
         if (!user) return msg.delete();
         const action = interaction.customId.split('/')[2];
         const { name, gender, origin, img, nimg } = submission.data;
@@ -2789,7 +2813,7 @@ export const submit: CachedSlashCommand<{
             await user.send({
                 content: `__Your submission for:__ ${newCharacterInfo}Has been **accepted**!`
             }).catch(() => { });
-            const new_characters_log = await interaction.client.channels.fetch(
+            const new_characters_log = await client.channels.fetch(
                 new_characters_log_id
             ) as DTypes.TextBasedChannel;
             if (waifu) {
@@ -2845,7 +2869,7 @@ export const submit: CachedSlashCommand<{
         throw new Error(`No action found for button with custom id: ${interaction.customId}`);
     },
 
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         // This handles the actual submission from the user
         await interaction.deferUpdate();
         const submission = await this.cache.get(interaction.message?.id);
@@ -2904,7 +2928,7 @@ export const submit: CachedSlashCommand<{
                 ephemeral: true
             });
         }
-        const submission_log = await interaction.client.channels.fetch(submission_log_id) as DTypes.TextBasedChannel;
+        const submission_log = await client.channels.fetch(submission_log_id) as DTypes.TextBasedChannel;
         let embed: DTypes.EmbedBuilder;
         // If a previous submission exists, it means I am editing the submission.
         if (submission) {
@@ -2937,14 +2961,14 @@ export const submit: CachedSlashCommand<{
         });
     },
 
-    async searchWaifu(interaction, embed) {
+    async searchWaifu(client, interaction, embed) {
         await interaction.deferUpdate();
 
         const waifu_name = interaction.fields.getTextInputValue('name').trim();
         // Search waifu by name
         const waifus = await DB.searchWaifuByName(waifu_name);
         const waifu = await Utils.get_results(
-            interaction, waifus,
+            client, interaction, waifus,
             {
                 title_fmt: idx => `Found ${idx} waifus matching your query!`,
                 desc_fmt: choice => `⭐ **${choice.name}** from *${choice.origin}*`,
@@ -2976,13 +3000,13 @@ export const submit: CachedSlashCommand<{
         };
     },
 
-    async searchAnime(interaction, embed) {
+    async searchAnime(client, interaction, embed) {
         await interaction.deferUpdate();
 
         const name = interaction.fields.getTextInputValue('name').trim();
         const animes_found = await DB.searchOriginByName(name);
         const series = await Utils.get_results(
-            interaction, animes_found,
+            client, interaction, animes_found,
             {
                 title_fmt: len => `Found ${len} anime(s):`,
                 desc_fmt: choice => `**${choice}**`,
@@ -3026,7 +3050,7 @@ export const submit: CachedSlashCommand<{
         return interaction.showModal(modalInput);
     },
 
-    async startSelector(interaction, img, nimg) {
+    async startSelector(client, interaction, img, nimg) {
         const embed = new EmbedBuilder({
             title: 'No Selection',
             description: 'Click select now to start an empty submission.',
@@ -3103,7 +3127,7 @@ export const submit: CachedSlashCommand<{
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
-                waifu = await this.searchWaifu(res, embed).then(w => {
+                waifu = await this.searchWaifu(client, res, embed).then(w => {
                     if (!w) return waifu;
                     buttons2.components[0].setLabel('Select this waifu');
                     buttons2.components[1].setDisabled(false);
@@ -3140,7 +3164,7 @@ export const submit: CachedSlashCommand<{
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Anime submit search
-                waifu = await this.searchAnime(res, embed).then(w => {
+                waifu = await this.searchAnime(client, res, embed).then(w => {
                     if (!w) return waifu;
                     buttons2.components[0].setLabel('Select this anime');
                     buttons2.components[1].setDisabled(false);
@@ -3167,7 +3191,7 @@ export const submit: CachedSlashCommand<{
         });
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         const img = [];
         for (let i = 0; i < 9; ++i) {
@@ -3179,6 +3203,6 @@ export const submit: CachedSlashCommand<{
             const attachment = interaction.options.getAttachment(`lewd${i + 1}`);
             if (attachment) nimg.push(attachment.url);
         }
-        return this.startSelector(interaction, img, nimg);
+        return this.startSelector(client, interaction, img, nimg);
     }
 };

@@ -408,7 +408,7 @@ export function start() {
     return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
 export function end() {
-    return pool.end();
+    return pool.end().catch(() => { });
 }
 export function getUidsList(shardId: number, totalShards: number) {
     return query<{ uid: string }>(
