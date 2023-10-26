@@ -151,7 +151,7 @@ const guess_number: SlashSubcommand & NumberPrivates = {
     // Cooldown of 5 per 75 seconds.
     cds: new CooldownMapping(5, 75),
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = this.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
@@ -199,7 +199,7 @@ const guess_number: SlashSubcommand & NumberPrivates = {
             });
             return interaction.editReply({ embeds: [embed] });
         }
-        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${interaction.client.bot_emojis.brons}`)
+        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${client.bot_emojis.brons}`)
             .setDescription(this.cds.get(interaction.user.id).tries_left())
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
@@ -220,10 +220,10 @@ export const guess: SlashCommand = {
     subcommands: new Map()
         .set(guess_number.data.name, guess_number),
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const cmd = this.subcommands!.get(interaction.options.getSubcommand())!;
-        return cmd.execute(interaction);
+        return cmd.execute(interaction, client);
     }
 };
 
@@ -242,7 +242,8 @@ const enum Coin {
 }
 
 async function generate_flip(
-    interaction: DTypes.CommandInteraction & { readonly client: CustomClient },
+    client: CustomClient,
+    interaction: DTypes.CommandInteraction,
     side: Coin,
     bet: number
 ): Promise<[EmbedBuilder, string[], boolean]> {
@@ -267,7 +268,7 @@ async function generate_flip(
         if (err instanceof DatabaseMaintenanceError) throw err;
         return false;
     });
-    embed.setTitle(`${title}\n${change > 0 ? '+' : ''}${change} ${interaction.client.bot_emojis.brons}`)
+    embed.setTitle(`${title}\n${change > 0 ? '+' : ''}${change} ${client.bot_emojis.brons}`)
         .setImage(`attachment://${chosen}.png`);
     return [embed, [`files/${chosen}.png`], res];
 }
@@ -333,7 +334,7 @@ export const flip: SlashCommand & FlipPrivates = {
         .set(flip_heads.data.name, flip_heads)
         .set(flip_tails.data.name, flip_tails),
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const bet = interaction.options.getInteger('bet')!;
         const rich_cmd = await Utils.get_rich_cmd(interaction);
@@ -341,7 +342,7 @@ export const flip: SlashCommand & FlipPrivates = {
         const ret = on_cd(rich_cmd, cd);
         if (ret.embeds) return interaction.editReply(ret);
         const cmd = interaction.options.getSubcommand();
-        const [embed, files, success] = await generate_flip(interaction, cmd as Coin, bet);
+        const [embed, files, success] = await generate_flip(client, interaction, cmd as Coin, bet);
         if (!success) {
             const daily_cmd = await Utils.get_rich_cmd('daily');
             cd.force_cd();

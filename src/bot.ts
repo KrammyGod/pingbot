@@ -110,7 +110,7 @@ async function handle_command(message: DTypes.Message) {
     if (!message.content) return;
     const commandName = message.content.toLowerCase().split(/\s/)[0];
     let command = client.message_commands.get(commandName);
-    if (!command && message.author.id === (message.client as CustomClient).admin.id) {
+    if (!command && message.author.id === client.admin.id) {
         command = client.admin_commands.get(commandName);
     }
     // All sorts of message commands
@@ -122,10 +122,9 @@ async function handle_command(message: DTypes.Message) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
-        return command.execute(
-            message as DTypes.Message & { readonly client: CustomClient },
-            args.filter(a => a !== '')
-        ).then(() => { }).catch((err) => handle_message_errors(message, commandName, err));
+        return command.execute(message, args.filter(a => a !== ''), client).then(() => { }).catch(err =>
+            handle_message_errors(message, commandName, err)
+        );
     }
     return handle_reply(message);
 }
@@ -172,20 +171,12 @@ client.on(Events.InteractionCreate, interaction => {
     if (interaction.isCommand()) {
         if (interaction.isContextMenuCommand() && isContextCommand(command)) {
             // Error handling after command.
-            return command.execute(interaction as unknown as
-                DTypes.ContextMenuCommandInteraction & {
-                    client: CustomClient;
-                }
-            ).then(() => { }).catch(err =>
+            return command.execute(interaction, client).then(() => { }).catch(err =>
                 handle_interaction_errors(interaction, interaction.commandName, err)
             );
         } else if (interaction.isChatInputCommand() && isSlashCommand(command)) {
             // Error handling after command.
-            return command.execute(interaction as
-                DTypes.ChatInputCommandInteraction & {
-                    client: CustomClient;
-                }
-            ).then(() => { }).catch(err =>
+            return command.execute(interaction, client).then(() => { }).catch(err =>
                 handle_interaction_errors(interaction, interaction.commandName, err)
             );
         } else {
@@ -200,9 +191,7 @@ client.on(Events.InteractionCreate, interaction => {
         // 0 means global button
         if (id !== '0' && interaction.user.id !== id) return;
 
-        return command.buttonReact(interaction as
-            DTypes.ButtonInteraction & { client: CustomClient }
-        ).then(() => { }).catch(err =>
+        return command.buttonReact(interaction, client).then(() => { }).catch(err =>
             handle_interaction_errors(interaction, commandName, err)
         );
     } else if (interaction.isAnySelectMenu()) {
@@ -212,17 +201,13 @@ client.on(Events.InteractionCreate, interaction => {
         // 0 means global selection
         if (id !== '0' && interaction.user.id !== id) return;
 
-        return command.menuReact(interaction as
-            DTypes.AnySelectMenuInteraction & { client: CustomClient }
-        ).then(() => { }).catch(err =>
+        return command.menuReact(interaction, client).then(() => { }).catch(err =>
             handle_interaction_errors(interaction, commandName, err)
         );
     } else if (interaction.isModalSubmit()) {
         if (!command.textInput) return;
         // With modal, it only applies to user so no need to check for issues.
-        return command.textInput(interaction as
-            DTypes.ModalSubmitInteraction & { client: CustomClient }
-        ).then(() => { }).catch(err =>
+        return command.textInput(interaction, client).then(() => { }).catch(err =>
             handle_interaction_errors(interaction, commandName, err)
         );
     } else {
@@ -499,7 +484,7 @@ function cleanup() {
         '💨 My apologies, it appears my instruments are out of tune. ' +
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
-    const promises = [DB.end().catch(() => { }), client.destroy()];
+    const promises = [DB.end(), client.destroy()];
     for (const guildVoice of GuildVoices.values()) {
         promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }).catch(() => { }));
         guildVoice.destroy();
