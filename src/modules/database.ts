@@ -1177,7 +1177,7 @@ export async function deleteUserCharacter(char: Character) {
     ).then(res => res[0].length);
 }
 export async function deleteUserCommonCharacters(userID: string, { start = 1, end }: Range = {}) {
-    let q = 'DELETE FROM user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
+    let q = 'DELETE FROM all_user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
     const params: string[] = [userID, start.toString()];
     if (end) {
         params.push(end.toString());

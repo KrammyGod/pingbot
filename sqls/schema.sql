@@ -235,6 +235,19 @@ JOIN
 chars C
 ON U.wid = C.wid;
 
+-- Trigger to allow deletions from this table
+CREATE OR REPLACE FUNCTION delete_all_user_chars() RETURNS trigger AS $$
+BEGIN
+    DELETE FROM user_chars WHERE uid = OLD.uid AND wid = OLD.wid;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER delete_from_all_user_chars
+INSTEAD OF DELETE ON all_user_chars
+FOR EACH ROW
+EXECUTE PROCEDURE delete_all_user_chars();
+
 -- Helper to get all chars of a user
 -- Is this overkill?
 CREATE OR REPLACE FUNCTION get_user_chars(uuid bigint)

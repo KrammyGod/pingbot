@@ -2005,8 +2005,7 @@ export const dall: SlashCommand = {
 
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
-        embed.setDescription(`Succesfully deleted ${deleted} common(s)! ` +
-            `+${deleted} ${client.bot_emojis.brons}`);
+        embed.setDescription(`Succesfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
         return interaction.editReply({ embeds: [embed] });
     }
 };
