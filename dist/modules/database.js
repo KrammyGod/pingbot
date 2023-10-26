@@ -358,7 +358,7 @@ function start() {
 }
 exports.start = start;
 function end() {
-    return pool.end();
+    return pool.end().catch(() => { });
 }
 exports.end = end;
 function getUidsList(shardId, totalShards) {
