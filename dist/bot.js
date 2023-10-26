@@ -133,7 +133,7 @@ async function handle_command(message) {
         return;
     const commandName = message.content.toLowerCase().split(/\s/)[0];
     let command = client.message_commands.get(commandName);
-    if (!command && message.author.id === message.client.admin.id) {
+    if (!command && message.author.id === client.admin.id) {
         command = client.admin_commands.get(commandName);
     }
     // All sorts of message commands
@@ -145,7 +145,7 @@ async function handle_command(message) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
-        return command.execute(message, args.filter(a => a !== '')).then(() => { }).catch((err) => handle_message_errors(message, commandName, err));
+        return command.execute(message, args.filter(a => a !== ''), client).then(() => { }).catch(err => handle_message_errors(message, commandName, err));
     }
     return handle_reply(message);
 }
@@ -193,11 +193,11 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
     if (interaction.isCommand()) {
         if (interaction.isContextMenuCommand() && (0, client_1.isContextCommand)(command)) {
             // Error handling after command.
-            return command.execute(interaction).then(() => { }).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
+            return command.execute(interaction, client).then(() => { }).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
         }
         else if (interaction.isChatInputCommand() && (0, client_1.isSlashCommand)(command)) {
             // Error handling after command.
-            return command.execute(interaction).then(() => { }).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
+            return command.execute(interaction, client).then(() => { }).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
         }
         else {
             throw new Error(`${interaction}\nis not a valid interaction for\n${command}.`);
@@ -214,7 +214,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         // 0 means global button
         if (id !== '0' && interaction.user.id !== id)
             return;
-        return command.buttonReact(interaction).then(() => { }).catch(err => handle_interaction_errors(interaction, commandName, err));
+        return command.buttonReact(interaction, client).then(() => { }).catch(err => handle_interaction_errors(interaction, commandName, err));
     }
     else if (interaction.isAnySelectMenu()) {
         if (!command.menuReact)
@@ -224,13 +224,13 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         // 0 means global selection
         if (id !== '0' && interaction.user.id !== id)
             return;
-        return command.menuReact(interaction).then(() => { }).catch(err => handle_interaction_errors(interaction, commandName, err));
+        return command.menuReact(interaction, client).then(() => { }).catch(err => handle_interaction_errors(interaction, commandName, err));
     }
     else if (interaction.isModalSubmit()) {
         if (!command.textInput)
             return;
         // With modal, it only applies to user so no need to check for issues.
-        return command.textInput(interaction).then(() => { }).catch(err => handle_interaction_errors(interaction, commandName, err));
+        return command.textInput(interaction, client).then(() => { }).catch(err => handle_interaction_errors(interaction, commandName, err));
     }
     else {
         throw new Error('Interaction not implemented.');
@@ -487,7 +487,7 @@ function cleanup() {
     const ctnt = '💨 My apologies, it appears my instruments are out of tune. ' +
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
-    const promises = [DB.end().catch(() => { }), client.destroy()];
+    const promises = [DB.end(), client.destroy()];
     for (const guildVoice of client_1.GuildVoices.values()) {
         promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }).catch(() => { }));
         guildVoice.destroy();

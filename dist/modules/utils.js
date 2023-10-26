@@ -164,6 +164,7 @@ exports.timestamp = timestamp;
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
 async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}` } = {}) {
+    const client = new client_1.CustomClient();
     if (choices.length <= 1)
         return choices[0];
     // Take first 10 results
@@ -200,7 +201,7 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    interaction.client.deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }
 exports.get_results = get_results;

@@ -358,7 +358,7 @@ function start() {
 }
 exports.start = start;
 function end() {
-    return pool.end();
+    return pool.end().catch(() => { });
 }
 exports.end = end;
 function getUidsList(shardId, totalShards) {
@@ -981,7 +981,7 @@ async function deleteUserCharacter(char) {
 }
 exports.deleteUserCharacter = deleteUserCharacter;
 async function deleteUserCommonCharacters(userID, { start = 1, end } = {}) {
-    let q = 'DELETE FROM user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
+    let q = 'DELETE FROM all_user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
     const params = [userID, start.toString()];
     if (end) {
         params.push(end.toString());

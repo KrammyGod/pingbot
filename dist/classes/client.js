@@ -10,27 +10,27 @@ const discord_js_1 = require("discord.js");
 function isSlashSubcommand(obj) {
     return obj && obj.data instanceof discord_js_1.SlashCommandSubcommandBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length === 1;
+        obj.execute.length <= 2;
 }
 exports.isSlashSubcommand = isSlashSubcommand;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isSlashSubcommandGroup(obj) {
     return obj && obj.data instanceof discord_js_1.SlashCommandSubcommandGroupBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.subcommands && obj.execute.length === 1;
+        obj.subcommands && obj.execute.length <= 2;
 }
 exports.isSlashSubcommandGroup = isSlashSubcommandGroup;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isSlashCommand(obj) {
     return obj && obj.data instanceof discord_js_1.SlashCommandBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length === 1;
+        obj.execute.length <= 2;
 }
 exports.isSlashCommand = isSlashCommand;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isContextCommand(obj) {
     return obj && obj.data instanceof discord_js_1.ContextMenuCommandBuilder &&
-        typeof obj.execute === 'function' && obj.execute.length === 1;
+        typeof obj.execute === 'function' && obj.execute.length <= 2;
 }
 exports.isContextCommand = isContextCommand;
 function isInteractionCommand(obj) {
@@ -39,8 +39,8 @@ function isInteractionCommand(obj) {
 exports.isInteractionCommand = isInteractionCommand;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isMessageCommand(obj) {
-    return obj && typeof obj.name === 'string' &&
-        typeof obj.execute === 'function' && obj.execute.length <= 2;
+    return obj && typeof obj.name === 'string' && typeof obj.admin === 'boolean' &&
+        typeof obj.desc === 'string' && typeof obj.execute === 'function' && obj.execute.length <= 3;
 }
 exports.isMessageCommand = isMessageCommand;
 exports.GuildVoices = new Map();

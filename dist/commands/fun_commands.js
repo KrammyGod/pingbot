@@ -110,11 +110,11 @@ exports.invite = {
         .setName('invite')
         .setDescription('Get the invite link for me! (See /help command: invite)'),
     desc: invite_docs,
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         // Generated via discord's helper with the above permissions.
         const permissions = '1512670883152';
-        const url = interaction.client.generateInvite({
+        const url = client.generateInvite({
             permissions: permissions,
             scopes: [discord_js_1.OAuth2Scopes.Bot, discord_js_1.OAuth2Scopes.ApplicationsCommands]
         });
@@ -160,12 +160,12 @@ exports.getid = {
         '__**Options**__\n' +
         '*username:* The name of the user you would like to search for. (Required)\n\n' +
         'Examples: `/getid user: Krammy`, `/getid user: @Krammy`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         let query = interaction.options.getString('user');
         if (!query.startsWith('@')) {
             query = `@${query}`;
         }
-        const users = await interaction.client.shard?.broadcastEval((client, query) => {
+        const users = await client.shard?.broadcastEval((client, query) => {
             const u = client.users.cache.filter(u => u.displayName.toLowerCase().includes(query) ||
                 u.tag.toLowerCase().includes(query));
             return u.map(u => ({ name: `@${u.username}`, id: u.id }));
@@ -247,7 +247,7 @@ exports.hoyolab = {
             })
         ]
     }),
-    async delete(interaction, id) {
+    async delete(client, interaction, id) {
         const buttons = [
             new discord_js_1.ButtonBuilder({
                 label: 'Yes!',
@@ -276,7 +276,7 @@ exports.hoyolab = {
                 return;
             return true;
         }).catch(() => undefined);
-        await interaction.client.deleteFollowUp(interaction, message);
+        await client.deleteFollowUp(interaction, message);
         if (!confirmed)
             return;
         const res = await DB.deleteCookie(interaction.user.id, id);
@@ -434,7 +434,7 @@ exports.hoyolab = {
             ephemeral: true
         }).then(() => { });
     },
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [action, id] = interaction.customId.split('/').slice(2);
         if (action === 'add') {
             return interaction.showModal(this.input);
@@ -446,7 +446,7 @@ exports.hoyolab = {
             return interaction.editReply(retval);
         }
         else if (action === 'delete') {
-            return this.delete(interaction, id);
+            return this.delete(client, interaction, id);
         }
         // Reached here means it is some sort of toggle.
         const type = action[0];
@@ -634,7 +634,7 @@ exports.poll = {
         const retval = await this.getPollEditor(interaction.message.id);
         return interaction.editReply(retval);
     },
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const action = interaction.customId.split('/')[2];
         const pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo)
@@ -643,7 +643,7 @@ exports.poll = {
         if (isNaN(idx)) {
             const send = async () => {
                 await interaction.deferUpdate();
-                const channel = await interaction.client.channels.fetch(pollInfo.cid);
+                const channel = await client.channels.fetch(pollInfo.cid);
                 const { embeds, components } = await this.getPoll(interaction.message.id);
                 let message = undefined;
                 if (pollInfo.mid) {
@@ -746,7 +746,7 @@ exports.poll = {
         const retval = await this.getPoll(interaction.message.id);
         return interaction.editReply(retval);
     },
-    async menuReact(interaction) {
+    async menuReact(interaction, client) {
         await interaction.deferUpdate();
         const pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo)
@@ -758,7 +758,7 @@ exports.poll = {
                 ephemeral: true
             });
         }
-        else if (!channel.permissionsFor(interaction.client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
+        else if (!channel.permissionsFor(client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true

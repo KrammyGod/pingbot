@@ -116,7 +116,7 @@ async function search_character(interaction, userID, number_or_name, high) {
     });
 }
 // Global helper that waits for a confirm/cancel interaction
-async function wait_for_button(interaction, message, fn) {
+async function wait_for_button(client, interaction, message, fn) {
     const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.Button, time: 60000 })
         .then(i => {
         if (i.customId === `${fn}/cancel`) {
@@ -124,7 +124,7 @@ async function wait_for_button(interaction, message, fn) {
         }
         return true;
     }).catch(() => false);
-    interaction.client.deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }
 // Simple function to calculate how many pages there are if there are 10 items per page.
@@ -287,11 +287,11 @@ exports.animes = {
         }
         return retval;
     },
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const [userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
             return interaction.deleteReply();
         const page = parseInt(value);
@@ -306,7 +306,7 @@ exports.animes = {
         if (followUp)
             return interaction.followUp(followUp);
     },
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page, userID] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -339,20 +339,20 @@ exports.animes = {
             }
         }
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
             return interaction.deleteReply();
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
         return interaction.editReply({ embeds, components });
     },
-    async menuReact(interaction) {
+    async menuReact(interaction, client) {
         await interaction.deferUpdate();
         const [userID, page] = interaction.customId.split('/').splice(1);
         let gain = 0;
         for (const anime of interaction.values) {
             gain += await collect_anime(userID, anime);
         }
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
             return interaction.deleteReply();
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
@@ -360,7 +360,7 @@ exports.animes = {
         if (gain) {
             return interaction.followUp({
                 content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
-                    `and gained +${gain} ${interaction.client.bot_emojis.brons}!`,
+                    `and gained +${gain} ${client.bot_emojis.brons}!`,
                 ephemeral: true
             }).catch(() => { });
         }
@@ -394,7 +394,7 @@ exports.anime = {
         '*anime:* The name of the anime to search for. (Required)\n' +
         "*user:* Check a different user's list. (Default: You)\n\n" +
         'Examples: `/anime anime: COTE`, `/anime anime: Genshin user: @krammygod`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const name = interaction.options.getString('anime');
         const user = interaction.options.getUser('user') ?? interaction.user;
         const embed = new discord_js_1.EmbedBuilder({ title: 'Waiting for selection...' }).setColor('Gold');
@@ -440,7 +440,7 @@ exports.anime = {
                 if (gain) {
                     return interaction.followUp({
                         content: `You collected bonuses for \`${series}\`! ` +
-                            `+${gain} ${interaction.client.bot_emojis.brons}`,
+                            `+${gain} ${client.bot_emojis.brons}`,
                         ephemeral: true
                     });
                 }
@@ -460,7 +460,7 @@ exports.bal = {
         '__**Options**__\n' +
         '*user:* The user to stalk. (Default: You)\n\n' +
         'Examples: `/bal`, `/bal user: @krammygod`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const user = interaction.options.getUser('user') ?? interaction.user;
         await interaction.deferReply();
         const brons = await DB.getBrons(user.id);
@@ -478,16 +478,16 @@ exports.bal = {
         }
         if (user.id === interaction.user.id) {
             return interaction.editReply({
-                content: `You currently have ${brons} ${interaction.client.bot_emojis.brons}.`
+                content: `You currently have ${brons} ${client.bot_emojis.brons}.`
             });
         }
-        else if (user.id === interaction.client.user.id) {
+        else if (user.id === client.user.id) {
             return interaction.editReply({
-                content: `I have ∞ ${interaction.client.bot_emojis.brons}.`
+                content: `I have ∞ ${client.bot_emojis.brons}.`
             });
         }
         return interaction.editReply({
-            content: `${user} has ${brons} ${interaction.client.bot_emojis.brons}.`,
+            content: `${user} has ${brons} ${client.bot_emojis.brons}.`,
             allowedMentions: { users: [] }
         });
     }
@@ -619,7 +619,7 @@ exports.lb = {
         }
         return retval;
     },
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
         const page = parseInt(value);
@@ -629,12 +629,12 @@ exports.lb = {
                 ephemeral: true
             });
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             return interaction.followUp(followUp);
     },
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -670,13 +670,13 @@ exports.lb = {
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, val);
+        const { embeds, components } = await this.getPage(client, interaction.user.id, val);
         return interaction.editReply({ embeds, components });
     },
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             return interaction.followUp(followUp);
@@ -696,7 +696,7 @@ exports.daily = {
         'The answer is midnight, UTC -5!\n' +
         '\\- *A prose by @ryu_minoru*\n\n' +
         'Usage: `/daily`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const { collect_success, amt } = await DB.getAndSetDaily(interaction.user.id);
         const embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Yellow });
@@ -704,10 +704,10 @@ exports.daily = {
             // Constant from database.ts; should stay same
             if (amt === 1000) {
                 // First sign up
-                embed.setColor(discord_js_1.Colors.Gold).setTitle(`You have collected your first daily! +1000 ${interaction.client.bot_emojis.brons}!`);
+                embed.setColor(discord_js_1.Colors.Gold).setTitle(`You have collected your first daily! +1000 ${client.bot_emojis.brons}!`);
                 return interaction.editReply({ embeds: [embed] });
             }
-            embed.setTitle(`You have collected your daily! +200 ${interaction.client.bot_emojis.brons}!`);
+            embed.setTitle(`You have collected your daily! +200 ${client.bot_emojis.brons}!`);
             const chosen = await DB.fetchRandomStarred(interaction.user.id);
             let bonus_brons = 0;
             if (chosen) {
@@ -717,7 +717,7 @@ exports.daily = {
                     `Your affection with ${chosen.name} is too low right now!` :
                     `Congrats on level ${chosen.lvl}!`;
                 embed.setColor(discord_js_1.Colors.Gold).setTitle(`${embed.data.title}\naaaaand ${chosen.name} gave you another +` +
-                    `${bonus_brons}${interaction.client.bot_emojis.brons}! ${level_str}`);
+                    `${bonus_brons}${client.bot_emojis.brons}! ${level_str}`);
                 DB.addBrons(interaction.user.id, bonus_brons);
             }
             return interaction.editReply({ embeds: [embed] });
@@ -741,9 +741,9 @@ exports.profile = {
         '__**Options**__\n' +
         "*user:* The user's profile to see. (Default: You)\n\n" +
         'Examples: `/profile`, `/profile user: @krammygod`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const me = interaction.client.user.id;
+        const me = client.user.id;
         await interaction.deferReply();
         const promises = [
             DB.getCollected(user.id),
@@ -788,7 +788,7 @@ exports.profile = {
         /* End fields for embed */
         const embed = new discord_js_1.EmbedBuilder({
             title: `${user.displayName}'s Profile`,
-            description: `**「${brons < 0 ? '∞' : brons} ${interaction.client.bot_emojis.brons}」**`,
+            description: `**「${brons < 0 ? '∞' : brons} ${client.bot_emojis.brons}」**`,
             color: discord_js_1.Colors.Gold
         }).addFields([
             { name: '__Daily Check-in:__ ', value: `**${c_str}**`, inline: true },
@@ -846,8 +846,8 @@ exports.profile_menu = {
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Profile')
         .setType(discord_js_1.ApplicationCommandType.User),
-    execute(interaction) {
-        return exports.profile.execute(interaction);
+    execute(interaction, client) {
+        return exports.profile.execute(interaction, client);
     }
 };
 // Helper that gets a list as an embed
@@ -1121,7 +1121,7 @@ const fnMappings = {
     'delete_char': delete_char
 };
 // Upgrades a character and returns a followup component
-async function upgrade(interaction, char) {
+async function upgrade(client, interaction, char) {
     const brons = await DB.getBrons(interaction.user.id);
     // Match gacha_docs
     const costs = [0, 100, 500, 1000];
@@ -1129,7 +1129,7 @@ async function upgrade(interaction, char) {
     if (brons < costs[char.lvl]) {
         embed.setTitle(`You don't have enough brons to upgrade ${char.name} ` +
             `to level ${char.lvl + 1}. Required: ${costs[char.lvl]} ` +
-            `${interaction.client.bot_emojis.brons}`);
+            `${client.bot_emojis.brons}`);
         return { embeds: [embed], ephemeral: true };
     }
     const buttons = new discord_js_1.ActionRowBuilder()
@@ -1142,14 +1142,14 @@ async function upgrade(interaction, char) {
         .setLabel('No')
         .setStyle(discord_js_1.ButtonStyle.Secondary));
     embed.setColor(discord_js_1.Colors.Gold).setTitle(`Are you sure you want to use ${costs[char.lvl]} ` +
-        `${interaction.client.bot_emojis.brons} to upgrade ${char.name} ` +
+        `${client.bot_emojis.brons} to upgrade ${char.name} ` +
         `to level ${char.lvl + 1}?`);
     const message = await interaction.followUp({
         embeds: [embed],
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(interaction, message, 'upgrade_char');
+    const confirmed = await wait_for_button(client, interaction, message, 'upgrade_char');
     if (!confirmed)
         return;
     const ret = await char.upgrade(costs[char.lvl]);
@@ -1161,7 +1161,7 @@ async function upgrade(interaction, char) {
     }
     return { embeds: [embed], ephemeral: true };
 }
-async function switch_char_image(interaction, char) {
+async function switch_char_image(client, interaction, char) {
     const embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Gold });
     const menu = new discord_js_1.StringSelectMenuBuilder()
         .setCustomId('toggle_char/menu')
@@ -1210,7 +1210,7 @@ async function switch_char_image(interaction, char) {
             return;
         return parseInt(i.values[0]);
     }).catch(() => { });
-    interaction.client.deleteFollowUp(interaction, message).then(() => { }).catch(() => { });
+    client.deleteFollowUp(interaction, message).then(() => { }).catch(() => { });
     let success = true;
     if (selected === undefined) {
         return;
@@ -1226,7 +1226,7 @@ async function switch_char_image(interaction, char) {
         return { embeds: [embed], ephemeral: true };
     }
 }
-async function toggle_char_nsfw(interaction, char) {
+async function toggle_char_nsfw(client, interaction, char) {
     const res = await char.toggleNsfw();
     // We only return stuff on failure
     if (res) {
@@ -1238,7 +1238,7 @@ async function toggle_char_nsfw(interaction, char) {
         return { embeds: [embed], ephemeral: true };
     }
 }
-async function delete_char(interaction, char) {
+async function delete_char(client, interaction, char) {
     await char.loadWaifu();
     const embed = new discord_js_1.EmbedBuilder({
         description: '## Are you sure you want to delete ' +
@@ -1262,7 +1262,7 @@ async function delete_char(interaction, char) {
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(interaction, message, 'delete_char');
+    const confirmed = await wait_for_button(client, interaction, message, 'delete_char');
     if (!confirmed)
         return;
     embed.setDescription(null);
@@ -1274,12 +1274,12 @@ async function delete_char(interaction, char) {
     const refund = (char.fc ? 4 : 2) * res; // CONSTANT: Refund brons
     DB.addBrons(interaction.user.id, refund);
     embed.setTitle(`Succesfully deleted ${char.getWFC(interaction.channel)}${char.name} ` +
-        `${char.gender}! +${refund} ${interaction.client.bot_emojis.brons}`);
+        `${char.gender}! +${refund} ${client.bot_emojis.brons}`);
     return { embeds: [embed], ephemeral: true };
 }
 // This collection of helpers is because list and high are identical, with one parameter difference
 const listHelpers = {
-    async buttonReact(interaction, high) {
+    async buttonReact(interaction, high, client) {
         const [cmdName, page, userID] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -1338,7 +1338,7 @@ const listHelpers = {
             }
         }
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
             return interaction.deleteReply();
         const { embeds, components } = cmdName === 'list' ?
@@ -1346,7 +1346,7 @@ const listHelpers = {
             await get_char_as_embed(interaction.channel, interaction.user.id, user, val, high);
         return interaction.editReply({ embeds, components });
     },
-    async menuReact(interaction, high) {
+    async menuReact(interaction, high, client) {
         const [fn, wid] = interaction.values[0].split('/').splice(2);
         await interaction.deferUpdate();
         const char = high ?
@@ -1354,7 +1354,7 @@ const listHelpers = {
             await DB.fetchUserCharacter(interaction.user.id, wid);
         const callFn = fnMappings[fn];
         if (callFn) {
-            const res = await callFn(interaction, char);
+            const res = await callFn(client, interaction, char);
             if (res) {
                 await interaction.followUp(res);
             }
@@ -1376,11 +1376,11 @@ const listHelpers = {
         const { embeds, components } = await res;
         return interaction.editReply({ embeds, components });
     },
-    async textInput(interaction, high) {
+    async textInput(interaction, high, client) {
         const [cmdName, userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
-        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
             return interaction.deleteReply();
         if (cmdName === 'list') {
@@ -1448,14 +1448,14 @@ exports.list = {
         '*user:* The user you want to stalk. (Default: You)\n' +
         '*page:* The page number you want to jump to. (Default: 1)\n\n' +
         'Examples: `/list`, `/list user: @krammygod`, `/list page: 2`',
-    async buttonReact(interaction) {
-        return listHelpers.buttonReact(interaction, false);
+    async buttonReact(interaction, client) {
+        return listHelpers.buttonReact(interaction, false, client);
     },
-    async menuReact(interaction) {
-        return listHelpers.menuReact(interaction, false);
+    async menuReact(interaction, client) {
+        return listHelpers.menuReact(interaction, false, client);
     },
-    async textInput(interaction) {
-        return listHelpers.textInput(interaction, false);
+    async textInput(interaction, client) {
+        return listHelpers.textInput(interaction, false, client);
     },
     async execute(interaction) {
         return listHelpers.execute(interaction, false);
@@ -1465,8 +1465,8 @@ exports.list_menu = {
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Character List')
         .setType(discord_js_1.ApplicationCommandType.User),
-    execute(interaction) {
-        return exports.list.execute(interaction);
+    execute(interaction, client) {
+        return exports.list.execute(interaction, client);
     }
 };
 exports.high = {
@@ -1488,14 +1488,14 @@ exports.high = {
         '*user:* The user to stalk. (Default: You)\n' +
         '*page:* The page number to jump to. (Default: 1)\n\n' +
         'Examples: `/high`, `/high user: @krammygod`, `/high page: 2`',
-    async buttonReact(interaction) {
-        return listHelpers.buttonReact(interaction, true);
+    async buttonReact(interaction, client) {
+        return listHelpers.buttonReact(interaction, true, client);
     },
-    async menuReact(interaction) {
-        return listHelpers.menuReact(interaction, true);
+    async menuReact(interaction, client) {
+        return listHelpers.menuReact(interaction, true, client);
     },
-    async textInput(interaction) {
-        return listHelpers.textInput(interaction, true);
+    async textInput(interaction, client) {
+        return listHelpers.textInput(interaction, true, client);
     },
     async execute(interaction) {
         return listHelpers.execute(interaction, true);
@@ -1543,7 +1543,7 @@ __Level Up Cost:__
 > 
 > You must receive a duplicate to go above level 4`;
 // Helper to generate new character display
-async function generateCharacterDisplay(character, channel, user) {
+async function generateCharacterDisplay(client, character, channel, user) {
     await character.loadWaifu();
     const img = character.getImage(channel);
     let refund = 0;
@@ -1552,7 +1552,7 @@ async function generateCharacterDisplay(character, channel, user) {
     if (!character.new) {
         // CONSTANT: Refund brons
         refund = character.fc ? 4 : 2;
-        const refund_str = `+${refund} ${channel.client.bot_emojis.brons}`;
+        const refund_str = `+${refund} ${client.bot_emojis.brons}`;
         if (character.lvl > 1) {
             add_emoji = ` 🆙 ${refund_str}`;
             add_on = `**Reached level ${character.lvl}!**\n`;
@@ -1602,7 +1602,7 @@ exports.roll = {
         '__**Options**__\n' +
         '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
         'Examples: `/roll`, `/roll ephemeral: True`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
         await interaction.deferReply({ ephemeral: eph }).catch(() => { });
         const amtTaken = { amt: 0 };
@@ -1613,11 +1613,11 @@ exports.roll = {
             return interaction.editReply({ embeds: [error_embed] });
         }
         let total_refund = 0;
-        const { embed, refund } = await generateCharacterDisplay(res, interaction.channel, interaction.user);
+        const { embed, refund } = await generateCharacterDisplay(client, res, interaction.channel, interaction.user);
         total_refund += refund;
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         // Reusing error_embed
         error_embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
@@ -1637,7 +1637,7 @@ exports.multi = {
         '__**Options**__\n' +
         '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
         'Examples: `/multi`, `/multi ephemeral: True`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
         await interaction.deferReply({ ephemeral: eph }).catch(() => { });
         const amtTaken = { amt: 0 };
@@ -1650,13 +1650,13 @@ exports.multi = {
         let total_refund = 0;
         const embeds = [];
         for (const character of res) {
-            const { embed, refund } = await generateCharacterDisplay(character, interaction.channel, interaction.user);
+            const { embed, refund } = await generateCharacterDisplay(client, character, interaction.channel, interaction.user);
             total_refund += refund;
             embeds.push(embed);
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1681,7 +1681,7 @@ exports.whale = {
         '__**Options**__\n' +
         '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
         'Examples: `/whale`, `/whale ephemeral: True`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
         await interaction.deferReply({ ephemeral: eph }).catch(() => { });
         const amtTaken = { amt: 0 };
@@ -1694,13 +1694,13 @@ exports.whale = {
         let total_refund = 0;
         const embeds = [];
         for (const character of res) {
-            const { embed, refund } = await generateCharacterDisplay(character, interaction.channel, interaction.user);
+            const { embed, refund } = await generateCharacterDisplay(client, character, interaction.channel, interaction.user);
             total_refund += refund;
             embeds.push(embed);
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1725,7 +1725,7 @@ exports.dall = {
         '*start_waifu:* The waifu to start deleting from. (Default: 1)\n' +
         '*end_waifu:* The waifu to stop deleting from. (Default: last)\n\n' +
         'Examples: `/dall`, `/dall start: 5`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const begin = interaction.options.getString('start');
         const finish = interaction.options.getString('end');
         const embed = new discord_js_1.EmbedBuilder({
@@ -1769,7 +1769,7 @@ exports.dall = {
         }
         embed.setTitle('Confirm delete?').setDescription(`## Found ${commons} common(s).\n` +
             `## Total refund: +${commons} ` +
-            `${interaction.client.bot_emojis.brons}\n` +
+            `${client.bot_emojis.brons}\n` +
             '# **This action cannot be undone.**');
         const buttons = new discord_js_1.ActionRowBuilder()
             .addComponents(new discord_js_1.ButtonBuilder()
@@ -1785,13 +1785,12 @@ exports.dall = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(interaction, message, 'dall');
+        const confirmed = await wait_for_button(client, interaction, message, 'dall');
         if (!confirmed)
             return;
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
-        embed.setDescription(`Succesfully deleted ${deleted} common(s)! ` +
-            `+${deleted} ${interaction.client.bot_emojis.brons}`);
+        embed.setDescription(`Succesfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
         return interaction.editReply({ embeds: [embed] });
     }
 };
@@ -1807,10 +1806,10 @@ exports.stars = {
         '__**Options**__\n' +
         '*user:* The user you want to find the number of stars for. (Default: You)\n\n' +
         'Examples: `/stars`, `/stars user: @krammygod`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const starsString = user.id === interaction.client.user.id ? '∞' :
+        const starsString = user.id === client.user.id ? '∞' :
             await DB.fetchUserStarredCount(user.id);
         const stars = await DB.fetchWaifuCount();
         let starSymbol = '⭐';
@@ -1821,7 +1820,7 @@ exports.stars = {
         if (interaction.user.id === user.id) {
             whoHas += 'You have';
         }
-        else if (interaction.client.user.id === user.id) {
+        else if (client.user.id === user.id) {
             whoHas += 'I have';
         }
         else {
@@ -1941,7 +1940,7 @@ exports.top = {
         }
         return retval;
     },
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
         const page = parseInt(value);
@@ -1951,12 +1950,12 @@ exports.top = {
                 ephemeral: true
             });
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             return interaction.followUp(followUp);
     },
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -1992,13 +1991,13 @@ exports.top = {
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, parseInt(page));
+        const { embeds, components } = await this.getPage(client, interaction.user.id, parseInt(page));
         return interaction.editReply({ embeds, components });
     },
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             return interaction.followUp(followUp);
@@ -2020,7 +2019,7 @@ exports.users = {
         '__**Options**__\n' +
         '*waifu_name:* The name of the waifu you want details of. (Required)\n\n' +
         'Examples: `/users waifu_name: Kamisato Ayaka`',
-    async execute(interaction) {
+    async execute(interaction, client) {
         const waifu_name = interaction.options.getString('waifu_name');
         // If anything goes wrong with replying, don't do anything
         const embed = new discord_js_1.EmbedBuilder({
@@ -2055,7 +2054,7 @@ exports.users = {
         //           'and then use /trade to trade with them!'
         // });
         for (const [i, char] of users.entries()) {
-            const user = await interaction.client.users.fetch(char.uid).catch(() => null);
+            const user = await client.users.fetch(char.uid).catch(() => null);
             if (!user)
                 return interaction.deleteReply();
             desc +=
@@ -2410,7 +2409,7 @@ exports.submit = {
             `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + data.nimg.length} ` +
                 `(+${data.nimg.length})` : data.nimg.length}\n\n${data.nimg.join('\n\n')}`);
     },
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         // This handles the button presses from me, the owner that will approve/reject submissions
         const msg = interaction.message;
         if (!msg)
@@ -2418,7 +2417,7 @@ exports.submit = {
         const submission = await this.cache.get(msg.id);
         if (!submission)
             return interaction.update({ content: 'Cache lost.' }).then(m => m.delete());
-        const user = await interaction.client.users.fetch(submission.uid).catch(() => { });
+        const user = await client.users.fetch(submission.uid).catch(() => { });
         if (!user)
             return msg.delete();
         const action = interaction.customId.split('/')[2];
@@ -2496,7 +2495,7 @@ exports.submit = {
             await user.send({
                 content: `__Your submission for:__ ${newCharacterInfo}Has been **accepted**!`
             }).catch(() => { });
-            const new_characters_log = await interaction.client.channels.fetch(new_characters_log_id);
+            const new_characters_log = await client.channels.fetch(new_characters_log_id);
             if (waifu) {
                 await new_characters_log.send({
                     content: `Images added to character by ${user} ` +
@@ -2552,7 +2551,7 @@ exports.submit = {
         }
         throw new Error(`No action found for button with custom id: ${interaction.customId}`);
     },
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         // This handles the actual submission from the user
         await interaction.deferUpdate();
         const submission = await this.cache.get(interaction.message?.id);
@@ -2616,7 +2615,7 @@ exports.submit = {
                 ephemeral: true
             });
         }
-        const submission_log = await interaction.client.channels.fetch(submission_log_id);
+        const submission_log = await client.channels.fetch(submission_log_id);
         let embed;
         // If a previous submission exists, it means I am editing the submission.
         if (submission) {
