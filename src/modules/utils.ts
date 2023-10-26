@@ -254,6 +254,7 @@ export async function get_results<T>(
         sel_fmt?: (arg: T) => string
     } = {}
 ) {
+    const client = new CustomClient();
     if (choices.length <= 1) return choices[0] as T | undefined;
 
     // Take first 10 results
@@ -291,6 +292,6 @@ export async function get_results<T>(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    (interaction.client as CustomClient).deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }

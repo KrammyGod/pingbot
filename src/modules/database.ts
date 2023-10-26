@@ -408,7 +408,7 @@ export function start() {
     return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
 export function end() {
-    return pool.end();
+    return pool.end().catch(() => { });
 }
 export function getUidsList(shardId: number, totalShards: number) {
     return query<{ uid: string }>(
@@ -1177,7 +1177,7 @@ export async function deleteUserCharacter(char: Character) {
     ).then(res => res[0].length);
 }
 export async function deleteUserCommonCharacters(userID: string, { start = 1, end }: Range = {}) {
-    let q = 'DELETE FROM user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
+    let q = 'DELETE FROM all_user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
     const params: string[] = [userID, start.toString()];
     if (end) {
         params.push(end.toString());
