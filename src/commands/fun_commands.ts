@@ -171,7 +171,7 @@ export const getid: SlashCommand = {
                 return u.map(u => ({ name: `@${u.username}`, id: u.id }));
             }, { context: query }
         ).then(results => results.flat()) ?? [];
-        const res = await Utils.get_results(client, interaction, users, {
+        const res = await Utils.get_results(interaction, users, {
             title_fmt: n => `Found ${n} users:`,
             desc_fmt: u => `${u.name}`,
             sel_fmt: u => `**${u.name}**`

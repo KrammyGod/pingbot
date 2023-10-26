@@ -62,7 +62,6 @@ const GLOBAL_HELP =
 
 // Global helper for searching for waifus using name
 async function search_waifu(
-    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     name: string
 ) {
@@ -70,7 +69,7 @@ async function search_waifu(
     const res = await DB.searchWaifuByName(name);
     if (!res.length) return undefined;
     return Utils.get_results(
-        client, interaction, res,
+        interaction, res,
         {
             title_fmt: (idx: number) => `Found ${idx} waifus. Please select one:`,
             desc_fmt: choice => `⭐ **${choice.name}** from *${choice.origin}*`,
@@ -81,7 +80,6 @@ async function search_waifu(
 
 // Global helper for searching for user characters using number/name
 async function search_character(
-    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     userID: string,
     number_or_name: string,
@@ -102,7 +100,7 @@ async function search_character(
         await DB.queryUserCharacter(userID, number_or_name);
     if (!res.length) return undefined;
     return Utils.get_results(
-        client, interaction, res,
+        interaction, res,
         {
             title_fmt: (idx: number) => `Found ${idx} characters in ` +
                 `${interaction.user.id === (userID) ? 'your' : 'their'} ` +
@@ -431,7 +429,7 @@ export const anime: SlashCommand = {
         await interaction.reply({ embeds: [embed] });
         const res = await DB.searchOriginByName(name!);
         const series = await Utils.get_results(
-            client, interaction, res,
+            interaction, res,
             { title_fmt: (idx: number) => `Found ${idx} animes. Please select one:` }
         );
         if (series === null) {
@@ -1553,7 +1551,7 @@ const listHelpers = {
             const error_embed = new EmbedBuilder({
                 color: Colors.Red
             });
-            const char = await search_character(client, interaction, userID, value, high);
+            const char = await search_character(interaction, userID, value, high);
             if (char === null) {
                 return;
             } else if (!char) {
@@ -1953,7 +1951,7 @@ export const dall: SlashCommand = {
         let start: number | undefined = undefined;
         let end: number | undefined = undefined;
         if (begin) {
-            first = await search_character(client, interaction, interaction.user.id, begin, false);
+            first = await search_character(interaction, interaction.user.id, begin, false);
             if (first === NO_NUM || !first) {
                 embed.setTitle(`Invalid waifu \`${begin}\`. ` +
                     'Defaulting to first waifu...');
@@ -1964,7 +1962,7 @@ export const dall: SlashCommand = {
             }
         }
         if (finish) {
-            last = await search_character(client, interaction, interaction.user.id, finish, false);
+            last = await search_character(interaction, interaction.user.id, finish, false);
             if (last === NO_NUM || !last) {
                 embed.setTitle(`Invalid waifu \`${finish}\`. ` +
                     'Defaulting to last waifu...');
@@ -2271,7 +2269,7 @@ export const users: SlashCommand = {
         await interaction.reply({ embeds: [embed] });
         embed.setTitle('Character Details:');
 
-        const waifu = await search_waifu(client, interaction, waifu_name);
+        const waifu = await search_waifu(interaction, waifu_name);
         if (waifu === null) {
             error_embed.setTitle('No character selected.');
             return interaction.editReply({ embeds: [error_embed] });
@@ -2383,7 +2381,7 @@ export const swap: SlashCommand = {
           '*char2:* The other character you would like to switch with. (Required)\n\n' +
           'Examples: `/swap char1: 1 char2: 2` <- Swaps characters at position 1 with 2.',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const c1 = interaction.options.getString('char1')!;
         const c2 = interaction.options.getString('char2')!;
         const embed = new EmbedBuilder({
@@ -2392,7 +2390,7 @@ export const swap: SlashCommand = {
         });
         await interaction.reply({ embeds: [embed], ephemeral: true });
         embed.setColor(Colors.Red);
-        const char1 = await search_character(client, interaction, interaction.user.id, c1, false);
+        const char1 = await search_character(interaction, interaction.user.id, c1, false);
         if (char1 === null) {
             return interaction.deleteReply();
         } else if (!char1) {
@@ -2402,7 +2400,7 @@ export const swap: SlashCommand = {
             embed.setTitle(`First character not found with index \`${c1}\`.`);
             return interaction.editReply({ embeds: [embed] });
         }
-        const char2 = await search_character(client, interaction, interaction.user.id, c2, false);
+        const char2 = await search_character(interaction, interaction.user.id, c2, false);
         if (char2 === null) {
             return;
         } else if (!char2) {
@@ -2450,7 +2448,7 @@ export const move: SlashCommand = {
           '*position:* The position to move the character to. (Required)\n\n' +
           'Examples: `/move char: 1 position: 2`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const c = interaction.options.getString('char')!;
         const pos = interaction.options.getInteger('position')!;
         const embed = new EmbedBuilder({
@@ -2459,7 +2457,7 @@ export const move: SlashCommand = {
         });
         await interaction.reply({ embeds: [embed], ephemeral: true });
         embed.setColor(Colors.Red);
-        const char = await search_character(client, interaction, interaction.user.id, c, false);
+        const char = await search_character(interaction, interaction.user.id, c, false);
         if (char === null) {
             return interaction.deleteReply();
         } else if (!char) {
@@ -2501,17 +2499,14 @@ type SubmitPrivates = {
         data: DB.PartialWaifu
     ) => Promise<DTypes.EmbedBuilder>;
     searchWaifu: (
-        client: CustomClient,
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
     searchAnime: (
-        client: CustomClient,
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
     startSelector: (
-        client: CustomClient,
         interaction: DTypes.CommandInteraction,
         img: string[],
         nimg: string[]
@@ -2961,14 +2956,14 @@ export const submit: CachedSlashCommand<{
         });
     },
 
-    async searchWaifu(client, interaction, embed) {
+    async searchWaifu(interaction, embed) {
         await interaction.deferUpdate();
 
         const waifu_name = interaction.fields.getTextInputValue('name').trim();
         // Search waifu by name
         const waifus = await DB.searchWaifuByName(waifu_name);
         const waifu = await Utils.get_results(
-            client, interaction, waifus,
+            interaction, waifus,
             {
                 title_fmt: idx => `Found ${idx} waifus matching your query!`,
                 desc_fmt: choice => `⭐ **${choice.name}** from *${choice.origin}*`,
@@ -3000,13 +2995,13 @@ export const submit: CachedSlashCommand<{
         };
     },
 
-    async searchAnime(client, interaction, embed) {
+    async searchAnime(interaction, embed) {
         await interaction.deferUpdate();
 
         const name = interaction.fields.getTextInputValue('name').trim();
         const animes_found = await DB.searchOriginByName(name);
         const series = await Utils.get_results(
-            client, interaction, animes_found,
+            interaction, animes_found,
             {
                 title_fmt: len => `Found ${len} anime(s):`,
                 desc_fmt: choice => `**${choice}**`,
@@ -3050,7 +3045,7 @@ export const submit: CachedSlashCommand<{
         return interaction.showModal(modalInput);
     },
 
-    async startSelector(client, interaction, img, nimg) {
+    async startSelector(interaction, img, nimg) {
         const embed = new EmbedBuilder({
             title: 'No Selection',
             description: 'Click select now to start an empty submission.',
@@ -3127,7 +3122,7 @@ export const submit: CachedSlashCommand<{
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
-                waifu = await this.searchWaifu(client, res, embed).then(w => {
+                waifu = await this.searchWaifu(res, embed).then(w => {
                     if (!w) return waifu;
                     buttons2.components[0].setLabel('Select this waifu');
                     buttons2.components[1].setDisabled(false);
@@ -3164,7 +3159,7 @@ export const submit: CachedSlashCommand<{
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Anime submit search
-                waifu = await this.searchAnime(client, res, embed).then(w => {
+                waifu = await this.searchAnime(res, embed).then(w => {
                     if (!w) return waifu;
                     buttons2.components[0].setLabel('Select this anime');
                     buttons2.components[1].setDisabled(false);
@@ -3191,7 +3186,7 @@ export const submit: CachedSlashCommand<{
         });
     },
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const img = [];
         for (let i = 0; i < 9; ++i) {
@@ -3203,6 +3198,6 @@ export const submit: CachedSlashCommand<{
             const attachment = interaction.options.getAttachment(`lewd${i + 1}`);
             if (attachment) nimg.push(attachment.url);
         }
-        return this.startSelector(client, interaction, img, nimg);
+        return this.startSelector(interaction, img, nimg);
     }
 };

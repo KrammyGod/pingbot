@@ -242,7 +242,6 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
 export async function get_results<T>(
-    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     choices: T[],
     {
@@ -255,6 +254,7 @@ export async function get_results<T>(
         sel_fmt?: (arg: T) => string
     } = {}
 ) {
+    const client = new CustomClient();
     if (choices.length <= 1) return choices[0] as T | undefined;
 
     // Take first 10 results
