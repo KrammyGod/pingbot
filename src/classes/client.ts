@@ -11,27 +11,27 @@ import type { Cache } from '@modules/database';
 export function isSlashSubcommand(obj: any): obj is SlashSubcommand {
     return obj && obj.data instanceof SlashCommandSubcommandBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length === 2;
+        obj.execute.length <= 2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isSlashSubcommandGroup(obj: any): obj is SlashSubcommandGroup {
     return obj && obj.data instanceof SlashCommandSubcommandGroupBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.subcommands && obj.execute.length === 2;
+        obj.subcommands && obj.execute.length <= 2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isSlashCommand(obj: any): obj is SlashCommand {
     return obj && obj.data instanceof SlashCommandBuilder &&
         typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length === 2;
+        obj.execute.length <= 2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isContextCommand(obj: any): obj is ContextCommand {
     return obj && obj.data instanceof ContextMenuCommandBuilder &&
-        typeof obj.execute === 'function' && obj.execute.length === 2;
+        typeof obj.execute === 'function' && obj.execute.length <= 2;
 }
 
 export function isInteractionCommand(obj: unknown): obj is InteractionCommand {
