@@ -295,3 +295,27 @@ export async function get_results<T>(
     client.deleteFollowUp(interaction, message);
     return res;
 }
+
+// Really only used for purge commands, but nicely defined if any other command requires
+export async function fetch_history(
+    channel: DTypes.TextBasedChannel,
+    amount: number,
+    filter: (message: DTypes.Message) => boolean = () => true
+) {
+    const history: DTypes.Message[] = [];
+    let prev = undefined;
+    while (amount > 0) {
+        // Fetch up to 100 messages at a time (Discord's limit)
+        let to_fetch = amount;
+        if (to_fetch > 100) to_fetch = 100;
+        const messages = await channel.messages.fetch({
+            limit: to_fetch,
+            before: prev
+        }).then(m => m.filter(filter));
+        if (!messages.size) break;
+        history.push(...messages.values());
+        prev = history[history.length - 1].id;
+        amount -= messages.size;
+    }
+    return history;
+}

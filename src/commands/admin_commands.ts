@@ -18,11 +18,6 @@ export const desc = "You shouldn't be seeing this";
 type PurgePrivates = {
     buttons: ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>;
     delete_single: (msgs: DTypes.Message[]) => Promise<number>;
-    fetch_history: (
-        channel: DTypes.TextBasedChannel,
-        amount: number,
-        filter?: (m: DTypes.Message) => boolean
-    ) => Promise<DTypes.Message[]>;
     delete_dms: (message: DTypes.Message, amount: number, all: boolean) => Promise<void>;
     delete_channel: (message: DTypes.Message<true>) => Promise<void>;
 };
@@ -55,32 +50,14 @@ export const purge: MessageCommand & PurgePrivates = {
         return deleted;
     },
 
-    async fetch_history(channel, amount, filter = () => true) {
-        const history: DTypes.Message[] = [];
-        let prev = undefined;
-        while (amount > 0) {
-            // Fetch up to 100 messages at a time (Discord's limit)
-            let to_fetch = amount;
-            if (to_fetch > 100) to_fetch = 100;
-            const messages = await channel.messages.fetch({
-                limit: to_fetch,
-                before: prev
-            }).then(m => m.filter(filter));
-            if (!messages.size) break;
-            history.push(...messages.values());
-            prev = history[history.length - 1].id;
-            amount -= messages.size;
-        }
-        return history;
-    },
-
     async delete_dms(message, amount, all) {
         if (all) {
-            return message.reply({ content: "Can't delete all messages in DMs." }).then(() => { });
+            return message.reply({ content: "Can't delete all messages in DMs." })
+                .then(() => { setTimeout(() => message.delete(), 3000); });
         }
         let deleted = 0;
         while (amount > 0) {
-            const messages = await this.fetch_history(
+            const messages = await Utils.fetch_history(
                 message.channel, amount, (m) => m.author.id === message.client.user.id
             );
             if (messages.length === 0) break;
@@ -185,7 +162,7 @@ export const purge: MessageCommand & PurgePrivates = {
         }
 
         // We want to delete the command message, so amount + 1
-        const history = await this.fetch_history(message.channel, amount + 1);
+        const history = await Utils.fetch_history(message.channel, amount + 1);
         // This is the minimum date when messages can be bulk deleted
         // It is exactly 14 days ago.
         const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
