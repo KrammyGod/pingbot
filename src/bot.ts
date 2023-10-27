@@ -51,7 +51,7 @@ async function get_webhook(channel: DTypes.TextBasedChannel, reason = 'General u
         if (_wb.token) return _wb;
     }
     return channel.createWebhook({
-        name: client.user!.username,
+        name: client.user.username,
         reason: reason
     }).catch(() => { });
 }
@@ -93,7 +93,7 @@ async function replaceEmojis(message: DTypes.Message) {
 }
 
 async function handle_reply(message: DTypes.Message) {
-    if (message.mentions.users.has(client.user!.id)) {
+    if (message.mentions.users.has(client.user.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
         const reply = await message.reply({ content: lines.shift() }).catch(() => { });
         if (!reply) return; // No permissions to send messages
@@ -131,7 +131,7 @@ async function handle_command(message: DTypes.Message) {
 
 // For all message commands
 client.on(Events.MessageCreate, message => {
-    if (!client.is_ready || message.author.id === client.user!.id || !message.content) return;
+    if (!client.is_ready || message.author.id === client.user.id || !message.content) return;
     else if (message.content.startsWith(client.prefix)) return handle_command(message);
     return handle_reply(message);
 });
@@ -241,7 +241,7 @@ async function updateVoice(oldState: DTypes.VoiceState, newState: DTypes.VoiceSt
     // Not connected, don't care.
     if (!guildVoice) return;
     // Ignore self
-    else if (oldState.id === client.user!.id) return;
+    else if (oldState.id === client.user.id) return;
     // Ensure they are moving out of a voice channel
     else if (oldState.channelId === newState.channelId || !oldState.channelId) return;
     // Ensure its the same ID
@@ -272,14 +272,14 @@ async function setNewHost(oldState: DTypes.VoiceState, newState: DTypes.VoiceSta
     // Not connected, don't care.
     if (!guildVoice) return;
     // Ignore self
-    else if (oldState.id === client.user!.id) return;
+    else if (oldState.id === client.user.id) return;
     // Ensure they are moving
     else if (oldState.channelId === newState.channelId || !newState.channelId) return;
     // Ensure its the same ID
     else if (guildVoice.voiceChannel.id !== newState.channelId) return;
     // OK They joined for sure.
     // Set new host if needed:
-    if (guildVoice.host.id === client.user!.id) {
+    if (guildVoice.host.id === client.user.id) {
         const mems = newState.channel?.members.filter(m => m.user.bot === false) ?? new Collection();
         const newHost = mems.at(Math.floor(Math.random() * mems.size));
         guildVoice.host = newHost ?? guildVoice.voiceChannel.guild.members.me!;

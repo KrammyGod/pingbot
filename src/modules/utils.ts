@@ -156,10 +156,10 @@ export async function get_rich_cmd(textOrInteraction: DTypes.ChatInputCommandInt
     }
     const client = new CustomClient();
     const [main_cmd, ...sub_cmd] = textOrInteraction.split(' ');
-    let cmd = client.application!.commands.cache.find(cmd => cmd.name === main_cmd);
+    let cmd = client.application.commands.cache.find(cmd => cmd.name === main_cmd);
     if (!cmd) {
         // Try to fetch full thing if we can't find the command
-        const cmds = await client.application!.commands.fetch();
+        const cmds = await client.application.commands.fetch();
         cmd = cmds.find(cmd => cmd.name === main_cmd);
         if (!cmd) return `\`/${textOrInteraction}\``;
     }

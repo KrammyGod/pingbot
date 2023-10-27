@@ -514,7 +514,7 @@ export const bal: SlashCommand = {
             return interaction.editReply({
                 content: `You currently have ${brons} ${client.bot_emojis.brons}.`
             });
-        } else if (user.id === client.user!.id) {
+        } else if (user.id === client.user.id) {
             return interaction.editReply({
                 content: `I have ∞ ${client.bot_emojis.brons}.`
             });
@@ -806,7 +806,7 @@ export const profile: SlashCommand = {
 
     async execute(interaction, client) {
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const me = client.user!.id;
+        const me = client.user.id;
         await interaction.deferReply();
         const promises = [
             DB.getCollected(user.id),
@@ -2028,7 +2028,7 @@ export const stars: SlashCommand = {
     async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const starsString = user.id === client.user!.id ? '∞' :
+        const starsString = user.id === client.user.id ? '∞' :
             await DB.fetchUserStarredCount(user.id);
         const stars = await DB.fetchWaifuCount();
         let starSymbol = '⭐';
@@ -2038,7 +2038,7 @@ export const stars: SlashCommand = {
         let whoHas = '';
         if (interaction.user.id === user.id) {
             whoHas += 'You have';
-        } else if (client.user!.id === user.id) {
+        } else if (client.user.id === user.id) {
             whoHas += 'I have';
         } else {
             whoHas += `${user} has`;
