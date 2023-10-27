@@ -25,7 +25,11 @@ const asyncReplace = (str: string, regex: RegExp, replace_fn: (match: string) =>
 };
 
 // Since help is just a single command, all helpers are globally scoped
-async function get_results_category(interaction: DTypes.RepliableInteraction, choices: CommandFile[]) {
+async function get_results_category(
+    client: CustomClient,
+    interaction: DTypes.RepliableInteraction,
+    choices: CommandFile[]
+) {
     if (choices.length === 0) return undefined;
     else if (choices.length === 1) return choices[0];
 
@@ -66,7 +70,7 @@ async function get_results_category(interaction: DTypes.RepliableInteraction, ch
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    (interaction.client as CustomClient).deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }
 
@@ -75,8 +79,7 @@ type FullCommand = {
     desc: string;
     is_slash: boolean;
 };
-async function get_results_cmd(interaction: DTypes.RepliableInteraction, search: string) {
-    const client = interaction.client as CustomClient;
+async function get_results_cmd(client: CustomClient, interaction: DTypes.RepliableInteraction, search: string) {
     let choices: FullCommand[] = [];
     for (const cmd of [...client.commands.values(), ...client.message_commands.values()]) {
         if (isMessageCommand(cmd)) {
@@ -159,7 +162,7 @@ async function get_results_cmd(interaction: DTypes.RepliableInteraction, search:
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    (interaction.client as CustomClient).deleteFollowUp(interaction, message);
+    client.deleteFollowUp(interaction, message);
     return res;
 }
 
@@ -367,7 +370,7 @@ export const help: SlashCommand = {
           '...\n...\n...\n...\n...\n...\n...\n...\n... ' +
           '...   ...  ...like this one...',
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const [page, cmdName] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -439,11 +442,11 @@ export const help: SlashCommand = {
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await get_cog_page(interaction.client, interaction.user.id, val);
+        const { embeds, components } = await get_cog_page(client, interaction.user.id, val);
         return interaction.editReply({ embeds, components });
     },
 
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const [cmdName] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
 
@@ -452,8 +455,9 @@ export const help: SlashCommand = {
             const page = parseInt(value);
             if (isNaN(page)) {
                 const category = await get_results_category(
+                    client,
                     interaction,
-                    interaction.client.cogs.filter(cog =>
+                    client.cogs.filter(cog =>
                         cog.name.toLowerCase().includes(value.toLowerCase())
                     ).sort()
                 );
@@ -466,19 +470,19 @@ export const help: SlashCommand = {
                     return interaction.followUp({ embeds: [error_embed], ephemeral: true });
                 }
                 const { embeds, components, followUp } = await get_cog_page(
-                    interaction.client, interaction.user.id, interaction.client.cogs.indexOf(category) + 1
+                    client, interaction.user.id, client.cogs.indexOf(category) + 1
                 );
                 await interaction.editReply({ embeds, components });
                 if (followUp) return interaction.followUp(followUp);
             } else {
                 const { embeds, components, followUp } = await get_cog_page(
-                    interaction.client, interaction.user.id, page
+                    client, interaction.user.id, page
                 );
                 await interaction.editReply({ embeds, components });
                 if (followUp) return interaction.followUp(followUp);
             }
         } else if (cmdName === 'cmd') {
-            const command = await get_results_cmd(interaction, value);
+            const command = await get_results_cmd(client, interaction, value);
             // Either null or undefined, doesn't matter
             if (!command) {
                 const error_embed = new EmbedBuilder({
@@ -487,14 +491,14 @@ export const help: SlashCommand = {
                 });
                 return interaction.followUp({ embeds: [error_embed], ephemeral: true });
             }
-            const res = await get_cmd_page(interaction.client, interaction.user.id, command);
+            const res = await get_cmd_page(client, interaction.user.id, command);
             return interaction.editReply(res);
         } else {
             throw new Error(`Command type: ${cmdName} not found.`);
         }
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const commandName = interaction.options.getString('command');
         const categoryName = interaction.options.getString('category');
         const embed = new EmbedBuilder({
@@ -504,12 +508,11 @@ export const help: SlashCommand = {
         // Admin invokes are not ephemeral.
         await interaction.reply({
             embeds: [embed],
-            ephemeral: interaction.user.id !== interaction.client.admin.id
+            ephemeral: interaction.user.id !== client.admin.id
         });
-        const client = interaction.client;
         let res: HelperRetVal;
         if (commandName) {
-            const command = await get_results_cmd(interaction, commandName);
+            const command = await get_results_cmd(client, interaction, commandName);
             if (command === null) {
                 return interaction.deleteReply();
             } else if (!command) {
@@ -522,6 +525,7 @@ export const help: SlashCommand = {
             res = await get_cmd_page(client, interaction.user.id, command);
         } else if (categoryName) {
             const category = await get_results_category(
+                client,
                 interaction,
                 client.cogs.filter(cog =>
                     cog.name.toLowerCase().includes(categoryName.toLowerCase())

@@ -318,10 +318,10 @@ const play: SlashSubcommand & PlayPrivates = {
         return true;
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         let guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            await join.execute(interaction);
+            await join.execute(interaction, client);
             guildVoice = GuildVoices.get(interaction.guildId!);
             if (!guildVoice) return;
         } else {
@@ -463,14 +463,14 @@ const host: SlashSubcommand = {
           'Usage: `/music host`\n\n' +
           'Examples: `/music host`',
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         await interaction.deferReply();
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' });
         }
         let host = guildVoice.host.toString() as string;
-        if (guildVoice.host.id === interaction.client.user.id) {
+        if (guildVoice.host.id === client.user!.id) {
             host = 'me';
         } else if (guildVoice.host.id === interaction.user.id) {
             host = 'you';
@@ -938,9 +938,9 @@ const remove: SlashSubcommandGroup = {
     subcommands: new Map()
         .set(remove_song.data.name, remove_song),
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const subcmd = this.subcommands!.get(interaction.options.getSubcommand());
-        return subcmd!.execute(interaction);
+        return subcmd!.execute(interaction, client);
     }
 };
 
@@ -996,9 +996,9 @@ const vote: SlashSubcommandGroup = {
     subcommands: new Map()
         .set(vote_skip.data.name, vote_skip),
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const subcmd = this.subcommands!.get(interaction.options.getSubcommand());
-        return subcmd!.execute(interaction);
+        return subcmd!.execute(interaction, client);
     }
 };
 
@@ -1103,26 +1103,26 @@ export const music: SlashCommand = {
 
     desc: 'Music base command',
     
-    async textInput(interaction) {
+    async textInput(interaction, client) {
         const subcommand = this.subcommands!.get(interaction.customId.split('/')[1]);
-        return subcommand!.textInput!(interaction);
+        return subcommand!.textInput!(interaction, client);
     },
 
-    async buttonReact(interaction) {
+    async buttonReact(interaction, client) {
         const subcommand = this.subcommands!.get(interaction.customId.split('/')[2]);
-        return subcommand!.buttonReact!(interaction);
+        return subcommand!.buttonReact!(interaction, client);
     },
 
-    async menuReact(interaction) {
+    async menuReact(interaction, client) {
         const subcommand = this.subcommands!.get(interaction.customId.split('/')[2]);
-        return subcommand!.menuReact!(interaction);
+        return subcommand!.menuReact!(interaction, client);
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
         const subcmd = this.subcommands!.get(
             interaction.options.getSubcommand(false) ??
             interaction.options.getSubcommandGroup()!
         );
-        return subcmd!.execute(interaction);
+        return subcmd!.execute(interaction, client);
     }
 };

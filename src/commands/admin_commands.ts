@@ -154,7 +154,7 @@ export const purge: MessageCommand & PurgePrivates = {
             }).catch(() => { });
     },
 
-    async execute(message, args) {
+    async execute(message, args, client) {
         // Defaults to 100
         let amount = 100;
         let all = false;
@@ -198,7 +198,7 @@ export const purge: MessageCommand & PurgePrivates = {
             return message.reply({ content: 'No messages to delete.' });
         }
 
-        if (amount >= 100 && message.author.id !== message.client.admin.id) {
+        if (amount >= 100 && message.author.id !== client.admin.id) {
             const buttonMessage = await message.reply({
                 content: "Woah! That's a lot of messages!\nAre you sure " +
                     `you want to delete ${amount} messages?`,
@@ -286,7 +286,7 @@ export const add: MessageCommand = {
     admin: true,
     desc: 'Adds brons to a user.',
 
-    async execute(message, args) {
+    async execute(message, args, client) {
         if (message.guild?.id !== config.guild) {
             setTimeout(() => message.delete().catch(() => { }), 200);
         }
@@ -326,7 +326,7 @@ export const add: MessageCommand = {
         await DB.addBrons(res!.id, amount);
         await message.channel.send({
             content: `${res} ${amount < 0 ? 'lost' : 'gained'} ` +
-                `${Math.abs(amount)} ${message.client.bot_emojis.brons}.`,
+                `${Math.abs(amount)} ${client.bot_emojis.brons}.`,
             allowedMentions: { users: [] }
         }).then(msg => {
             if (message.guild?.id === config.guild) return;
@@ -420,14 +420,14 @@ export const start: MessageCommand = {
     admin: true,
     desc: 'For when bot is ready again.',
 
-    async execute(message) {
+    async execute(message, _args, client) {
         setTimeout(() => message.delete().catch(() => { }), 200);
-        if (message.client.is_listening) {
+        if (client.is_listening) {
             return message.reply({ content: "I'm already listening." })
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-        message.client.is_listening = true;
+        client.is_listening = true;
         return message.reply({ content: "I'm listening again." })
             .then(msg => setTimeout(() => msg.delete(), 2000))
             .catch(() => { });
@@ -439,14 +439,14 @@ export const stop: MessageCommand = {
     admin: true,
     desc: 'For when bot needs to be shut down immediately.',
 
-    async execute(message) {
+    async execute(message, _args, client) {
         setTimeout(() => message.delete().catch(() => { }), 200);
-        if (!message.client.is_listening) {
+        if (!client.is_listening) {
             return message.channel.send({ content: 'I already stopped listening.' })
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-        message.client.is_listening = false;
+        client.is_listening = false;
         return message.channel.send({ content: 'I stopped listening.' })
             .then(msg => setTimeout(() => msg.delete(), 2000))
             .catch(() => { });
