@@ -156,10 +156,10 @@ export async function get_rich_cmd(textOrInteraction: DTypes.ChatInputCommandInt
     }
     const client = new CustomClient();
     const [main_cmd, ...sub_cmd] = textOrInteraction.split(' ');
-    let cmd = client.application!.commands.cache.find(cmd => cmd.name === main_cmd);
+    let cmd = client.application.commands.cache.find(cmd => cmd.name === main_cmd);
     if (!cmd) {
         // Try to fetch full thing if we can't find the command
-        const cmds = await client.application!.commands.fetch();
+        const cmds = await client.application.commands.fetch();
         cmd = cmds.find(cmd => cmd.name === main_cmd);
         if (!cmd) return `\`/${textOrInteraction}\``;
     }
@@ -233,6 +233,9 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
 
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
+ * Warning: This will create a followup message and delete it
+ * Make sure to have original reply still be available & edit original reply instead
+ * 
  * options allowed:
  * 
  * Embed details: `title_fmt`, `desc_fmt`
@@ -252,7 +255,7 @@ export async function get_results<T>(
         title_fmt?: (arg: number) => string,
         desc_fmt?: (arg: T) => string,
         sel_fmt?: (arg: T) => string
-    } = {}
+    }
 ) {
     const client = new CustomClient();
     if (choices.length <= 1) return choices[0] as T | undefined;
@@ -292,6 +295,33 @@ export async function get_results<T>(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
-    return res;
+    return client.deleteFollowUp(interaction, message).then(() => res);
+}
+
+// Really only used for purge commands, but nicely defined if any other command requires
+export async function* fetch_history(
+    channel: DTypes.TextBasedChannel,
+    amount: number,
+    filter: (message: DTypes.Message) => boolean = () => true
+) {
+    let prev: string | undefined;
+    while (amount > 0) {
+        // Always fetch max amount to be efficient
+        const messages = await channel.messages.fetch({
+            limit: 100,
+            before: prev
+        });
+        if (!messages.size) break;
+        prev = messages.last()!.id;
+        // We generate up to `amount` messages
+        // The reason we filter from 100 to `amount`, is because messages.filter(filter)
+        // might produce lesser results than `amount`. This is the only way to ensure we
+        // get all possible matching messages with the least amount of API calls.
+        let i = 0;
+        for (const msg of messages.filter(filter).values()) {
+            yield msg;
+            if (++i === amount) break;
+        }
+        amount -= i;
+    }
 }

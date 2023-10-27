@@ -126,8 +126,7 @@ async function wait_for_button(
             }
             return true;
         }).catch(() => false);
-    client.deleteFollowUp(interaction, message);
-    return res;
+    return client.deleteFollowUp(interaction, message).then(() => res);
 }
 
 // Simple function to calculate how many pages there are if there are 10 items per page.
@@ -514,7 +513,7 @@ export const bal: SlashCommand = {
             return interaction.editReply({
                 content: `You currently have ${brons} ${client.bot_emojis.brons}.`
             });
-        } else if (user.id === client.user!.id) {
+        } else if (user.id === client.user.id) {
             return interaction.editReply({
                 content: `I have ∞ ${client.bot_emojis.brons}.`
             });
@@ -806,7 +805,7 @@ export const profile: SlashCommand = {
 
     async execute(interaction, client) {
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const me = client.user!.id;
+        const me = client.user.id;
         await interaction.deferReply();
         const promises = [
             DB.getCollected(user.id),
@@ -1953,8 +1952,7 @@ export const dall: SlashCommand = {
         if (begin) {
             first = await search_character(interaction, interaction.user.id, begin, false);
             if (first === NO_NUM || !first) {
-                embed.setTitle(`Invalid waifu \`${begin}\`. ` +
-                    'Defaulting to first waifu...');
+                embed.setTitle(`Invalid waifu \`${begin}\`. Defaulting to first waifu...`);
                 embed.setColor(Colors.Red);
                 await interaction.followUp({ embeds: [embed], ephemeral: true });
             } else {
@@ -1964,8 +1962,7 @@ export const dall: SlashCommand = {
         if (finish) {
             last = await search_character(interaction, interaction.user.id, finish, false);
             if (last === NO_NUM || !last) {
-                embed.setTitle(`Invalid waifu \`${finish}\`. ` +
-                    'Defaulting to last waifu...');
+                embed.setTitle(`Invalid waifu \`${finish}\`. Defaulting to last waifu...`);
                 embed.setColor(Colors.Red);
                 await interaction.followUp({ embeds: [embed], ephemeral: true });
                 last = undefined;
@@ -2028,7 +2025,7 @@ export const stars: SlashCommand = {
     async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const starsString = user.id === client.user!.id ? '∞' :
+        const starsString = user.id === client.user.id ? '∞' :
             await DB.fetchUserStarredCount(user.id);
         const stars = await DB.fetchWaifuCount();
         let starSymbol = '⭐';
@@ -2038,7 +2035,7 @@ export const stars: SlashCommand = {
         let whoHas = '';
         if (interaction.user.id === user.id) {
             whoHas += 'You have';
-        } else if (client.user!.id === user.id) {
+        } else if (client.user.id === user.id) {
             whoHas += 'I have';
         } else {
             whoHas += `${user} has`;
