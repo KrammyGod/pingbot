@@ -12,7 +12,6 @@ export const desc = 'Helpful bunch of commands for moderators who want an easier
 
 type PurgePrivates = {
     buttons: ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>;
-    delete_single: (msgs: DTypes.Message[]) => Promise<number>;
     delete_dms: (channel: DTypes.TextBasedChannel, amount: number) => Promise<void>;
     delete_channel: (interaction: DTypes.ChatInputCommandInteraction) => Promise<void>;
 };
@@ -48,28 +47,15 @@ export const purge: SlashCommand & PurgePrivates = {
                 .setLabel('No')
                 .setStyle(ButtonStyle.Secondary)),
 
-    // Using discord.py's internal structure, delete messages one at a time
-    // Useful for DMs/messages older than 14 days.
-    async delete_single(msgs) {
-        let deleted = 0;
-        for (const msg of msgs) {
-            // Ignore deleting errors
-            await msg.delete().catch(() => { --deleted; });
-            ++deleted;
-        }
-        return deleted;
-    },
-
     async delete_dms(channel, amount) {
+        const self_filter = (m: DTypes.Message) => m.author.id === channel.client.user.id;
         let deleted = 0;
-        while (amount > 0) {
-            const messages = await Utils.fetch_history(
-                channel, amount, (m) => m.author.id === channel.client.user.id
-            );
-            if (messages.length === 0) break;
-            const burst: number = await this.delete_single(messages);
-            amount -= burst;
-            deleted += burst;
+        let rounds = 0;
+        for await (const msg of Utils.fetch_history(channel, amount, self_filter)) {
+            await msg.delete().catch(() => --deleted);
+            ++deleted;
+            // Wait 1 second every 10 delete requests
+            if (++rounds % 10 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
         }
         return channel.send({ content: `Successfully deleted ${deleted} message(s).` })
             .then(m => { setTimeout(() => m.delete(), 3000); });
@@ -180,56 +166,58 @@ export const purge: SlashCommand & PurgePrivates = {
         if (test.size === 0) {
             return interaction.editReply({ content: 'No messages to delete.' });
         }
+        await interaction.editReply({ content: 'Deleting messages...' });
 
-        const history = await Utils.fetch_history(interaction.channel!, amount!, m => {
-            return !user || m.author.id === user.id;
-        });
+        // Keep async to keep Promise<number> signature
+        const bulk_delete = async (messages: DTypes.Message[]) => {
+            // Discord bulk delete doesn't like single messages.
+            if (messages.length <= 1) {
+                return messages.at(0)?.delete().then(() => 1).catch(() => 0) ?? 0;
+            }
+            return interaction.channel!.bulkDelete(messages).then(arr => arr.size);
+        };
+        // Inspired by discord.py's internal structure, delete messages one at a time
+        // Useful for DMs/messages older than 14 days.
+        const single_delete = async (messages: DTypes.Message[]) => {
+            let deleted = 0;
+            for (const msg of messages) {
+                // Ignore deleting errors
+                await msg.delete().catch(() => --deleted);
+                ++deleted;
+            }
+            return deleted;
+        };
+        let strategy = bulk_delete;
+
         // This is the minimum date when messages can be bulk deleted
         // It is exactly 14 days ago.
         const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
         let to_delete: DTypes.Message[] = [];
         let deleted = 0;
-        while (history.length) {
-            // Grab next message
-            const msg = history.shift()!;
+        const user_filter = (m: DTypes.Message) => !user || m.author.id === user.id;
+        for await (const msg of Utils.fetch_history(interaction.channel!, amount, user_filter)) {
+            // Delete every 100 since Discord's bulk delete is limited to 100 at a time.
+            if (to_delete.length === 100) {
+                deleted += await strategy(to_delete);
+                to_delete = [];
+                // Wait 1 second every 100 deletes
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             // Older than 14 days
             if (msg.createdTimestamp < min_date) {
                 // If we hit a message that is older than 14 days
                 // We need to first clear out all messages we have so far
                 if (to_delete.length) {
-                    if (to_delete.length === 1) {
-                        await to_delete[0].delete();
-                        ++deleted;
-                    } else {
-                        const arr = await interaction.channel!.bulkDelete(to_delete);
-                        deleted += arr.size;
-                    }
+                    deleted += await strategy(to_delete);
+                    to_delete = [];
                 }
-                // Then we have to delete them one by one,
-                // due to Discord's method of deleting old messages.
-                const arr = [msg];
-                arr.push(...history);
-                deleted += await this.delete_single(arr);
-                to_delete = [];
-                break;
-            } else if (to_delete.length === 100) {
-                // Discord's bulk delete is limited to 100 at a time.
-                const arr = await interaction.channel!.bulkDelete(to_delete);
-                deleted += arr.size;
-                to_delete = [];
+                strategy = single_delete;
             }
             to_delete.push(msg);
         }
         // Leftover remaining undeleted messages
         if (to_delete.length) {
-            // Single messages, delete single to be safe
-            if (to_delete.length === 1) {
-                await to_delete[0].delete();
-                ++deleted;
-            } else {
-                const arr = await interaction.channel!.bulkDelete(to_delete);
-                deleted += arr.size;
-            }
+            deleted += await strategy(to_delete);
         }
 
         await client.deleteFollowUp(interaction, message);

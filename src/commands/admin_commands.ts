@@ -17,8 +17,7 @@ export const desc = "You shouldn't be seeing this";
 
 type PurgePrivates = {
     buttons: ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>;
-    delete_single: (msgs: DTypes.Message[]) => Promise<number>;
-    delete_dms: (message: DTypes.Message, amount: number, all: boolean) => Promise<void>;
+    delete_dms: (message: DTypes.TextBasedChannel, amount: number) => Promise<void>;
     delete_channel: (message: DTypes.Message<true>) => Promise<void>;
 };
 export const purge: MessageCommand & PurgePrivates = {
@@ -38,34 +37,17 @@ export const purge: MessageCommand & PurgePrivates = {
                 .setLabel('No')
                 .setStyle(ButtonStyle.Secondary)),
 
-    // Using discord.py's internal structure, delete messages one at a time
-    // Useful for DMs/messages older than 14 days.
-    async delete_single(msgs) {
+    async delete_dms(channel, amount) {
+        const self_filter = (m: DTypes.Message) => m.author.id === channel.client.user.id;
         let deleted = 0;
-        for (const msg of msgs) {
-            // Ignore deleting errors
-            await msg.delete().catch(() => { --deleted; });
+        let rounds = 0;
+        for await (const msg of Utils.fetch_history(channel, amount, self_filter)) {
+            await msg.delete().catch(() => --deleted);
             ++deleted;
+            // Wait 1 second every 10 delete requests
+            if (++rounds % 10 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        return deleted;
-    },
-
-    async delete_dms(message, amount, all) {
-        if (all) {
-            return message.reply({ content: "Can't delete all messages in DMs." })
-                .then(() => { setTimeout(() => message.delete(), 3000); });
-        }
-        let deleted = 0;
-        while (amount > 0) {
-            const messages = await Utils.fetch_history(
-                message.channel, amount, (m) => m.author.id === message.client.user.id
-            );
-            if (messages.length === 0) break;
-            const burst: number = await this.delete_single(messages);
-            amount -= burst;
-            deleted += burst;
-        }
-        return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
+        return channel.send({ content: `Successfully deleted ${deleted} message(s).` })
             .then(m => { setTimeout(() => m.delete(), 3000); });
     },
 
@@ -126,11 +108,13 @@ export const purge: MessageCommand & PurgePrivates = {
         if (args.length > 0) {
             if (args[0].toLowerCase() === 'all') all = true;
             else amount = parseInt(args[0]);
-            if (isNaN(amount) || amount <= 0) return message.reply({ content: 'Enter a positive number.' });
+            if (isNaN(amount) || amount <= 0) {
+                return message.reply({ content: 'Enter a positive number.' });
+            }
         }
         if (message.channel.isDMBased() || !message.inGuild()) {
             // DMs
-            return this.delete_dms(message, amount, all);
+            return this.delete_dms(message.channel, amount);
         } else if (!message.channel.permissionsFor(message.member!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
@@ -161,54 +145,56 @@ export const purge: MessageCommand & PurgePrivates = {
             return message.reply({ content: 'No messages to delete.' });
         }
 
-        // We want to delete the command message, so amount + 1
-        const history = await Utils.fetch_history(message.channel, amount + 1);
+        // Keep async to keep Promise<number> signature
+        const bulk_delete = async (messages: DTypes.Message[]) => {
+            // Discord bulk delete doesn't like single messages.
+            if (messages.length <= 1) {
+                return messages.at(0)?.delete().then(() => 1).catch(() => 0) ?? 0;
+            }
+            return message.channel.bulkDelete(messages).then(arr => arr.size);
+        };
+        // Inspired by discord.py's internal structure, delete messages one at a time
+        // Useful for DMs/messages older than 14 days.
+        const single_delete = async (messages: DTypes.Message[]) => {
+            let deleted = 0;
+            for (const msg of messages) {
+                // Ignore deleting errors
+                await msg.delete().catch(() => --deleted);
+                ++deleted;
+            }
+            return deleted;
+        };
+        let strategy = bulk_delete;
+
         // This is the minimum date when messages can be bulk deleted
         // It is exactly 14 days ago.
         const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
         let to_delete: DTypes.Message[] = [];
         let deleted = 0;
-        while (history.length) {
-            // Grab next message
-            const msg = history.shift()!;
+        // Also delete the message command itself in the purge, so amount + 1
+        for await (const msg of Utils.fetch_history(message.channel, amount + 1)) {
+            // Delete every 100 since Discord's bulk delete is limited to 100 at a time.
+            if (to_delete.length === 100) {
+                deleted += await strategy(to_delete);
+                to_delete = [];
+                // Wait 1 second every 100 deletes
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             // Older than 14 days
             if (msg.createdTimestamp < min_date) {
                 // If we hit a message that is older than 14 days
                 // We need to first clear out all messages we have so far
                 if (to_delete.length) {
-                    if (to_delete.length === 1) {
-                        await to_delete[0].delete();
-                        ++deleted;
-                    } else {
-                        const arr = await message.channel.bulkDelete(to_delete);
-                        deleted += arr.size;
-                    }
+                    deleted += await strategy(to_delete);
+                    to_delete = [];
                 }
-                // Then we have to delete them one by one,
-                // due to Discord's method of deleting old messages.
-                const arr = [msg];
-                arr.push(...history);
-                deleted += await this.delete_single(arr);
-                to_delete = [];
-                break;
-            } else if (to_delete.length === 100) {
-                // Discord's bulk delete is limited to 100 at a time.
-                const arr = await message.channel.bulkDelete(to_delete);
-                deleted += arr.size;
-                to_delete = [];
+                strategy = single_delete;
             }
             to_delete.push(msg);
         }
         // Leftover remaining undeleted messages
         if (to_delete.length) {
-            // Single messages, delete single to be safe
-            if (to_delete.length === 1) {
-                await to_delete[0].delete();
-                ++deleted;
-            } else {
-                const arr = await message.channel.bulkDelete(to_delete);
-                deleted += arr.size;
-            }
+            deleted += await strategy(to_delete);
         }
 
         // We also delete the command message, so deleted - 1

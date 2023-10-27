@@ -299,25 +299,29 @@ export async function get_results<T>(
 }
 
 // Really only used for purge commands, but nicely defined if any other command requires
-export async function fetch_history(
+export async function* fetch_history(
     channel: DTypes.TextBasedChannel,
     amount: number,
     filter: (message: DTypes.Message) => boolean = () => true
 ) {
-    const history: DTypes.Message[] = [];
-    let prev = undefined;
+    let prev: string | undefined;
     while (amount > 0) {
-        // Fetch up to 100 messages at a time (Discord's limit)
-        let to_fetch = amount;
-        if (to_fetch > 100) to_fetch = 100;
+        // Always fetch max amount to be efficient
         const messages = await channel.messages.fetch({
-            limit: to_fetch,
+            limit: 100,
             before: prev
-        }).then(m => m.filter(filter));
+        });
         if (!messages.size) break;
-        history.push(...messages.values());
-        prev = history[history.length - 1].id;
-        amount -= messages.size;
+        prev = messages.last()!.id;
+        // We generate up to `amount` messages
+        // The reason we filter from 100 to `amount`, is because messages.filter(filter)
+        // might produce lesser results than `amount`. This is the only way to ensure we
+        // get all possible matching messages with the least amount of API calls.
+        let i = 0;
+        for (const msg of messages.filter(filter).values()) {
+            yield msg;
+            if (++i === amount) break;
+        }
+        amount -= i;
     }
-    return history;
 }
