@@ -70,7 +70,7 @@ async function get_results_category(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
+    Utils.deleteEphemeralMessage(interaction, message);
     return res;
 }
 
@@ -162,7 +162,7 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
+    Utils.deleteEphemeralMessage(interaction, message);
     return res;
 }
 
