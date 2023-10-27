@@ -276,7 +276,7 @@ exports.hoyolab = {
                 return;
             return true;
         }).catch(() => undefined);
-        await client.deleteFollowUp(interaction, message);
+        await Utils.deleteEphemeralMessage(interaction, message);
         if (!confirmed)
             return;
         const res = await DB.deleteCookie(interaction.user.id, id);

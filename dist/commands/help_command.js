@@ -83,7 +83,7 @@ async function get_results_category(client, interaction, choices) {
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
+    Utils.deleteEphemeralMessage(interaction, message);
     return res;
 }
 async function get_results_cmd(client, interaction, search) {
@@ -172,7 +172,7 @@ async function get_results_cmd(client, interaction, search) {
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
+    Utils.deleteEphemeralMessage(interaction, message);
     return res;
 }
 async function get_cog_page(client, authorID, page) {

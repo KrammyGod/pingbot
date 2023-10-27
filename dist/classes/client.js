@@ -57,9 +57,6 @@ class CustomClient extends discord_js_1.Client {
         this.lines = [];
         this.commands = new Map();
         this.user_cache_ready = false;
-        this.deleteFollowUp = async (i, msg) => {
-            return this.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id));
-        };
         // Everything is ready, set instance here
         CustomClient._instance = this;
     }
