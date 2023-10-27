@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.get_results = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.fetch_history = exports.get_results = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
 const client_1 = require("../classes/client");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
@@ -155,6 +155,9 @@ function timestamp(date, fmt = 'f') {
 exports.timestamp = timestamp;
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
+ * Warning: This will create a followup message and delete it
+ * Make sure to have original reply still be available & edit original reply instead
+ *
  * options allowed:
  *
  * Embed details: `title_fmt`, `desc_fmt`
@@ -163,7 +166,7 @@ exports.timestamp = timestamp;
  *
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
-async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}` } = {}) {
+async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}` }) {
     const client = new client_1.CustomClient();
     if (choices.length <= 1)
         return choices[0];
@@ -201,8 +204,33 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
-    return res;
+    return client.deleteFollowUp(interaction, message).then(() => res);
 }
 exports.get_results = get_results;
+// Really only used for purge commands, but nicely defined if any other command requires
+async function* fetch_history(channel, amount, filter = () => true) {
+    let prev;
+    while (amount > 0) {
+        // Always fetch max amount to be efficient
+        const messages = await channel.messages.fetch({
+            limit: 100,
+            before: prev
+        });
+        if (!messages.size)
+            break;
+        prev = messages.last().id;
+        // We generate up to `amount` messages
+        // The reason we filter from 100 to `amount`, is because messages.filter(filter)
+        // might produce lesser results than `amount`. This is the only way to ensure we
+        // get all possible matching messages with the least amount of API calls.
+        let i = 0;
+        for (const msg of messages.filter(filter).values()) {
+            yield msg;
+            if (++i === amount)
+                break;
+        }
+        amount -= i;
+    }
+}
+exports.fetch_history = fetch_history;
 //# sourceMappingURL=utils.js.map

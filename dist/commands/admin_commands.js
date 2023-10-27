@@ -50,75 +50,34 @@ exports.purge = {
         .setCustomId('purge/cancel')
         .setLabel('No')
         .setStyle(discord_js_1.ButtonStyle.Secondary)),
-    // Using discord.py's internal structure, delete messages one at a time
-    // Useful for DMs/messages older than 14 days.
-    async delete_single(msgs) {
+    async delete_dms(channel, amount) {
+        const self_filter = (m) => m.author.id === channel.client.user.id;
         let deleted = 0;
-        for (const msg of msgs) {
-            // Ignore deleting errors
-            await msg.delete().catch(() => { --deleted; });
+        let rounds = 0;
+        for await (const msg of Utils.fetch_history(channel, amount, self_filter)) {
+            await msg.delete().catch(() => --deleted);
             ++deleted;
+            // Wait 1 second every 10 delete requests
+            if (++rounds % 10 === 0)
+                await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        return deleted;
-    },
-    async fetch_history(channel, amount, filter = () => true) {
-        let i = 0;
-        const history = [];
-        let prev = undefined;
-        // Set upper limit to prevent true infinite loop.
-        while (i <= 100000000) {
-            const to_fetch = (amount - i * 100) > 100 ? 100 : amount - i * 100;
-            if (to_fetch <= 0)
-                break;
-            let messages = await channel.messages.fetch({
-                limit: to_fetch,
-                before: prev
-            });
-            messages = messages.filter(filter);
-            if (!messages.size)
-                break;
-            history.push(...messages);
-            prev = history[history.length - 1][0];
-            ++i;
-        }
-        history.map(m => m[1]);
-        return history;
-    },
-    async delete_dms(message, amount, all) {
-        // DMs are always partials....
-        message = await message.fetch();
-        if (all) {
-            return message.reply({ content: "Can't delete all messages in DMs." }).then(() => { });
-        }
-        else if (amount <= 0) {
-            return message.reply({ content: 'Enter a positive number.' }).then(() => { });
-        }
-        let deleted = 0;
-        while (amount > 0) {
-            const messages = await this.fetch_history(message.channel, amount + 1, (m) => m.author.id === message.client.user.id);
-            if (messages.length === 0)
-                break;
-            const msgs = [...messages].map(m => m[1]);
-            const burst = await this.delete_single(msgs);
-            amount -= burst;
-            deleted += burst;
-        }
-        return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
+        return channel.send({ content: `Successfully deleted ${deleted} message(s).` })
             .then(m => { setTimeout(() => m.delete(), 3000); });
     },
     async delete_channel(message) {
+        // Extra permissions for purge all
         if (!message.channel.permissionsFor(message.member)
             .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
             return message.reply({
                 content: 'You do not have permission to purge all.\n' +
-                    'You need the Manage Channels permission.'
+                    'You need the `Manage Channels` permission.'
             }).then(() => { });
         }
         else if (!message.channel.permissionsFor(message.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
             return message.reply({
                 content: "I don't have permission to purge all.\n" +
-                    'I need the Manage Channels permission.'
+                    'I need the `Manage Channels` permission.'
             }).then(() => { });
         }
         const buttonMessage = await message.reply({
@@ -130,24 +89,20 @@ exports.purge = {
             componentType: discord_js_1.ComponentType.Button,
             filter: i => i.user.id === message.author.id,
             time: 60000
-        }).then(async (i) => {
-            if (i.customId === 'purge/cancel')
-                return;
-            return true;
-        }).catch(() => { });
+        }).then(i => i.customId === 'purge/confirm').catch(() => false);
         await buttonMessage.delete().catch(() => { });
         await message.delete().catch(() => { });
         if (!confirmed)
             return;
         if (message.channel.isThread()) {
             return message.reply({
-                content: 'To purge threads, just simply delete the thread.'
+                content: 'To purge all in threads, just simply delete the thread.'
             }).then(() => { });
         }
         const new_channel = await message.channel.clone({
             position: message.channel.rawPosition
-        }).catch(async () => {
-            await message.edit({
+        }).catch(() => {
+            message.edit({
                 content: "I can't purge here. Give me permissions to see the channel."
             });
             throw new exceptions_1.PermissionError();
@@ -158,7 +113,7 @@ exports.purge = {
             setTimeout(() => msg.delete(), 3000);
         }).catch(() => { });
     },
-    async execute(message, args, client) {
+    async execute(message, args) {
         // Defaults to 100
         let amount = 100;
         let all = false;
@@ -167,110 +122,95 @@ exports.purge = {
                 all = true;
             else
                 amount = parseInt(args[0]);
-            if (isNaN(amount))
+            if (isNaN(amount) || amount <= 0) {
                 return message.reply({ content: 'Enter a positive number.' });
+            }
         }
         if (message.channel.isDMBased() || !message.inGuild()) {
             // DMs
-            return this.delete_dms(message, amount, all);
-        }
-        else if (all) {
-            // Purge all
-            return this.delete_channel(message);
+            return this.delete_dms(message.channel, amount);
         }
         else if (!message.channel.permissionsFor(message.member)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: 'You do not have permission to purge.\n' +
-                    'You need the Manage Messages permission.'
+                    'You need the `Manage Messages` permission.'
             });
         }
         else if (!message.channel.permissionsFor(message.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: "I don't have permission to purge.\n" +
-                    'I need the Manage Messages permission.'
+                    'I need the `Manage Messages` permission.'
             });
         }
-        if (amount <= 0) {
-            return message.reply({ content: 'Enter a positive number.' });
+        else if (all) {
+            // Purge all
+            return this.delete_channel(message);
         }
         // Copy discord.py's method of deleting
-        const ___ = await message.channel.messages.fetch({ limit: 1 })
-            .catch(async () => {
-            await message.reply({
+        // First test to see if we can fetch messages
+        const test = await message.channel.messages.fetch({ limit: 1 })
+            .catch(() => {
+            message.reply({
                 content: "I can't purge here. Give me permissions to read the messages."
             });
             throw new exceptions_1.PermissionError();
         });
-        if (___.size === 0) {
+        if (test.size === 0) {
             return message.reply({ content: 'No messages to delete.' });
         }
-        if (amount >= 100 && message.author.id !== client.admin.id) {
-            const buttonMessage = await message.reply({
-                content: "Woah! That's a lot of messages!\nAre you sure " +
-                    `you want to delete ${amount} messages?`,
-                components: [this.buttons]
-            });
-            const buttonInteraction = await buttonMessage.awaitMessageComponent({
-                componentType: discord_js_1.ComponentType.Button,
-                filter: i => i.user.id === message.author.id,
-                time: 60000
-            }).catch(() => { });
-            if (buttonInteraction) {
-                await buttonInteraction.deferUpdate();
-                await buttonInteraction.deleteReply().catch(() => { });
+        // Keep async to keep Promise<number> signature
+        const bulk_delete = async (messages) => {
+            // Discord bulk delete doesn't like single messages.
+            if (messages.length <= 1) {
+                return messages.at(0)?.delete().then(() => 1).catch(() => 0) ?? 0;
             }
-            else {
-                await buttonMessage.delete().catch(() => { });
-            }
-            if (!buttonInteraction || buttonInteraction.customId === 'purge/cancel') {
-                return message.delete().catch(() => { });
-            }
-        }
-        const history = await this.fetch_history(message.channel, amount + 1);
-        const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
-        const iterator = history[Symbol.iterator]();
-        let to_delete = [];
-        let deleted = 0;
-        let msg = iterator.next();
-        while (!msg.done) {
-            // Older than 14 days
-            if (msg.value[1].createdTimestamp < min_date) {
-                if (to_delete.length) {
-                    if (to_delete.length === 1) {
-                        await to_delete[0].delete();
-                        ++deleted;
-                    }
-                    else {
-                        const arr = await message.channel.bulkDelete(to_delete);
-                        deleted += arr.size;
-                    }
-                }
-                const arr = [msg.value];
-                arr.push(...iterator);
-                deleted += await this.delete_single(arr.map(m => m[1]));
-                to_delete = [];
-                break;
-            }
-            else if (to_delete.length === 100) {
-                message.channel.bulkDelete(to_delete);
-                deleted += 100;
-                to_delete = [];
-            }
-            to_delete.push(msg.value[1]);
-            msg = iterator.next();
-        }
-        if (to_delete.length) {
-            if (to_delete.length === 1) {
-                await to_delete[0].delete();
+            return message.channel.bulkDelete(messages).then(arr => arr.size);
+        };
+        // Inspired by discord.py's internal structure, delete messages one at a time
+        // Useful for DMs/messages older than 14 days.
+        const single_delete = async (messages) => {
+            let deleted = 0;
+            for (const msg of messages) {
+                // Ignore deleting errors
+                await msg.delete().catch(() => --deleted);
                 ++deleted;
             }
-            else {
-                const arr = await message.channel.bulkDelete(to_delete);
-                deleted += arr.size;
+            return deleted;
+        };
+        let strategy = bulk_delete;
+        // This is the minimum date when messages can be bulk deleted
+        // It is exactly 14 days ago.
+        const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
+        let to_delete = [];
+        let deleted = 0;
+        // Also delete the message command itself in the purge, so amount + 1
+        for await (const msg of Utils.fetch_history(message.channel, amount + 1)) {
+            // Delete every 100 since Discord's bulk delete is limited to 100 at a time.
+            if (to_delete.length === 100) {
+                deleted += await strategy(to_delete);
+                to_delete = [];
+                // Wait 1 second every 100 deletes
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
+            // Older than 14 days
+            if (msg.createdTimestamp < min_date) {
+                // If we hit a message that is older than 14 days
+                // We need to first clear out all messages we have so far
+                if (to_delete.length) {
+                    deleted += await strategy(to_delete);
+                    to_delete = [];
+                }
+                strategy = single_delete;
+            }
+            to_delete.push(msg);
         }
+        // Leftover remaining undeleted messages
+        if (to_delete.length) {
+            deleted += await strategy(to_delete);
+        }
+        // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
     }

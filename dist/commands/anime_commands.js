@@ -124,8 +124,7 @@ async function wait_for_button(client, interaction, message, fn) {
         }
         return true;
     }).catch(() => false);
-    client.deleteFollowUp(interaction, message);
-    return res;
+    return client.deleteFollowUp(interaction, message).then(() => res);
 }
 // Simple function to calculate how many pages there are if there are 10 items per page.
 function totalPages(pages) {
@@ -1740,8 +1739,7 @@ exports.dall = {
         if (begin) {
             first = await search_character(interaction, interaction.user.id, begin, false);
             if (first === NO_NUM || !first) {
-                embed.setTitle(`Invalid waifu \`${begin}\`. ` +
-                    'Defaulting to first waifu...');
+                embed.setTitle(`Invalid waifu \`${begin}\`. Defaulting to first waifu...`);
                 embed.setColor(discord_js_1.Colors.Red);
                 await interaction.followUp({ embeds: [embed], ephemeral: true });
             }
@@ -1752,8 +1750,7 @@ exports.dall = {
         if (finish) {
             last = await search_character(interaction, interaction.user.id, finish, false);
             if (last === NO_NUM || !last) {
-                embed.setTitle(`Invalid waifu \`${finish}\`. ` +
-                    'Defaulting to last waifu...');
+                embed.setTitle(`Invalid waifu \`${finish}\`. Defaulting to last waifu...`);
                 embed.setColor(discord_js_1.Colors.Red);
                 await interaction.followUp({ embeds: [embed], ephemeral: true });
                 last = undefined;
