@@ -126,8 +126,7 @@ async function wait_for_button(
             }
             return true;
         }).catch(() => false);
-    client.deleteFollowUp(interaction, message);
-    return res;
+    return client.deleteFollowUp(interaction, message).then(() => res);
 }
 
 // Simple function to calculate how many pages there are if there are 10 items per page.
@@ -1953,8 +1952,7 @@ export const dall: SlashCommand = {
         if (begin) {
             first = await search_character(interaction, interaction.user.id, begin, false);
             if (first === NO_NUM || !first) {
-                embed.setTitle(`Invalid waifu \`${begin}\`. ` +
-                    'Defaulting to first waifu...');
+                embed.setTitle(`Invalid waifu \`${begin}\`. Defaulting to first waifu...`);
                 embed.setColor(Colors.Red);
                 await interaction.followUp({ embeds: [embed], ephemeral: true });
             } else {
@@ -1964,8 +1962,7 @@ export const dall: SlashCommand = {
         if (finish) {
             last = await search_character(interaction, interaction.user.id, finish, false);
             if (last === NO_NUM || !last) {
-                embed.setTitle(`Invalid waifu \`${finish}\`. ` +
-                    'Defaulting to last waifu...');
+                embed.setTitle(`Invalid waifu \`${finish}\`. Defaulting to last waifu...`);
                 embed.setColor(Colors.Red);
                 await interaction.followUp({ embeds: [embed], ephemeral: true });
                 last = undefined;

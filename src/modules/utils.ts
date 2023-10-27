@@ -233,6 +233,9 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
 
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
+ * Warning: This will create a followup message and delete it
+ * Make sure to have original reply still be available & edit original reply instead
+ * 
  * options allowed:
  * 
  * Embed details: `title_fmt`, `desc_fmt`
@@ -252,7 +255,7 @@ export async function get_results<T>(
         title_fmt?: (arg: number) => string,
         desc_fmt?: (arg: T) => string,
         sel_fmt?: (arg: T) => string
-    } = {}
+    }
 ) {
     const client = new CustomClient();
     if (choices.length <= 1) return choices[0] as T | undefined;
@@ -292,8 +295,7 @@ export async function get_results<T>(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    client.deleteFollowUp(interaction, message);
-    return res;
+    return client.deleteFollowUp(interaction, message).then(() => res);
 }
 
 // Really only used for purge commands, but nicely defined if any other command requires
