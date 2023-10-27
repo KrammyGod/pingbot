@@ -96,7 +96,7 @@ export type InteractionCommand = SlashCommand | ContextCommand;
 
 export const GuildVoices = new Map<string, GuildVoice>();
 
-export class CustomClient extends Client {
+export class CustomClient extends Client<true> {
     // Predefine custom properties
     is_ready!: boolean;                              // Is fully loaded
     is_listening!: boolean;                          // Is currently listening for interactions

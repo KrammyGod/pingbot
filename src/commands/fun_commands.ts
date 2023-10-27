@@ -809,7 +809,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                 content: `You don't have permissions to send messages in ${channel}.`,
                 ephemeral: true
             });
-        } else if (!channel.permissionsFor(client.user!.id)!.has(PermissionsBitField.Flags.SendMessages)) {
+        } else if (!channel.permissionsFor(client.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true

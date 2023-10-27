@@ -470,7 +470,7 @@ const host: SlashSubcommand = {
             return interaction.editReply({ content: 'I am not in a voice channel.' });
         }
         let host = guildVoice.host.toString() as string;
-        if (guildVoice.host.id === client.user!.id) {
+        if (guildVoice.host.id === client.user.id) {
             host = 'me';
         } else if (guildVoice.host.id === interaction.user.id) {
             host = 'you';
