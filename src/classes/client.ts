@@ -1,6 +1,6 @@
 import config from '@config';
 import {
-    Client, ContextMenuCommandBuilder, Routes, SlashCommandSubcommandBuilder,
+    Client, ContextMenuCommandBuilder, SlashCommandSubcommandBuilder,
     SlashCommandSubcommandGroupBuilder, SlashCommandBuilder
 } from 'discord.js';
 import type DTypes from 'discord.js';
@@ -110,7 +110,6 @@ export class CustomClient extends Client<true> {
     admin_commands!: Map<string, MessageCommand>;    // All admin commands
     message_commands!: Map<string, MessageCommand>;  // All message commands
     user_cache_ready!: boolean;                      // Whether user cache is ready for current shard
-    deleteFollowUp!: (i: DTypes.RepliableInteraction, msg: DTypes.Message) => Promise<unknown>;
 
     private static _instance: CustomClient;
 
@@ -126,9 +125,6 @@ export class CustomClient extends Client<true> {
         this.lines = [];
         this.commands = new Map();
         this.user_cache_ready = false;
-        this.deleteFollowUp = async (i, msg) => {
-            return this.rest.delete(Routes.webhookMessage(i.webhook.id, i.token, msg.id));
-        };
         // Everything is ready, set instance here
         CustomClient._instance = this;
     }

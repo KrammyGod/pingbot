@@ -96,7 +96,7 @@ export const purge: SlashCommand & PurgePrivates = {
             .then(msg => { setTimeout(() => msg.delete(), 3000); }).catch(() => { });
     },
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const message = await interaction.reply({
             content: 'Performing intensive calculations...',
             ephemeral: true
@@ -220,7 +220,7 @@ export const purge: SlashCommand & PurgePrivates = {
             deleted += await strategy(to_delete);
         }
 
-        await client.deleteFollowUp(interaction, message);
+        await Utils.deleteEphemeralMessage(interaction, message);
         return interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
     }
