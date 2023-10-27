@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.get_results = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.fetch_history = exports.get_results = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
 const client_1 = require("../classes/client");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
@@ -205,4 +205,26 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     return res;
 }
 exports.get_results = get_results;
+// Really only used for purge commands, but nicely defined if any other command requires
+async function fetch_history(channel, amount, filter = () => true) {
+    const history = [];
+    let prev = undefined;
+    while (amount > 0) {
+        // Fetch up to 100 messages at a time (Discord's limit)
+        let to_fetch = amount;
+        if (to_fetch > 100)
+            to_fetch = 100;
+        const messages = await channel.messages.fetch({
+            limit: to_fetch,
+            before: prev
+        }).then(m => m.filter(filter));
+        if (!messages.size)
+            break;
+        history.push(...messages.values());
+        prev = history[history.length - 1].id;
+        amount -= messages.size;
+    }
+    return history;
+}
+exports.fetch_history = fetch_history;
 //# sourceMappingURL=utils.js.map
