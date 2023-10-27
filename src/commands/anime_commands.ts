@@ -126,7 +126,7 @@ async function wait_for_button(
             }
             return true;
         }).catch(() => false);
-    return client.deleteFollowUp(interaction, message).then(() => res);
+    return Utils.deleteEphemeralMessage(interaction, message).then(() => res);
 }
 
 // Simple function to calculate how many pages there are if there are 10 items per page.
@@ -1338,7 +1338,7 @@ async function switch_char_image(
         if (i.values[0] === '-1') return;
         return parseInt(i.values[0]);
     }).catch(() => { });
-    client.deleteFollowUp(interaction, message).then(() => { }).catch(() => { });
+    Utils.deleteEphemeralMessage(interaction, message).then(() => { }).catch(() => { });
     let success = true;
     if (selected === undefined) {
         return;

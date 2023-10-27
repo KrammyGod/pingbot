@@ -2,7 +2,8 @@ import { CustomClient } from '@classes/client';
 import { TimedOutError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ApplicationCommandOptionType, Colors,
-    CommandInteraction, ComponentType, EmbedBuilder, StringSelectMenuBuilder
+    CommandInteraction, ComponentType, EmbedBuilder, Routes,
+    StringSelectMenuBuilder
 } from 'discord.js';
 import type DTypes from 'discord.js';
 
@@ -231,6 +232,15 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
     return `<t:${Math.floor(date instanceof Date ? date.getTime() / 1000 : date / 1000)}:${fmt}>`;
 }
 
+/**
+ * Only interactions can make ephemeral messages. Unfortunately Discord.JS
+ * doesn't currently support deleting ephemeral messages for ephemeral followups and etc.
+ * However, Discord has a route to support this, and that's what this function does.
+ */
+export function deleteEphemeralMessage(i: DTypes.RepliableInteraction, msg: DTypes.Message) {
+    return i.client.rest.delete(Routes.webhookMessage(i.webhook.id, i.token, msg.id));
+}
+
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
  * Warning: This will create a followup message and delete it
@@ -257,7 +267,6 @@ export async function get_results<T>(
         sel_fmt?: (arg: T) => string
     }
 ) {
-    const client = new CustomClient();
     if (choices.length <= 1) return choices[0] as T | undefined;
 
     // Take first 10 results
@@ -295,7 +304,7 @@ export async function get_results<T>(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    return client.deleteFollowUp(interaction, message).then(() => res);
+    return deleteEphemeralMessage(interaction, message).then(() => res);
 }
 
 // Really only used for purge commands, but nicely defined if any other command requires
