@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetch_history = exports.get_results = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.fetch_history = exports.get_results = exports.deleteEphemeralMessage = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
 const client_1 = require("../classes/client");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
@@ -153,6 +153,15 @@ function timestamp(date, fmt = 'f') {
     return `<t:${Math.floor(date instanceof Date ? date.getTime() / 1000 : date / 1000)}:${fmt}>`;
 }
 exports.timestamp = timestamp;
+/**
+ * Only interactions can make ephemeral messages. Unfortunately Discord.JS
+ * doesn't currently support deleting ephemeral messages for ephemeral followups and etc.
+ * However, Discord has a route to support this, and that's what this function does.
+ */
+function deleteEphemeralMessage(i, msg) {
+    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id));
+}
+exports.deleteEphemeralMessage = deleteEphemeralMessage;
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
  * Warning: This will create a followup message and delete it
@@ -167,7 +176,6 @@ exports.timestamp = timestamp;
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
 async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}` }) {
-    const client = new client_1.CustomClient();
     if (choices.length <= 1)
         return choices[0];
     // Take first 10 results
@@ -204,7 +212,7 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    return client.deleteFollowUp(interaction, message).then(() => res);
+    return deleteEphemeralMessage(interaction, message).then(() => res);
 }
 exports.get_results = get_results;
 // Really only used for purge commands, but nicely defined if any other command requires
