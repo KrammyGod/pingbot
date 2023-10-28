@@ -29,6 +29,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const glob_1 = __importDefault(require("glob"));
 const path_1 = __importDefault(require("path"));
 const client_1 = require("../classes/client");
+const discord_js_1 = require("discord.js");
 async function load(client) {
     client.cogs = [];
     client.commands = new Map();
@@ -38,12 +39,27 @@ async function load(client) {
     for (const file of commandFiles) {
         const fcommands = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
         fcommands.commands = [];
+        fcommands.amt = 0;
         Object.values(fcommands).forEach(command => {
             if ((0, client_1.isSlashCommand)(command) || ((0, client_1.isMessageCommand)(command) && !command.admin)) {
                 fcommands.commands.push(command);
             }
             if ((0, client_1.isInteractionCommand)(command)) {
                 client.commands.set(command.data.name, command);
+                let has_subcommands = false;
+                command.data.toJSON().options?.forEach(option => {
+                    if (option.type === discord_js_1.ApplicationCommandOptionType.SubcommandGroup) {
+                        // Subcommand groups must only have subcommands as options
+                        fcommands.amt += option.options.length;
+                        has_subcommands = true;
+                    }
+                    else if (option.type === discord_js_1.ApplicationCommandOptionType.Subcommand) {
+                        ++fcommands.amt;
+                        has_subcommands = true;
+                    }
+                });
+                if (!has_subcommands)
+                    ++fcommands.amt;
             }
             else if ((0, client_1.isMessageCommand)(command)) {
                 if (command.admin) {
@@ -52,16 +68,17 @@ async function load(client) {
                 else {
                     client.message_commands.set(`${client.prefix}${command.name}`, command);
                 }
+                ++fcommands.amt;
             }
         });
         if (fcommands.commands.length)
             client.cogs.push(fcommands);
     }
     client.cogs.sort((a, b) => {
-        if (a.commands.length === b.commands.length) {
+        if (a.amt === b.amt) {
             return a.name.localeCompare(b.name);
         }
-        return b.commands.length - a.commands.length;
+        return b.amt - a.amt;
     });
 }
 exports.default = load;
