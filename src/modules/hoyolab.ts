@@ -89,7 +89,7 @@ class HoyoAccountInfo {
 export function getUID(cookie?: string) {
     if (!cookie) return '';
     const cookieObj = parse(cookie);
-    return cookieObj?.account_id ?? cookieObj?.ltuid ?? cookieObj?.account_id_v2 ?? cookieObj?.ltuid_v2;
+    return cookieObj?.account_id ?? cookieObj?.ltuid ?? cookieObj?.account_id_v2 ?? cookieObj?.ltuid_v2 ?? '';
 }
 
 export async function getHoyoLabData(cookie?: string) {
