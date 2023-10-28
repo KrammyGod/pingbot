@@ -20,9 +20,9 @@
   "main": "dist/index",
   "scripts": {
     "clean:dist": "rimraf ./dist",
-    "collect:hi3": "env-cmd --environments hi3 node dist/modules/collector --enable-source-maps",
-    "collect:hsr": "env-cmd --environments hsr node dist/modules/collector --enable-source-maps",
-    "collect:gi": "env-cmd --environments gi node dist/modules/collector --enable-source-maps",
+    "collect:hi3": "env-cmd --environments hi3 node dist/collector/collect --enable-source-maps",
+    "collect:hsr": "env-cmd --environments hsr node dist/collector/collect --enable-source-maps",
+    "collect:gi": "env-cmd --environments gi node dist/collector/collect --enable-source-maps",
     "reset": "node dist/modules/reset_db --enable-source-maps",
     "cookie": "node dist/modules/hoyolab --enable-source-maps",
     "lint": "eslint src/**/*.ts --max-warnings=0",
