@@ -6,4 +6,4 @@ This folder contains the autocollector script and the crontab job file that runs
 - [crontab](crontab): The crontab configuration to automatically collect HoyoLab dailies when it resets, and resetting dailies for anime character system.
 
 ## Other Files
-- [.env-cmdrc](../../.env-cmdrc): The environment variables defined for each game. Used in [package.json](../../package.json) to run the correct game.
+- [.env-cmdrc](../../.env-cmdrc): The environment variables defined for each game. Used in [package.json](../../package.json#L23-L25) to run the correct game.
