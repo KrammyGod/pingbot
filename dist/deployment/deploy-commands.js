@@ -72,10 +72,14 @@ function reverse_command(cmd) {
             }
         });
     }
-    await rest.put(v10_1.Routes.applicationCommands(clientId), { body: commands }).catch(err => console.error(err));
+    const res = await rest.put(v10_1.Routes.applicationCommands(clientId), { body: commands })
+        .catch(err => console.error(err));
     const user = await rest.get(v10_1.Routes.user()).catch(err => console.error(err));
     if (user) {
-        console.log(`${user.username}: Successfully registered ${commands.length} application commands (/).`);
+        console.log(`${user.username}: Successfully registered ${res.length} application commands (/).`);
+    }
+    else {
+        console.log('Unknown user, might be error?');
     }
 }();
 //# sourceMappingURL=deploy-commands.js.map

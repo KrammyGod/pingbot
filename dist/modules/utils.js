@@ -150,7 +150,7 @@ exports.date_after_hours = date_after_hours;
  * R: [in] x years|months|days [ago]
  */
 function timestamp(date, fmt = 'f') {
-    return `<t:${Math.floor(date instanceof Date ? date.getTime() / 1000 : date / 1000)}:${fmt}>`;
+    return `<t:${Math.floor(new Date(date).getTime() / 1000)}:${fmt}>`;
 }
 exports.timestamp = timestamp;
 /**
