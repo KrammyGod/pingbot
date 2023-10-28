@@ -229,7 +229,7 @@ type DateFormats = 't' | 'T' | 'd' | 'D' | 'f' | 'F' | 'R';
  * R: [in] x years|months|days [ago]
  */
 export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
-    return `<t:${Math.floor(date instanceof Date ? date.getTime() / 1000 : date / 1000)}:${fmt}>`;
+    return `<t:${Math.floor(new Date(date).getTime() / 1000)}:${fmt}>`;
 }
 
 /**
