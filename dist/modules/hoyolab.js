@@ -82,7 +82,7 @@ function getUID(cookie) {
     if (!cookie)
         return '';
     const cookieObj = (0, cookie_1.parse)(cookie);
-    return cookieObj?.account_id ?? cookieObj?.ltuid ?? cookieObj?.account_id_v2 ?? cookieObj?.ltuid_v2;
+    return cookieObj?.account_id ?? cookieObj?.ltuid ?? cookieObj?.account_id_v2 ?? cookieObj?.ltuid_v2 ?? '';
 }
 exports.getUID = getUID;
 async function getHoyoLabData(cookie) {
