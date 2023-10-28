@@ -3,6 +3,7 @@ This folder contains all the source code that is run for the project. This may n
 
 ## Subfolders
 - [classes/](classes): Contains custom type definitions and helpers used for the project.
+- [collector/](collector): Contains a helper script that automatically collects hoyolab dailies from 3 games, and the crontab file that runs it.
 - [commands/](commands): Contains all the commands available for the bot. Each file contains a group of slash commands, or message commands.
 - [deployment/](deployment): Contains a helper script that deploys slash commands to Discord.
 - [modules/](modules): Contains a collection of all helpers that are used in multiple command files or commands.

@@ -2,7 +2,7 @@ import http from 'http';
 import config from '@config';
 import * as DB from '@modules/database';
 import { Colors, EmbedBuilder, ShardEvents, ShardingManager } from 'discord.js';
-import type { SendMessage } from '@modules/collector';
+import type { SendMessage } from './collector/collect';
 import type { CustomClient } from '@classes/client';
 
 const manager = new ShardingManager('./dist/bot.js', {
