@@ -64,14 +64,15 @@ function webhook_permission(message: DTypes.Message) {
 }
 
 // Replace emojis
-async function replaceEmojis(message: DTypes.Message) {
+async function replace_emojis(message: DTypes.Message) {
     // No bots and DMs
-    if (!message.content || message.author.bot || !message.inGuild()) return;
+    if (!message.content || message.author.bot || !message.inGuild() || config.env !== 'production') return;
     const emojis = [...new Set(message.content.match(/:[A-Za-z0-9_-]+:(?![0-9]+>)/g))];
     let impersonate = false;
     let msg = message.content;
     for (const i of emojis) {
         const emoji = await convert_emoji(i, (e, id) => {
+            // Check if the user is in the guild, only those in the guild are allowed to use it.
             return e?.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
         }, message.author.id);
         if (emoji) {
@@ -83,12 +84,11 @@ async function replaceEmojis(message: DTypes.Message) {
     if (impersonate && webhook_permission(message)) {
         const wb = await get_webhook(message.channel, 'Custom emojis');
         if (!wb) return;
-        setTimeout(() => message.delete().catch(() => { }), 200);
         return wb.send({
             username: message.author.username,
             avatarURL: message.author.displayAvatarURL(),
             content: msg
-        }).then(() => { }).catch(() => { });
+        }).then(() => { setTimeout(() => message.delete().catch(() => { }), 200); }).catch(() => { });
     }
 }
 
@@ -103,7 +103,7 @@ async function handle_reply(message: DTypes.Message) {
         }
     }
     // No results, try emojis
-    return replaceEmojis(message);
+    return replace_emojis(message);
 }
 
 async function handle_command(message: DTypes.Message) {
@@ -220,9 +220,9 @@ client.on(Events.GuildMemberAdd, async member => {
     if (config.env !== 'production') return;
     const info = await DB.getGuild(member.guild.id).catch(() => { });
     if (!info) return;
-    const channel = member.guild.channels.cache.get(info.channelid ?? '');
+    const channel = await member.guild.channels.fetch(info.channelid ?? '');
     if (!channel?.isTextBased()) return;
-    const role = member.guild.roles.cache.get(info.roleid ?? '');
+    const role = await member.guild.roles.fetch(info.roleid ?? '');
     if (channel && info.msg) {
         let msg = info.msg;
         for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
@@ -236,7 +236,7 @@ client.on(Events.GuildMemberAdd, async member => {
 });
 
 // Following functions are for voice channel management
-async function updateVoice(oldState: DTypes.VoiceState, newState: DTypes.VoiceState) {
+async function update_voice(oldState: DTypes.VoiceState, newState: DTypes.VoiceState) {
     const guildVoice = GuildVoices.get(oldState.guild.id);
     // Not connected, don't care.
     if (!guildVoice) return;
@@ -267,7 +267,7 @@ async function updateVoice(oldState: DTypes.VoiceState, newState: DTypes.VoiceSt
     }
 }
 
-async function setNewHost(oldState: DTypes.VoiceState, newState: DTypes.VoiceState) {
+async function set_new_host(oldState: DTypes.VoiceState, newState: DTypes.VoiceState) {
     const guildVoice = GuildVoices.get(newState.guild.id);
     // Not connected, don't care.
     if (!guildVoice) return;
@@ -287,8 +287,8 @@ async function setNewHost(oldState: DTypes.VoiceState, newState: DTypes.VoiceSta
 }
 
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-    await updateVoice(oldState, newState).catch(err => handle_error(err));
-    await setNewHost(oldState, newState).catch(err => handle_error(err));
+    await update_voice(oldState, newState).catch(err => handle_error(err));
+    await set_new_host(oldState, newState).catch(err => handle_error(err));
 });
 
 // Clearing local cache
@@ -313,17 +313,13 @@ type RawMessageDeleteBulk = {
     }
 };
 type RawMessageDeletePacket = RawMessageDeleteSingle | RawMessageDeleteBulk;
-function clearCaches(data: RawMessageDeleteSingle['d']) {
-    // Clear cache for any command
-    return DB.deleteLocalData(data.id);
-}
 client.on(Events.Raw, (packet: RawMessageDeletePacket) => {
     if (packet.op !== 0) return;
     if (packet.t === 'MESSAGE_DELETE') {
-        clearCaches(packet.d);
+        DB.deleteLocalData(packet.d.id);
     } else if (packet.t === 'MESSAGE_DELETE_BULK') {
         for (const id of packet.d.ids) {
-            clearCaches({ ...packet.d, id });
+            DB.deleteLocalData(id);
         }
     }
 });

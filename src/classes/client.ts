@@ -49,6 +49,10 @@ export type CommandFile = {
     desc: string;
     // This is not exported by each file; it is loaded by load_commands.ts
     commands: (MessageCommand | SlashCommand)[];
+    // The real amount of commands available in this file
+    // This includes subcommands and subcommand groups and message commands
+    // Loaded by load_commands.ts
+    amt: number;
     [key: string]: MessageCommand | InteractionCommand | unknown;
 };
 
