@@ -7,6 +7,7 @@ import { Routes } from 'discord-api-types/v10';
 import { ApplicationCommandOptionType } from 'discord.js';
 import { CommandFile, isInteractionCommand, isSlashCommand } from '@classes/client';
 import type {
+    APIApplicationCommand,
     APIApplicationCommandOption,
     ClientUser,
     RESTPostAPIChatInputApplicationCommandsJSONBody,
@@ -55,9 +56,12 @@ function reverse_command(cmd: { options?: APIApplicationCommandOption[] }) {
             }
         });
     }
-    await rest.put(Routes.applicationCommands(clientId), { body: commands }).catch(err => console.error(err));
+    const res = await rest.put(Routes.applicationCommands(clientId), { body: commands })
+        .catch(err => console.error(err)) as APIApplicationCommand[];
     const user = await rest.get(Routes.user()).catch(err => console.error(err)) as ClientUser | void;
     if (user) {
-        console.log(`${user.username}: Successfully registered ${commands.length} application commands (/).`);
+        console.log(`${user.username}: Successfully registered ${res.length} application commands (/).`);
+    } else {
+        console.log('Unknown user, might be error?');
     }
 }();
