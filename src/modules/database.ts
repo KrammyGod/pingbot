@@ -187,10 +187,26 @@ class Character {
     get unlockedImages() { return this.lvl === 5; }
     get unlockedNMode() { return this.lvl === 8; }
     get unlockedNImages() { return this.lvl === 10; }
-    get isUpgradable() { return 0 < this.lvl && this.lvl <= 4; }
-    get isSwitchable() { return this.lvl === -1 || this.lvl >= 5; }
-    get isNToggleable() { return this.lvl === -1 || this.lvl >= 8; }
-    get isNSwitchable() { return this.lvl === -1 || this.lvl >= 10; }
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
+    get isUpgradable() { return 0 < this.lvl && this.lvl <= 4 && this.thisIsUpgradable(); }
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
+    get isSwitchable() { return this.lvl === -1 || this.lvl >= 5 && this.thisIsUpgradable(); }
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
+    get isNToggleable() { return this.lvl === -1 || this.lvl >= 8 && this.thisIsNToggleable(); }
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
+    get isNSwitchable() { return this.lvl === -1 || this.lvl >= 10 && this.thisIsNSwitchable(); }
 
     async setImg(new_img: number) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
@@ -226,16 +242,28 @@ class Character {
         this.loaded = true;
     }
 
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     thisIsUpgradable() {
         if (!this.fc) return false;
         return this.waifu!.thisIsUpgradable();
     }
 
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     thisIsNToggleable() {
         if (!this.fc) return false;
         return this.waifu!.thisIsNToggleable();
     }
 
+    /**
+     * Only available if {@link loadWaifu} is called.
+     * @throws {Error} If waifu is not loaded
+     */
     thisIsNSwitchable() {
         if (!this.fc) return false;
         return this.waifu!.thisIsNSwitchable();
