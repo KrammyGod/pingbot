@@ -1055,7 +1055,7 @@ async function get_char_as_embed(channel, authorID, target, idx_or_wid, high) {
                 });
             }
         }
-        if (Utils.channel_is_nsfw_safe(channel) && character.thisIsNToggleable() && character.isNToggleable) {
+        if (Utils.channel_is_nsfw_safe(channel) && character.isNToggleable) {
             menu.addOptions({
                 label: `${character.nsfw ? 'Give me original!' : 'Give me lewd!'}`,
                 value: `${fn}/${authorID}/ntoggle_char/${character.wid}`,
