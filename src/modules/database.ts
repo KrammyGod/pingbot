@@ -196,17 +196,17 @@ class Character {
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isSwitchable() { return this.lvl === -1 || this.lvl >= 5 && this.thisIsUpgradable(); }
+    get isSwitchable() { return (this.lvl === -1 || this.lvl >= 5) && this.thisIsUpgradable(); }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isNToggleable() { return this.lvl === -1 || this.lvl >= 8 && this.thisIsNToggleable(); }
+    get isNToggleable() { return (this.lvl === -1 || this.lvl >= 8) && this.thisIsNToggleable(); }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isNSwitchable() { return this.lvl === -1 || this.lvl >= 10 && this.thisIsNSwitchable(); }
+    get isNSwitchable() { return (this.lvl === -1 || this.lvl >= 10) && this.thisIsNSwitchable(); }
 
     async setImg(new_img: number) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);

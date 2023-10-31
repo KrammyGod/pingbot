@@ -79,8 +79,8 @@ function loadFromFile() {
     for (const line of toParse) {
         // Remove first and last connector
         const [iid, name, _gender, origin, _img, _nimg] = line.split('|').map(x => x.trim()).slice(1, -1);
-        const img = _img.replace('[', '').replace(']', '').split(', ');
-        const nimg = _nimg.replace('[', '').replace(']', '').split(', ');
+        const img = _img.replace('[', '').replace(']', '').split(', ').filter(i => i !== '');
+        const nimg = _nimg.replace('[', '').replace(']', '').split(', ').filter(i => i !== '');
         const gender = _gender === 'Female' ? _gender : (_gender === 'Male' ? _gender : 'Unknown');
         backupWaifus.push(new Waifu({ iid, name, gender, origin, img, nimg }));
     }
