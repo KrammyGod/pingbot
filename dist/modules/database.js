@@ -26,8 +26,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchUserLewdList = exports.fetchUserUpList = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
-exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = void 0;
+exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
+exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = void 0;
 const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
@@ -92,20 +92,11 @@ class Waifu {
     getGender() {
         return ' ' + this.gender;
     }
-    thisIsUpgradable() {
-        return this.img.length > 1;
-    }
     thisIsNToggleable() {
         return this.nimg.length !== 0;
     }
     thisIsNSwitchable() {
         return this.nimg.length > 1;
-    }
-    getUStatus(l = '', r = '') {
-        if (this.thisIsUpgradable()) {
-            return `${l}⏫${r}`;
-        }
-        return '';
     }
 }
 class Character {
@@ -136,37 +127,27 @@ class Character {
         // _img and _nimg are used to store the index of the image
         this._img = row._img ?? 1;
         this._nimg = row._nimg ?? 1;
+        this.max_img = row.lvl;
+        this.max_nimg = row.lvl >= Character.ntoggleThreshold ? row.lvl - 4 : NaN;
         // Transform img and nimg to their actual links
         // In our database, we only store the ID if they are in our CDN
         // Thus, we need to convert it into an available link
         this.img = transformImage(row.img);
         this.nimg = transformImage(row.nimg);
         this.nsfw = row.nsfw;
+        // Can be used to do more fun stuff with levels
         this.displayLvl = this.lvl < 0 ? '∞' : this.lvl.toString();
     }
-    get unlockedImages() { return this.lvl === 5; }
-    get unlockedNMode() { return this.lvl === 8; }
-    get unlockedNImages() { return this.lvl === 10; }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isUpgradable() { return 0 < this.lvl && this.lvl <= 4 && this.thisIsUpgradable(); }
+    get unlockedNMode() { return this.lvl === Character.ntoggleThreshold && this.thisIsNToggleable(); }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isSwitchable() { return (this.lvl === -1 || this.lvl >= 5) && this.thisIsUpgradable(); }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    get isNToggleable() { return (this.lvl === -1 || this.lvl >= 8) && this.thisIsNToggleable(); }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    get isNSwitchable() { return (this.lvl === -1 || this.lvl >= 10) && this.thisIsNSwitchable(); }
+    get isNToggleable() { return this.lvl >= Character.ntoggleThreshold && this.thisIsNToggleable(); }
     async setImg(new_img) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
         this._img = _img ?? this._img;
@@ -186,13 +167,6 @@ class Character {
         this.nimg = retval[1].nimg;
         return retval[0] === undefined;
     }
-    async upgrade(cost) {
-        const retval = await addUserCharacterLevel(this.uid, this.wid, cost);
-        if (retval)
-            return retval;
-        this.lvl += 1;
-        this.displayLvl = this.lvl.toString();
-    }
     async loadWaifu() {
         this.waifu = await this.getWaifu();
         this.loaded = true;
@@ -201,28 +175,12 @@ class Character {
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    thisIsUpgradable() {
-        if (!this.fc)
-            return false;
-        return this.waifu.thisIsUpgradable();
-    }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
     thisIsNToggleable() {
+        if (!this.loaded)
+            throw new Error('Getting thisIsNToggleable before waifu is loaded');
         if (!this.fc)
             return false;
         return this.waifu.thisIsNToggleable();
-    }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    thisIsNSwitchable() {
-        if (!this.fc)
-            return false;
-        return this.waifu.thisIsNSwitchable();
     }
     getWFC(channel) {
         if (this.nsfw && Utils.channel_is_nsfw_safe(channel))
@@ -243,25 +201,13 @@ class Character {
      */
     getUStatus(l = '', r = '') {
         if (!this.loaded)
-            throw new Error('Getting ustatus before waifu is loaded');
-        // Character doesn't have a level, default waifus database.
-        const lvl = (this.lvl === -1) ? Infinity : (this.lvl ? this.lvl : 1);
-        if (this.thisIsUpgradable()) {
-            if (lvl < 4) {
-                return `${l}⏫${r}`;
-            }
-            else if (lvl === 4) {
-                return `${l}⏏️${r}`;
-            }
-            else if (this.thisIsNSwitchable() && (lvl >= 10)) {
-                return `${l}🔥${r}`;
-            }
-            else if (this.thisIsNToggleable() && (lvl >= 8)) {
-                return `${l}✨${r}`;
-            }
-            return `${l}👑${r}`;
+            throw new Error('Getting uStatus before waifu is loaded');
+        if (!this.fc)
+            return '';
+        if (this.isNToggleable) {
+            return `${l}🔥${r}`;
         }
-        return '';
+        return `${l}👑${r}`;
     }
     /**
      * Only available if {@link loadWaifu} is called.
@@ -284,6 +230,7 @@ class Character {
         }).setImage(img);
     }
 }
+Character.ntoggleThreshold = 5;
 function getSource(img) {
     if (img.startsWith(config_1.default.cdn)) {
         // Using our CDN
@@ -302,16 +249,12 @@ const pool = new pg_1.Pool({
 const defaultLimit = 10;
 // Chances to get specific rarities:
 // Can be changed to a sequence to increase chances.
-const special = [50];
-// Once user passes this value, brons cost changes
-const EXTRA_COST_CNT = 60000;
+const specialRate = [50];
 // Can change brons cost here
-function getCostPerPull(cnt, special) {
+function getCostPerPull(special) {
     // Special = whale, else multi/roll
     if (special)
-        return 20;
-    else if (cnt >= EXTRA_COST_CNT)
-        return 3;
+        return 10;
     else
         return 2;
 }
@@ -563,10 +506,6 @@ function getAnimes(start) {
         ORDER BY origin LIMIT $1 OFFSET $2`, [defaultLimit, start]);
 }
 exports.getAnimes = getAnimes;
-function getAnimeCount(anime) {
-    return query('SELECT COUNT(*) FROM waifus WHERE origin = $1', [anime]).then(ret => parseInt(ret[0].count));
-}
-exports.getAnimeCount = getAnimeCount;
 function getAnime(anime) {
     return query(`SELECT * FROM chars
         WHERE origin = $1 AND fc = TRUE
@@ -664,79 +603,6 @@ function fetchAllUsers(wid) {
     [wid]).then(Character.fromRows);
 }
 exports.fetchAllUsers = fetchAllUsers;
-/** NOTE: Return value does not include 'nimg' property. */
-function fetchUserUpList(userID) {
-    // This fetches the upgradable list, joined w/
-    // the user's character list.
-    // Wild af query
-    return query(`SELECT 
-            B.uid,
-            A.wid,
-            A.name,
-            A.gender,
-            A.origin,
-            COALESCE(B.img, A.img[1]) AS img,
-            A.fc,
-            B.lvl,
-            B.nsfw,
-            B.idx
-        FROM
-        (
-            SELECT * FROM chars
-            WHERE fc = TRUE AND array_length(img, 1) > 1
-            ORDER BY name
-            LIMIT 10
-        ) A
-        LEFT JOIN
-        (
-            SELECT uid, wid, lvl, fc, img, nimg, nsfw, idx FROM
-            get_user_chars($1)
-        ) B
-        ON A.wid = B.wid`, [userID]).then(Character.fromRows);
-    // A little violation with this function,
-    // it is actually not a full character,
-    // uid might be null.
-}
-exports.fetchUserUpList = fetchUserUpList;
-/** NOTE: Return value does not include 'img' property. */
-function fetchUserLewdList(userID) {
-    // This fetches the lewd list, joined w/
-    // the user's character list.
-    /*
-     * After a long thought, nlist should not show nimg
-     * unless user owns character. Also nlist should
-     * only be available in nsfw channels, so we don't
-     * have to show img.
-     */
-    return query(`SELECT 
-            B.uid,
-            A.wid,
-            A.name,
-            A.gender,
-            A.origin,
-            COALESCE(B.nimg, A.img[1]) AS nimg,
-            A.fc,
-            B.lvl,
-            B.nsfw,
-            B.idx
-        FROM
-        (
-            SELECT * FROM chars
-            WHERE fc = TRUE AND array_length(nimg, 1) > 0
-            ORDER BY name
-            LIMIT 10
-        ) A
-        LEFT JOIN
-        (
-            SELECT uid, wid, lvl, fc, img, nimg, nsfw, idx FROM
-            get_user_chars($1)
-        ) B
-        ON A.wid = B.wid`, [userID]).then(Character.fromRows);
-    // A little violation with this function,
-    // it is actually not a full character,
-    // uid might be null.
-}
-exports.fetchUserLewdList = fetchUserLewdList;
 // For high list
 function fetchUserHighCount(userID) {
     return query(`SELECT MAX(idx) FROM
@@ -777,18 +643,18 @@ function fetchUserCharacter(userID, wid) {
     if (parseInt(wid) <= 0)
         throw new Error('Invalid wid');
     return query(`SELECT * FROM all_user_chars
-            WHERE uid = $1 AND wid = $2`, [userID, wid]).then(res => new Character(res[0]));
+            WHERE uid = $1 AND wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserCharacter = fetchUserCharacter;
 function fetchUserHighCharacter(userID, wid) {
     return query(`SELECT * FROM get_high_user_chars($1)
-            WHERE wid = $2`, [userID, wid]).then(res => new Character(res[0]));
+            WHERE wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserHighCharacter = fetchUserHighCharacter;
 function fetchUserHighestCharacter(userID) {
     return query(`SELECT * FROM all_user_chars
             WHERE uid = $1
-        ORDER BY lvl DESC, idx LIMIT 1`, [userID]).then(res => res[0] ? new Character(res[0]) : undefined);
+        ORDER BY lvl DESC, idx LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserHighestCharacter = fetchUserHighestCharacter;
 function fetchUserCharactersList(userID, start) {
@@ -824,47 +690,41 @@ function fetchUserAnimeCount(userID, origin) {
             WHERE uid = $1 AND origin = $2 AND fc = TRUE`, [userID, origin]).then(ret => parseInt(ret[0].count));
 }
 exports.fetchUserAnimeCount = fetchUserAnimeCount;
-function fetchUserAnimeWids(userID, origin) {
-    return query(`SELECT wid FROM all_user_chars
-            WHERE uid = $1 AND origin = $2 AND fc = TRUE`, [userID, origin]).then(res => res.map(ret => ret.wid));
-}
-exports.fetchUserAnimeWids = fetchUserAnimeWids;
 function getCommonQuery() {
     return 'SELECT wid FROM chars WHERE fc = FALSE ORDER BY RANDOM() LIMIT 1';
 }
 function getStarredQuery() {
     return 'SELECT wid FROM chars WHERE fc = TRUE ORDER BY RANDOM() LIMIT 1';
 }
-function getUpgradableStarredQuery() {
+function getMultiStarredQuery() {
     return `SELECT wid FROM chars
-        WHERE fc = TRUE AND array_length(img, 1) > 1
+        WHERE fc = TRUE AND array_length(img, 1) > 1 OR array_length(nimg, 1) > 0
         ORDER BY RANDOM() LIMIT 1`;
 }
 function generateCharacterQuery(level) {
     const random = Math.floor(Math.random() * 101);
     switch (level) {
         case 0 /* GuaranteeLevel.COMMON */:
-            if (special.includes(random)) {
+            if (specialRate.includes(random)) {
                 return getStarredQuery();
             }
             else {
                 return getCommonQuery();
             }
         case 1 /* GuaranteeLevel.STARRED */:
-            if (special.includes(random)) {
-                return getUpgradableStarredQuery();
+            if (specialRate.includes(random)) {
+                return getMultiStarredQuery();
             }
             else {
                 return getStarredQuery();
             }
-        case 2 /* GuaranteeLevel.UPGRADABLE */:
-            return getUpgradableStarredQuery();
+        case 2 /* GuaranteeLevel.MULTI_STARS */:
+            return getMultiStarredQuery();
     }
 }
 // Used for single pulls
 async function generateAndAddCharacter(userID, amtTaken) {
-    const cnt = await fetchUserCharacterCount(userID);
-    const amt = getCostPerPull(cnt, false);
+    const amt = getCostPerPull(false);
     amtTaken.amt = -amt; // Returning to the front end brons difference
     return multi_query([
         'CALL sub_brons($1, $2, $3)',
@@ -887,12 +747,11 @@ async function generateAndAddCharacter(userID, amtTaken) {
     });
 }
 exports.generateAndAddCharacter = generateAndAddCharacter;
-async function generateAndAddCharacters(userID, special, amtTaken) {
+function generateAndAddCharacters(userID, special, amtTaken) {
     // special = false - multi
     // special = true - whales
     const PULL_AMT = 10;
-    const cnt = await fetchUserCharacterCount(userID);
-    const amt = getCostPerPull(cnt, special) * PULL_AMT;
+    const amt = getCostPerPull(special) * PULL_AMT;
     amtTaken.amt = -amt; // Returning to the front end brons difference
     const queries = ['CALL sub_brons($1, $2, $3)'];
     const params = [[userID, special.toString(), amt.toString()]];
@@ -914,7 +773,7 @@ async function generateAndAddCharacters(userID, special, amtTaken) {
         }
     }
     // Finally, add the guaranteed character.
-    qstring = generateCharacterQuery(special ? 2 /* GuaranteeLevel.UPGRADABLE */ : 1 /* GuaranteeLevel.STARRED */);
+    qstring = generateCharacterQuery(special ? 2 /* GuaranteeLevel.MULTI_STARS */ : 1 /* GuaranteeLevel.STARRED */);
     queries.push(`SELECT * FROM add_character($1, (${qstring}))`);
     params.push([userID]);
     return multi_query(queries, params).then(res => 
@@ -937,23 +796,6 @@ async function generateAndAddCharacters(userID, special, amtTaken) {
     });
 }
 exports.generateAndAddCharacters = generateAndAddCharacters;
-function addUserCharacterLevel(userID, wid, amt) {
-    return multi_query([
-        'CALL sub_brons($1, FALSE, $2)',
-        `UPDATE user_chars SET lvl = lvl + 1
-                WHERE uid = $1 AND wid = $2
-            RETURNING *`
-    ], [[userID, amt], [userID, wid]]).then(() => { }).catch((err) => {
-        if (err instanceof exceptions_1.DatabaseMaintenanceError)
-            throw err;
-        else if (err.message.includes('user_info_brons_check'))
-            return 'not enough brons';
-        else if (err.message.includes('user_not_found_error'))
-            return 'you do not have an existing account';
-        // This means that nothing happened (ACID).
-        return 'there was an error with the database.';
-    });
-}
 function setUserCharacterImage(userID, wid, img) {
     return multi_query([
         `UPDATE user_chars
