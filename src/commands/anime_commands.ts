@@ -3,8 +3,8 @@ import config from '@config';
 import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import { CustomClient } from '@classes/client';
 import { getImage, uploadToCDN } from '@modules/cdn';
-import { DatabaseMaintenanceError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonStyle,
     ButtonBuilder, ComponentType, Colors,
@@ -14,7 +14,7 @@ import {
     ApplicationCommandType
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
+import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@classes/client';
 
 export const name = 'Animes/Gacha';
 export const desc = 'This category is for commands that deal with the character gacha.';
@@ -114,7 +114,6 @@ async function search_character(
 
 // Global helper that waits for a confirm/cancel interaction
 async function wait_for_button(
-    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     message: DTypes.Message,
     fn: string
@@ -443,7 +442,7 @@ export const anime: SlashCommand = {
         let desc = `__Anime found:__\n*${series}*\n\n**Found ${count} character(s):**\n`;
         for (const [idx, char] of anime_chars.entries()) {
             let obtained = '🟩';
-            let uStatus = char.getUStatus();
+            let uStatus = '';
             let wFC = char.fc ? '⭐ ' : '';
             const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(() => { });
             if (user_char) {
@@ -1105,7 +1104,7 @@ async function get_char_as_embed(
                 return DB.fetchUserHighCharactersList(target.id, idx).then(c => c[0]);
             return DB.fetchUserCharactersList(target.id, idx).then(c => c[0]);
         }
-        let char: DB.Character | null = null;
+        let char: DB.Character | undefined;
         if (high) {
             char = await DB.fetchUserHighCharacter(target.id, wid!);
         } else {
@@ -1135,40 +1134,34 @@ async function get_char_as_embed(
     // Only enable if user is the author.
     if (authorID === target.id) {
         await character.loadWaifu();
-        if (character.thisIsUpgradable()) {
-            if (character.isUpgradable) {
-                menu.addOptions({
-                    label: 'Upgrade!',
-                    value: `${fn}/${authorID}/upgrade_char/${character.wid}`,
-                    emoji: '⏫'
-                });
-            }
-            const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
-            if (!is_nsfw && character.isSwitchable) {
+        const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
+        // Switching image is always available; not all images are always available however.
+        if (character.fc) {
+            if (!is_nsfw) {
                 menu.addOptions({
                     label: 'Change image!',
                     value: `${fn}/${authorID}/toggle_char/${character.wid}`,
                     emoji: '🔄'
                 });
-            } else if (is_nsfw && character.isNSwitchable) {
+            } else if (is_nsfw) {
                 menu.addOptions({
                     label: 'Change lewd!',
                     value: `${fn}/${authorID}/toggle_char/${character.wid}`,
                     emoji: '🔄'
                 });
             }
-        }
-        if (Utils.channel_is_nsfw_safe(channel) && character.isNToggleable) {
-            menu.addOptions({
-                label: `${character.nsfw ? 'Give me original!' : 'Give me lewd!'}`,
-                value: `${fn}/${authorID}/ntoggle_char/${character.wid}`,
-                emoji: '🔀'
-            });
+            if (Utils.channel_is_nsfw_safe(channel) && character.isNToggleable) {
+                menu.addOptions({
+                    label: `${character.nsfw ? 'Give me original!' : 'Give me lewd!'}`,
+                    value: `${fn}/${authorID}/ntoggle_char/${character.wid}`,
+                    emoji: '🔀'
+                });
+            }
         }
         menu.addOptions({
-            label: 'Delete this character!',
+            label: 'Sell this character!',
             value: `${fn}/${authorID}/delete_char/${character.wid}`,
-            emoji: '🚮'
+            emoji: '💰'
         });
     }
     // Enable if there are options
@@ -1222,123 +1215,108 @@ async function get_char_as_embed(
 }
 
 type FnMap = {
-    [key: string]: ((
+    [key: string]: (
         client: CustomClient,
         interaction: DTypes.AnySelectMenuInteraction,
         char: DB.Character
     ) => Promise<{
         embeds: DTypes.EmbedBuilder[],
         ephemeral: boolean
-    } | undefined>) | undefined;
+    } | undefined>;
 };
 const fnMappings: FnMap = {
-    'upgrade_char': upgrade,
     'toggle_char': switch_char_image,
     'ntoggle_char': toggle_char_nsfw,
     'delete_char': delete_char
 };
-
-// Upgrades a character and returns a followup component
-async function upgrade(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
-    const brons = await DB.getBrons(interaction.user.id);
-    // Match gacha_docs
-    const costs = [0, 100, 500, 1000];
-    const embed = new EmbedBuilder({ color: Colors.Red });
-    if (brons! < costs[char.lvl]) {
-        embed.setTitle(`You don't have enough brons to upgrade ${char.name} ` +
-            `to level ${char.lvl + 1}. Required: ${costs[char.lvl]} ` +
-            `${client.bot_emojis.brons}`);
-        return { embeds: [embed], ephemeral: true };
-    }
-    const buttons = new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('upgrade_char/confirm')
-                .setLabel('Yes!')
-                .setEmoji('⏫')
-                .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-                .setCustomId('upgrade_char/cancel')
-                .setLabel('No')
-                .setStyle(ButtonStyle.Secondary));
-    embed.setColor(Colors.Gold).setTitle(
-        `Are you sure you want to use ${costs[char.lvl]} ` +
-        `${client.bot_emojis.brons} to upgrade ${char.name} ` +
-        `to level ${char.lvl + 1}?`
-    );
-    const message = await interaction.followUp({
-        embeds: [embed],
-        components: [buttons],
-        ephemeral: true
-    });
-    const confirmed = await wait_for_button(client, interaction, message, 'upgrade_char');
-    if (!confirmed) return;
-
-    const ret = await char.upgrade(costs[char.lvl]);
-    if (ret) {
-        embed.setTitle(`Failed to upgrade ${char.name}. Reason: \`${ret}\``);
-    } else {
-        embed.setTitle(`Successfully upgraded ${char.name} to level ${char.lvl}!`);
-    }
-    return { embeds: [embed], ephemeral: true };
-}
 
 async function switch_char_image(
     client: CustomClient,
     interaction: DTypes.AnySelectMenuInteraction,
     char: DB.Character
 ) {
-    const embed = new EmbedBuilder({ color: Colors.Gold });
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId('toggle_char/menu')
-        .setPlaceholder('Select an image.');
-    // Assuming char is switchable
-    const embeds = [];
     const is_nsfw = Utils.channel_is_nsfw_safe(interaction.channel!) && char.nsfw;
-    await char.loadWaifu();
-    if (is_nsfw) {
-        // Switching lewd image
-        for (const [i, nimg] of char.waifu!.nimg.entries()) {
-            embed.setTitle(`Image #${i + 1}:`)
-                .setDescription(`[Source](${DB.getSource(nimg)})\n[Raw Image](${nimg})`)
-                .setImage(nimg);
-            embeds.push(new EmbedBuilder(embed.data));
-            menu.addOptions({ label: `Image #${i + 1}`, value: (i + 1).toString() });
-        }
-        embed.setTitle(
-            `${char.name} has ${char.waifu!.nimg.length} lewd images.\n` +
-            'Select one to continue or click cancel.'
-        ).setImage(null).setDescription(null);
-        embeds.push(embed);
-    } else {
-        // Otherwise switching normal image
-        for (const [i, img] of char.waifu!.img.entries()) {
-            embed.setTitle(`Image #${i + 1}:`)
+    async function get_char_images_embed(start: number): Promise<DTypes.InteractionReplyOptions> {
+        const embed = new EmbedBuilder({ color: Colors.Gold });
+        const buttons = [];
+        // Assuming char is switchable
+        const embeds = [];
+        await char.loadWaifu();
+        const accessibleImages = is_nsfw ?
+            char.waifu!.nimg.slice(0, char.max_nimg) :
+            char.waifu!.img.slice(0, char.max_img);
+        const image_page = accessibleImages.slice(start, start + 10);
+        for (const [i, img] of image_page.entries()) {
+            embed.setTitle(`Image #${start + i + 1}:`)
                 .setDescription(`[Source](${DB.getSource(img)})\n[Raw Image](${img})`)
                 .setImage(img);
             embeds.push(new EmbedBuilder(embed.data));
-            menu.addOptions({ label: `Image #${i + 1}`, value: (i + 1).toString() });
+            buttons.push(new ButtonBuilder({
+                label: `Image #${start + i + 1}`,
+                style: ButtonStyle.Primary,
+                customId: `select_char/${start + i + 1}`
+            }));
         }
-        embed.setTitle(
-            `${char.name} has ${char.waifu!.img.length} images.\n` +
-            'Select one to continue or click cancel.'
-        ).setImage(null).setDescription(null);
-        embeds.push(embed);
+
+        // Buttons for navigating over 10 images
+        const toggle_buttons = [
+            new ButtonBuilder()
+                .setEmoji('⬅️')
+                .setStyle(ButtonStyle.Primary)
+                .setCustomId(`toggle_char/${start - 10}`)
+                .setDisabled(start === 0),
+            new ButtonBuilder()
+                .setEmoji('➡️')
+                .setStyle(ButtonStyle.Primary)
+                .setCustomId(`toggle_char/${start + 10}`)
+                .setDisabled(start + 10 >= accessibleImages.length),
+            new ButtonBuilder()
+                .setLabel('Cancel')
+                .setStyle(ButtonStyle.Danger)
+                .setCustomId('select_char/cancel')
+        ];
+        const components = [new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(toggle_buttons)];
+        while (buttons.length > 0) {
+            components.push(new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(buttons.splice(0, 5)));
+        }
+        return {
+            embeds,
+            components,
+            ephemeral: true
+        };
     }
-    menu.addOptions({ label: 'Cancel', value: '-1' });
-    const message = await interaction.followUp({
-        embeds: embeds,
-        components: [new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu)],
-        ephemeral: true
-    });
+    const opts = await get_char_images_embed(0);
+    const message = await interaction.followUp(opts);
+
+    // Recursively create ourselves to handle pagination
+    const createCollector = () => {
+        const collector = message.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            filter: i => i.customId.startsWith('toggle_char'),
+            max: 1,
+            time: 15 * 60 * 1000 // 15 minutes before interaction expires
+        });
+        collector.once('collect', async i => {
+            await i.deferUpdate();
+            const page = parseInt(i.customId.split('/')[1]);
+            const opts = await get_char_images_embed(page);
+            await i.editReply(opts);
+        });
+        collector.once('end', createCollector);
+    };
+    createCollector();
+
     const selected = await message.awaitMessageComponent({
-        componentType: ComponentType.StringSelect,
-        time: 60_000
+        componentType: ComponentType.Button,
+        filter: i => i.customId.startsWith('select_char'),
+        time: 15 * 60 * 1000 // 15 minutes before interaction expires
     }).then(i => {
-        if (i.values[0] === '-1') return;
-        return parseInt(i.values[0]);
-    }).catch(() => { });
-    Utils.deleteEphemeralMessage(interaction, message).then(() => { }).catch(() => { });
+        const val = i.customId.split('/')[1];
+        if (val === 'cancel') return;
+        return parseInt(val);
+    }).catch(() => undefined);
+    Utils.deleteEphemeralMessage(interaction, message).catch(() => { });
+
     let success = true;
     if (selected === undefined) {
         return;
@@ -1348,7 +1326,10 @@ async function switch_char_image(
         success = await char.setImg(selected);
     }
     if (!success) {
-        embed.setColor(Colors.Red).setTitle('Apologies, that action failed. Please contact the support server.');
+        const embed = new EmbedBuilder({
+            title: 'Apologies, that action failed. Please contact the support server.',
+            color: Colors.Red
+        });
         return { embeds: [embed], ephemeral: true };
     }
 }
@@ -1370,6 +1351,7 @@ async function toggle_char_nsfw(
     }
 }
 
+// TODO: Rewrite
 async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
     await char.loadWaifu();
     const embed = new EmbedBuilder({
@@ -1397,7 +1379,7 @@ async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMe
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(client, interaction, message, 'delete_char');
+    const confirmed = await wait_for_button(interaction, message, 'delete_char');
     if (!confirmed) return;
     embed.setDescription(null);
 
@@ -1496,7 +1478,7 @@ const listHelpers = {
             await DB.fetchUserCharacter(interaction.user.id, wid);
         const callFn = fnMappings[fn];
         if (callFn) {
-            const res = await callFn(client, interaction, char);
+            const res = await callFn(client, interaction, char!);
             if (res) {
                 await interaction.followUp(res);
             }
@@ -1511,7 +1493,7 @@ const listHelpers = {
         if (fn === 'delete_char') {
             res = get_char_as_embed(
                 interaction.channel!, interaction.user.id,
-                interaction.user, char.idx!, high
+                interaction.user, char!.idx!, high
             );
         } else {
             res = get_char_as_embed(
@@ -1690,35 +1672,31 @@ Check out {/submit} for more information!
 __Gacha System Rules:__
 > Every multi, the 11th roll will always be starred ⭐.
 > 
-> If you have over 60,000 characters, every roll will cost \
-3 brons instead of 2. ⬆️
+> If the character is a common, and you receive a duplicate, you will be refunded 1 \
+bron and the character will NOT level up.
 > 
-> If the character is a common, and you receive a duplicate, you will be refunded 2 \
-brons and the character will NOT level up.
+> If the character is a starred, and you receive a duplicate, you will be refunded 2 \
+brons and the character will level up 🆙.
 > 
-> If the character is a custom, and you receive a duplicate, you will be refunded 4 \
-brons and if possible, the character will level up 🆙 (limited for certain characters).
+> Every level up, your character will unlock a new image if there are available images.
 > 
-> Once a character hits level 5, it will unlock a more images for that character. 🔓
+> Once a character hits level 5, it will unlock a "lewd mode" (limited for certain characters). 🔓
 > 
-> You may level up a character using brons at increasing rates (see below).
+> You can switch the character's image by selecting the waifu in {/list} and using the select menu.
 > 
-> You can switch the character's image by selecting the waifu in {/list} or {/high} and using the select menu.
-> 
-> Once a character hits level 8, it will unlock "lewd mode" for the character (limited for certain characters).
-> 
-> You can toggle to lewd mode by using by selecting the waifu in {/list} or {/high} and using the select menu.
-> 
-> Once a character hits level 10, it will unlock more lewd images for the character (limited for certain characters).
+> You can toggle to lewd mode by using by selecting the waifu in {/list} and using the select menu.
 
-__Level Up Cost:__
-> From level 1 to level 2: 100 brons.
+__Image Unlocking rules:__
+> Your character level corresponds to the amount of images available to choose from, \
+provided that the character has enough images.
 > 
-> From level 2 to level 3: 500 brons.
+> Starting from level 5, you unlock the lewd mode toggle, which will automatically unlock \
+lewd images if available.
 > 
-> From level 3 to level 4: 1000 brons.
+> Lewd images are also locked propotionally to your level, where level 5 corresponds to 1 image.
 > 
-> You must receive a duplicate to go above level 4`;
+> If the character has enough images, and you reach the level threshold, there will be a \
+message displayed when you roll the character.`;
 
 // Helper to generate new character display
 async function generateCharacterDisplay(
@@ -1731,29 +1709,30 @@ async function generateCharacterDisplay(
     const img = character.getImage(channel);
     let refund = 0;
     let add_on = '';
-    let add_emoji = '';
+    let add_emoji = ' 🆕';
     if (!character.new) {
         // CONSTANT: Refund brons
-        refund = character.fc ? 4 : 2;
+        refund = character.fc ? 2 : 1;
         const refund_str = `+${refund} ${client.bot_emojis.brons}`;
+        add_emoji = ` 🆒 ${refund_str}`;
         if (character.lvl > 1) {
             add_emoji = ` 🆙 ${refund_str}`;
             add_on = `**Reached level ${character.lvl}!**\n`;
-            if (character.unlockedImages) {
-                add_on += 'You unlocked new image(s)! 🎉\n';
-                add_on += 'Find the waifu to switch the image!\n';
-            } else if (character.unlockedNMode && character.thisIsNToggleable()) {
-                add_on += 'You unlocked a new mode! 🎉\n';
-                add_on += 'Find the waifu to switch to lewd mode!\n';
-            } else if (character.unlockedNImages && character.thisIsNSwitchable()) {
-                add_on += 'You unlocked new lewd image(s)! 🎉\n';
+            // Unlocked new img
+            if (character.max_img <= character.waifu!.img.length) {
+                add_on += 'You unlocked a new image! 🎉\n';
                 add_on += 'Find the waifu to switch the image!\n';
             }
-        } else {
-            add_emoji = ` 🆒 ${refund_str}`;
+            // Lewd mode available
+            if (character.unlockedNMode) {
+                add_on += 'You unlocked a new mode! 🎉\n';
+                add_on += 'Find the waifu to switch to lewd mode!\n';
+            // Unlocked new nimg
+            } else if (character.max_nimg <= character.waifu!.nimg.length) {
+                add_on += 'You unlocked a new lewd image! 🎉\n';
+                add_on += 'Use lewd mode on the waifu to switch the image!\n';
+            }
         }
-    } else {
-        add_emoji = ' 🆕';
     }
     const embed = new EmbedBuilder({
         description:
@@ -1871,13 +1850,12 @@ export const whale: SlashCommand = {
                 .setDescription('Toggle sending as ephemeral message. (Default: false)'))
         .setDescription('Roll 11 special anime characters.'),
 
-    desc: 'Randomly gives you 11 starred waifus. Each whale costs 200 brons. Can only be done once a day.\n' +
+    desc: 'Randomly gives you 11 starred waifus. Each whale costs 100 brons. Can only be done once a day.\n' +
           'Guaranteed to roll from custom database.\n' +
-          'The last character is guaranteed to be an upgradable character.\n' +
+          'The last character is guaranteed to be a character that has multiple images (lewd or normal).\n' +
           `${gacha_docs}\n\n` +
           'Command suggested by Ryu Minoru#5834. Unlike multi, it will only give you 11 ' +
-          'starred characters (with one guaranteed upgradable) for a higher price.\n\n' +
-          '__Only for whels who want faster Map!__\n\n' +
+          'starred characters (with one guaranteed special character) for a higher price.\n\n' +
           'Usage: `/whale ephemeral: [ephemeral]`\n\n' +
           '__**Options**__\n' +
           '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
@@ -1997,7 +1975,7 @@ export const dall: SlashCommand = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(client, interaction, message, 'dall');
+        const confirmed = await wait_for_button(interaction, message, 'dall');
         if (!confirmed) return;
 
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
@@ -2303,58 +2281,6 @@ export const users: SlashCommand = {
     }
 };
 
-// Commenting out because unsure if still needed.
-// export const uplist: SlashCommand = {
-//     data: new SlashCommandBuilder()
-//         .setName('uplist')
-//         .addIntegerOption(option =>
-//             option
-//                 .setName('page')
-//                 .setDescription('The page to jump to. (Default: 1)')
-//                 .setMinValue(1))
-//         .setDescription('View all upgradable waifus.'),
-
-//     desc: "Don't know what characters you can upgrade? Check using this command!\n" +
-//           'To switch the image, the character must be at least level 5.\n\n' +
-//           'Usage: `/uplist page: [page] user: [user]`\n\n' +
-//           '__**Options**__\n' +
-//           '*page:* The page number to jump to. (Default 1)\n' +
-//           "*user:* The user's list to compare to. (Default: You)\n\n" +
-//           'Examples: `/uplist`, `/uplist page: 2`',
-
-//     async execute(interaction) {
-
-//     }
-// };
-
-// export const nlist: SlashCommand = {
-//     data: new SlashCommandBuilder()
-//         .setName('nlist')
-//         .addIntegerOption(option =>
-//             option
-//                 .setName('page')
-//                 .setDescription('The page to jump to. (Default: 1)')
-//                 .setMinValue(1))
-//         .addUserOption(option =>
-//             option
-//                 .setName('user')
-//                 .setDescription('The user you want to view. (Default: You)'))
-//         .setDescription('View all lewdable waifus.'),
-
-//     desc: "Don't know what characters you can change into lewd mode? Check using this command!\n\n" +
-//           'To toggle to lewd mode, the character must be in this list and level 8 or higher.\n\n' +
-//           'While in lewd mode, you can change the image (provided there exists more images).\n\n' +
-//           'Usage: `/nlist page: [page] user: [user]`\n\n' +
-//           '__**Options**__\n' +
-//           '*page:* The page number to jump to. (Default: 1)\n' +
-//           "*user:* The user's list to compare to. (Default: You)\n\n" +
-//           'Examples: `/nlist`, `/nlist page: 2`, `/nlist user: @Krammy`',
-
-//     async execute(interaction) {
-
-//     },
-// };
-
 export const swap: SlashCommand = {
     data: new SlashCommandBuilder()
         .setName('swap')
@@ -2478,6 +2404,11 @@ export const move: SlashCommand = {
     }
 };
 
+type SubmissionCache = {
+    mid: string;
+    uid: string;
+    readonly data: DB.PartialWaifu;
+};
 // I'm out of names
 type ImpartialWaifu = {
     name?: string;
@@ -2490,10 +2421,7 @@ type SubmitPrivates = {
     uniqueFileName: (ext: string) => string;
     secretButtons: ActionRowBuilder<DTypes.ButtonBuilder>;
     input: ModalBuilder;
-    setWaifuInfoEmbed: (
-        embed: DTypes.EmbedBuilder,
-        data: DB.PartialWaifu
-    ) => Promise<DTypes.EmbedBuilder>;
+    getWaifuInfoEmbed: (submission: SubmissionCache) => Promise<DTypes.EmbedBuilder>;
     searchWaifu: (
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
@@ -2509,11 +2437,7 @@ type SubmitPrivates = {
     ) => Promise<void>
     startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu) => Promise<void>;
 };
-export const submit: CachedSlashCommand<{
-    mid: string; // Message id
-    uid: string; // User id of the user who submitted the character
-    readonly data: DB.PartialWaifu;
-}> & SubmitPrivates = {
+export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
     data: new SlashCommandBuilder()
         .setName('submit')
         .addAttachmentOption(option =>
@@ -2592,17 +2516,13 @@ export const submit: CachedSlashCommand<{
 
     desc: 'Want to add a character that is not currently in the starred database?\n' +
           'You came to the right command!\n' +
-          'If you wish to add images to an existing character,\n' +
-          'make sure to copy the correct name, gender, and anime name.\n' +
-          'Furthermore, it must follow these rules:\n\n' +
+          'Simply just follow these rules:\n\n' +
           '__**Character Submission Rules:**__\n' +
           '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
-          '2. If the character is from an **anime** that already exists, it must use the exact same name.\n' +
+          '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
           "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
           '4. If its a new character, the character must have at least **one normal image**.\n' +
-          '5. If its a new character, and you include a lewd image, the character must have at least ' +
-          '**two normal images**.\n' +
-          '6. Optionally, if you would like, you can add a file to the `image` option or `lewd` option (up to 9).\n' +
+          '5. Optionally, if you would like, you can add a file to the `image` option or `lewd` option (up to 9).\n' +
           'These links will then be prepopulated in the modal. **DO NOT CHANGE THESE.**\n\n' +
           'Note that you can only submit one file per option at time. This is a discord limitation.\n\n' +
           'Usage: `/submit image(1-9): [file] lewd(1-9): [file]`\n\n' +
@@ -2707,17 +2627,28 @@ export const submit: CachedSlashCommand<{
         ]
     }),
 
-    async setWaifuInfoEmbed(embed, data) {
-        const waifu = await DB.fetchWaifuByDetails(data);
-        const is_new_origin = await DB.fetchCompleteOrigin(data.origin);
+    async getWaifuInfoEmbed(submission) {
+        const client = new CustomClient();
+        const user = await client.users.fetch(submission.uid);
+        const waifu = await DB.fetchWaifuByDetails(submission.data);
+        const is_new_origin = await DB.fetchCompleteOrigin(submission.data.origin);
+        const embed = new EmbedBuilder({
+            title: 'Character Submission',
+            color: Colors.Aqua
+        }).setAuthor({
+            name: `@${user.tag}`,
+            iconURL: user.displayAvatarURL()
+        });
         return embed.setDescription(
-            `**Name:** __${data.name}__\n` +
-            `**Gender:** __${data.gender}__\n` +
-            `**Origin:** __${data.origin}__${is_new_origin ? ' (existing anime)' : ''}\n` +
-            `**\\# of img:** ${waifu ? `${waifu.img.length + data.img.length} ` +
-                `(+${data.img.length})` : data.img.length}\n\n${data.img.join('\n\n')}\n\n` +
-            `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + data.nimg.length} ` +
-                `(+${data.nimg.length})` : data.nimg.length}\n\n${data.nimg.join('\n\n')}`
+            `**Name:** __${submission.data.name}__\n` +
+            `**Gender:** __${submission.data.gender}__\n` +
+            `**Origin:** __${submission.data.origin}__${is_new_origin ? ' (existing anime)' : ''}\n` +
+            `**\\# of img:** ${waifu ? `${waifu.img.length + submission.data.img.length} ` +
+                `(+${submission.data.img.length})` : submission.data.img.length}\n\n` +
+                `${submission.data.img.join('\n\n')}\n\n` +
+            `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + submission.data.nimg.length} ` +
+                `(+${submission.data.nimg.length})` : submission.data.nimg.length}\n\n` +
+                `${submission.data.nimg.join('\n\n')}`
         );
     },
 
@@ -2786,15 +2717,9 @@ export const submit: CachedSlashCommand<{
             });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
-                if (err instanceof DatabaseMaintenanceError) throw err;
-                return null;
+                interaction.editReply({ components: [this.secretButtons] });
+                throw err;
             });
-            if (!new_waifu) {
-                const embed = EmbedBuilder.from(interaction.message!.embeds[0]);
-                await this.setWaifuInfoEmbed(embed, submission.data);
-                await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
-                return interaction.followUp({ content: 'Waifu got too many images (updated)!', ephemeral: true });
-            }
             const newCharacterInfo =
                 '```' +
                 `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
@@ -2851,8 +2776,7 @@ export const submit: CachedSlashCommand<{
             submission.data.img = imgs.splice(0, img.length);
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
-            const embed = EmbedBuilder.from(interaction.message!.embeds[0]);
-            await this.setWaifuInfoEmbed(embed, submission.data);
+            const embed = await this.getWaifuInfoEmbed(submission);
             return interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         } else if (action === 'edit') {
             return this.startSubmit(interaction, { name, gender, origin, img, nimg });
@@ -2890,50 +2814,19 @@ export const submit: CachedSlashCommand<{
                 content: 'You must submit at least 1 image!',
                 ephemeral: true
             });
-        } else if (img.length > 9 || nimg.length > 9) {
-            return interaction.followUp({
-                content: 'You can only submit up to 9 images!',
-                ephemeral: true
-            });
-        } else if (waifu) {
-            if ((waifu.img.length + img.length > 9) || (waifu.nimg.length + nimg.length > 9)) {
-                return interaction.followUp({
-                    content: 'Waifu getting too many images!',
-                    ephemeral: true
-                });
-            } else if (waifu.img.length === 1 && waifu.nimg.length > 0) {
-                return interaction.followUp({
-                    content: 'Waifu with lewd images must have at least 2 normal images!',
-                    ephemeral: true
-                });
-            }
-            // After here, we know its a new submission, so we don't need to check if !waifu
-        } else if (img.length === 0) {
+        } else if (!waifu && img.length === 0) {
             return interaction.followUp({
                 content: 'New waifus must have at least 1 normal image!',
                 ephemeral: true
             });
-        } else if (img.length === 1 && nimg.length > 0) {
-            return interaction.followUp({
-                content: 'New waifus with lewd images must have at least 2 normal images!',
-                ephemeral: true
-            });
         }
         const submission_log = await client.channels.fetch(submission_log_id) as DTypes.TextBasedChannel;
-        let embed: DTypes.EmbedBuilder;
-        // If a previous submission exists, it means I am editing the submission.
-        if (submission) {
-            embed = EmbedBuilder.from(interaction.message!.embeds[0]);
-        } else {
-            embed = new EmbedBuilder({
-                title: 'Character Submission',
-                color: Colors.Aqua
-            }).setAuthor({
-                name: `@${interaction.user.tag}`,
-                iconURL: interaction.user.displayAvatarURL()
-            });
-        }
-        await this.setWaifuInfoEmbed(embed, data);
+        const new_submission = {
+            mid: '',
+            uid: submission ? submission.uid : interaction.user.id,
+            data: data
+        };
+        const embed = await this.getWaifuInfoEmbed(new_submission);
 
         if (submission) interaction.deleteReply();
         else interaction.followUp({ content: 'Received!', ephemeral: true });
@@ -2945,11 +2838,8 @@ export const submit: CachedSlashCommand<{
             embeds: [embed],
             components: [this.secretButtons]
         });
-        await this.cache.set(msg.id, {
-            mid: msg.id,
-            uid: submission ? submission.uid : interaction.user.id,
-            data: data
-        });
+        new_submission.mid = msg.id;
+        await this.cache.set(msg.id, new_submission);
     },
 
     async searchWaifu(interaction, embed) {
@@ -2974,13 +2864,11 @@ export const submit: CachedSlashCommand<{
                 ephemeral: true
             }).then(() => undefined);
         }
-        const imgLength = waifu.img.length === 9 ? `${waifu.img.length} (MAX)` : waifu.img.length;
-        const nimgLength = waifu.nimg.length === 9 ? `${waifu.nimg.length} (MAX)` : waifu.nimg.length;
         embed.setDescription(
             `⭐ **${waifu.name}**${waifu.getGender()}\n` +
             `__From:__ ${waifu.origin}\n` +
-            `__Number of Normal Images:__ **${imgLength}**\n` +
-            `__Number of lewd images:__ **${nimgLength}**`
+            `__Number of Normal Images:__ **${waifu.img.length}**\n` +
+            `__Number of Lewd images:__ **${waifu.nimg.length}**`
         ).setImage(waifu.img[0]).setTitle('Waifu Selection');
         return {
             name: waifu.name,
@@ -3088,7 +2976,7 @@ export const submit: CachedSlashCommand<{
         let id = 0;
         message.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 60 * 60 * 1_000 // Cleanup after 1 hr if ignored
+            time: 15 * 60 * 1_000 // Cleanup after 15 mins bc expired
         }).on('collect', async i => {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
@@ -3114,7 +3002,7 @@ export const submit: CachedSlashCommand<{
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 10 * 60 * 1_000 // Wait for 10 mins max
+                    time: 15 * 60 * 1_000 // Wait for 15 mins max
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
@@ -3151,7 +3039,7 @@ export const submit: CachedSlashCommand<{
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 10 * 60 * 1_000 // Wait for 10 mins max
+                    time: 15 * 60 * 1_000 // Wait for 15 mins max
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Anime submit search
