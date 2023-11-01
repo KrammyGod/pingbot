@@ -3,6 +3,7 @@ import config from '@config';
 import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import { CustomClient } from '@classes/client';
 import { getImage, uploadToCDN } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -13,7 +14,7 @@ import {
     ApplicationCommandType
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
+import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@classes/client';
 
 export const name = 'Animes/Gacha';
 export const desc = 'This category is for commands that deal with the character gacha.';
@@ -2395,6 +2396,11 @@ export const move: SlashCommand = {
     }
 };
 
+type SubmissionCache = {
+    mid: string;
+    uid: string;
+    readonly data: DB.PartialWaifu;
+};
 // I'm out of names
 type ImpartialWaifu = {
     name?: string;
@@ -2407,10 +2413,7 @@ type SubmitPrivates = {
     uniqueFileName: (ext: string) => string;
     secretButtons: ActionRowBuilder<DTypes.ButtonBuilder>;
     input: ModalBuilder;
-    setWaifuInfoEmbed: (
-        embed: DTypes.EmbedBuilder,
-        data: DB.PartialWaifu
-    ) => Promise<DTypes.EmbedBuilder>;
+    getWaifuInfoEmbed: (submission: SubmissionCache) => Promise<DTypes.EmbedBuilder>;
     searchWaifu: (
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
@@ -2426,11 +2429,7 @@ type SubmitPrivates = {
     ) => Promise<void>
     startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu) => Promise<void>;
 };
-export const submit: CachedSlashCommand<{
-    mid: string; // Message id
-    uid: string; // User id of the user who submitted the character
-    readonly data: DB.PartialWaifu;
-}> & SubmitPrivates = {
+export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
     data: new SlashCommandBuilder()
         .setName('submit')
         .addAttachmentOption(option =>
@@ -2624,17 +2623,28 @@ export const submit: CachedSlashCommand<{
         ]
     }),
 
-    async setWaifuInfoEmbed(embed, data) {
-        const waifu = await DB.fetchWaifuByDetails(data);
-        const is_new_origin = await DB.fetchCompleteOrigin(data.origin);
+    async getWaifuInfoEmbed(submission) {
+        const client = new CustomClient();
+        const user = await client.users.fetch(submission.uid);
+        const waifu = await DB.fetchWaifuByDetails(submission.data);
+        const is_new_origin = await DB.fetchCompleteOrigin(submission.data.origin);
+        const embed = new EmbedBuilder({
+            title: 'Character Submission',
+            color: Colors.Aqua
+        }).setAuthor({
+            name: `@${user.tag}`,
+            iconURL: user.displayAvatarURL()
+        });
         return embed.setDescription(
-            `**Name:** __${data.name}__\n` +
-            `**Gender:** __${data.gender}__\n` +
-            `**Origin:** __${data.origin}__${is_new_origin ? ' (existing anime)' : ''}\n` +
-            `**\\# of img:** ${waifu ? `${waifu.img.length + data.img.length} ` +
-                `(+${data.img.length})` : data.img.length}\n\n${data.img.join('\n\n')}\n\n` +
-            `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + data.nimg.length} ` +
-                `(+${data.nimg.length})` : data.nimg.length}\n\n${data.nimg.join('\n\n')}`
+            `**Name:** __${submission.data.name}__\n` +
+            `**Gender:** __${submission.data.gender}__\n` +
+            `**Origin:** __${submission.data.origin}__${is_new_origin ? ' (existing anime)' : ''}\n` +
+            `**\\# of img:** ${waifu ? `${waifu.img.length + submission.data.img.length} ` +
+                `(+${submission.data.img.length})` : submission.data.img.length}\n\n` +
+                `${submission.data.img.join('\n\n')}\n\n` +
+            `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + submission.data.nimg.length} ` +
+                `(+${submission.data.nimg.length})` : submission.data.nimg.length}\n\n` +
+                `${submission.data.nimg.join('\n\n')}`
         );
     },
 
@@ -2762,8 +2772,7 @@ export const submit: CachedSlashCommand<{
             submission.data.img = imgs.splice(0, img.length);
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
-            const embed = EmbedBuilder.from(interaction.message!.embeds[0]);
-            await this.setWaifuInfoEmbed(embed, submission.data);
+            const embed = await this.getWaifuInfoEmbed(submission);
             return interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         } else if (action === 'edit') {
             return this.startSubmit(interaction, { name, gender, origin, img, nimg });
@@ -2808,20 +2817,12 @@ export const submit: CachedSlashCommand<{
             });
         }
         const submission_log = await client.channels.fetch(submission_log_id) as DTypes.TextBasedChannel;
-        let embed: DTypes.EmbedBuilder;
-        // If a previous submission exists, it means I am editing the submission.
-        if (submission) {
-            embed = EmbedBuilder.from(interaction.message!.embeds[0]);
-        } else {
-            embed = new EmbedBuilder({
-                title: 'Character Submission',
-                color: Colors.Aqua
-            }).setAuthor({
-                name: `@${interaction.user.tag}`,
-                iconURL: interaction.user.displayAvatarURL()
-            });
-        }
-        await this.setWaifuInfoEmbed(embed, data);
+        const new_submission = {
+            mid: '',
+            uid: submission ? submission.uid : interaction.user.id,
+            data: data
+        };
+        const embed = await this.getWaifuInfoEmbed(new_submission);
 
         if (submission) interaction.deleteReply();
         else interaction.followUp({ content: 'Received!', ephemeral: true });
@@ -2833,11 +2834,8 @@ export const submit: CachedSlashCommand<{
             embeds: [embed],
             components: [this.secretButtons]
         });
-        await this.cache.set(msg.id, {
-            mid: msg.id,
-            uid: submission ? submission.uid : interaction.user.id,
-            data: data
-        });
+        new_submission.mid = msg.id;
+        await this.cache.set(msg.id, new_submission);
     },
 
     async searchWaifu(interaction, embed) {
@@ -2866,7 +2864,7 @@ export const submit: CachedSlashCommand<{
             `⭐ **${waifu.name}**${waifu.getGender()}\n` +
             `__From:__ ${waifu.origin}\n` +
             `__Number of Normal Images:__ **${waifu.img.length}**\n` +
-            `__Number of lewd images:__ **${waifu.nimg.length}**`
+            `__Number of Lewd images:__ **${waifu.nimg.length}**`
         ).setImage(waifu.img[0]).setTitle('Waifu Selection');
         return {
             name: waifu.name,
