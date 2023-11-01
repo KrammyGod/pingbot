@@ -123,6 +123,8 @@ class Character {
     fc: boolean;
     _img: number;
     _nimg: number;
+    max_img: number;
+    max_nimg: number;
     img: string;
     nimg: string;
     nsfw: boolean;
@@ -132,6 +134,8 @@ class Character {
      */
     waifu?: Waifu;
     private loaded: boolean;
+
+    private static ntoggleThreshold = 5;
 
     static fromRows(rows: unknown[]) {
         const rets: Character[] = [];
@@ -144,7 +148,8 @@ class Character {
     // Used to refresh the waifu object (if we need to update it).
     private getWaifu(): Promise<Waifu>;
     private getWaifu<T>(cb: (waifu: Waifu) => T): Promise<T>;
-    private getWaifu<T = Waifu>(cb?: (waifu: Waifu) => T) {
+    private getWaifu<T>(cb: (waifu: Waifu) => PromiseLike<T>): Promise<T>;
+    private getWaifu<T>(cb?: (waifu: Waifu) => PromiseLike<T> | T) {
         // Get the waifu object of this character.
         return fetchWaifu(this.wid).then(waifu => cb ? cb(waifu) : waifu);
     }
@@ -164,6 +169,8 @@ class Character {
         // _img and _nimg are used to store the index of the image
         this._img = row._img ?? 1;
         this._nimg = row._nimg ?? 1;
+        this.max_img = row.lvl;
+        this.max_nimg = row.lvl >= Character.ntoggleThreshold ? row.lvl - 4 : NaN;
         // Transform img and nimg to their actual links
         // In our database, we only store the ID if they are in our CDN
         // Thus, we need to convert it into an available link
@@ -178,13 +185,13 @@ class Character {
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get unlockedNMode() { return this.lvl === 5 && this.thisIsNToggleable(); }
+    get unlockedNMode() { return this.lvl === Character.ntoggleThreshold && this.thisIsNToggleable(); }
 
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isNToggleable() { return this.lvl >= 5 && this.thisIsNToggleable(); }
+    get isNToggleable() { return this.lvl >= Character.ntoggleThreshold && this.thisIsNToggleable(); }
 
     async setImg(new_img: number) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
@@ -223,16 +230,6 @@ class Character {
         return this.waifu!.thisIsNToggleable();
     }
 
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    thisIsNSwitchable() {
-        if (!this.loaded) throw new Error('Getting thisIsNSwitchable before waifu is loaded');
-        if (!this.fc) return false;
-        return this.waifu!.thisIsNSwitchable();
-    }
-
     getWFC(channel: TextBasedChannel) {
         if (this.nsfw && Utils.channel_is_nsfw_safe(channel)) return '🔞 ';
         return this.fc ? '⭐ ' : '';
@@ -254,16 +251,10 @@ class Character {
     getUStatus(l = '', r = '') {
         if (!this.loaded) throw new Error('Getting uStatus before waifu is loaded');
         if (!this.fc) return '';
-        // Character doesn't have a level, default waifus database.
-        const lvl = this.lvl ? this.lvl : 1;
-        if (lvl >= 5) {
-            if (this.thisIsNSwitchable()) {
-                return `${l}🔥${r}`;
-            } else if (this.thisIsNToggleable()) {
-                return `${l}👑${r}`;
-            }
+        if (this.isNToggleable) {
+            return `${l}🔥${r}`;
         }
-        return `${l}✨${r}`;
+        return `${l}👑${r}`;
     }
 
     /**
@@ -621,12 +612,6 @@ export function getAnimes(start: number) {
         [defaultLimit, start]
     );
 }
-export function getAnimeCount(anime: string) {
-    return query<{ count: string }>(
-        'SELECT COUNT(*) FROM waifus WHERE origin = $1',
-        [anime]
-    ).then(ret => parseInt(ret[0].count));
-}
 export function getAnime(anime: string) {
     return query<WaifuDetails>(
         `SELECT * FROM chars
@@ -876,13 +861,6 @@ export function fetchUserAnimeCount(userID: string, origin: string) {
             WHERE uid = $1 AND origin = $2 AND fc = TRUE`,
         [userID, origin]
     ).then(ret => parseInt(ret[0].count));
-}
-export function fetchUserAnimeWids(userID: string, origin: string) {
-    return query<{ wid: string }>(
-        `SELECT wid FROM all_user_chars
-            WHERE uid = $1 AND origin = $2 AND fc = TRUE`,
-        [userID, origin]
-    ).then(res => res.map(ret => ret.wid));
 }
 function getCommonQuery() {
     return 'SELECT wid FROM chars WHERE fc = FALSE ORDER BY RANDOM() LIMIT 1';

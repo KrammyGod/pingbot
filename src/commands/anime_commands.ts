@@ -1242,8 +1242,9 @@ async function switch_char_image(
         // Assuming char is switchable
         const embeds = [];
         await char.loadWaifu();
-        // char.lvl - 4 gives user access to 1 image at level 5.
-        const accessibleImages = is_nsfw ? char.waifu!.nimg.slice(0, char.lvl - 4) : char.waifu!.img.slice(0, char.lvl);
+        const accessibleImages = is_nsfw ?
+            char.waifu!.nimg.slice(0, char.max_nimg) :
+            char.waifu!.img.slice(0, char.max_img);
         const image_page = accessibleImages.slice(start, start + 10);
         for (const [i, img] of image_page.entries()) {
             embed.setTitle(`Image #${start + i + 1}:`)
@@ -1717,8 +1718,8 @@ async function generateCharacterDisplay(
         if (character.lvl > 1) {
             add_emoji = ` 🆙 ${refund_str}`;
             add_on = `**Reached level ${character.lvl}!**\n`;
-            // New img
-            if (character.lvl <= character.waifu!.img.length) {
+            // Unlocked new img
+            if (character.max_img <= character.waifu!.img.length) {
                 add_on += 'You unlocked a new image! 🎉\n';
                 add_on += 'Find the waifu to switch the image!\n';
             }
@@ -1726,7 +1727,8 @@ async function generateCharacterDisplay(
             if (character.unlockedNMode) {
                 add_on += 'You unlocked a new mode! 🎉\n';
                 add_on += 'Find the waifu to switch to lewd mode!\n';
-            } else if (character.lvl - 4 <= character.waifu!.nimg.length) {
+            // Unlocked new nimg
+            } else if (character.max_nimg <= character.waifu!.nimg.length) {
                 add_on += 'You unlocked a new lewd image! 🎉\n';
                 add_on += 'Use lewd mode on the waifu to switch the image!\n';
             }
@@ -2514,17 +2516,13 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
 
     desc: 'Want to add a character that is not currently in the starred database?\n' +
           'You came to the right command!\n' +
-          'If you wish to add images to an existing character,\n' +
-          'make sure to copy the correct name, gender, and anime name.\n' +
-          'Furthermore, it must follow these rules:\n\n' +
+          'Simply just follow these rules:\n\n' +
           '__**Character Submission Rules:**__\n' +
           '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
-          '2. If the character is from an **anime** that already exists, it must use the exact same name.\n' +
+          '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
           "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
           '4. If its a new character, the character must have at least **one normal image**.\n' +
-          '5. If its a new character, and you include a lewd image, the character must have at least ' +
-          '**two normal images**.\n' +
-          '6. Optionally, if you would like, you can add a file to the `image` option or `lewd` option (up to 9).\n' +
+          '5. Optionally, if you would like, you can add a file to the `image` option or `lewd` option (up to 9).\n' +
           'These links will then be prepopulated in the modal. **DO NOT CHANGE THESE.**\n\n' +
           'Note that you can only submit one file per option at time. This is a discord limitation.\n\n' +
           'Usage: `/submit image(1-9): [file] lewd(1-9): [file]`\n\n' +
