@@ -1136,25 +1136,27 @@ async function get_char_as_embed(
         await character.loadWaifu();
         const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
         // Switching image is always available; not all images are always available however.
-        if (!is_nsfw) {
-            menu.addOptions({
-                label: 'Change image!',
-                value: `${fn}/${authorID}/toggle_char/${character.wid}`,
-                emoji: '🔄'
-            });
-        } else if (is_nsfw) {
-            menu.addOptions({
-                label: 'Change lewd!',
-                value: `${fn}/${authorID}/toggle_char/${character.wid}`,
-                emoji: '🔄'
-            });
-        }
-        if (Utils.channel_is_nsfw_safe(channel) && character.isNToggleable) {
-            menu.addOptions({
-                label: `${character.nsfw ? 'Give me original!' : 'Give me lewd!'}`,
-                value: `${fn}/${authorID}/ntoggle_char/${character.wid}`,
-                emoji: '🔀'
-            });
+        if (character.fc) {
+            if (!is_nsfw) {
+                menu.addOptions({
+                    label: 'Change image!',
+                    value: `${fn}/${authorID}/toggle_char/${character.wid}`,
+                    emoji: '🔄'
+                });
+            } else if (is_nsfw) {
+                menu.addOptions({
+                    label: 'Change lewd!',
+                    value: `${fn}/${authorID}/toggle_char/${character.wid}`,
+                    emoji: '🔄'
+                });
+            }
+            if (Utils.channel_is_nsfw_safe(channel) && character.isNToggleable) {
+                menu.addOptions({
+                    label: `${character.nsfw ? 'Give me original!' : 'Give me lewd!'}`,
+                    value: `${fn}/${authorID}/ntoggle_char/${character.wid}`,
+                    emoji: '🔀'
+                });
+            }
         }
         menu.addOptions({
             label: 'Sell this character!',
@@ -1669,35 +1671,31 @@ Check out {/submit} for more information!
 __Gacha System Rules:__
 > Every multi, the 11th roll will always be starred ⭐.
 > 
-> If you have over 60,000 characters, every roll will cost \
-3 brons instead of 2. ⬆️
+> If the character is a common, and you receive a duplicate, you will be refunded 1 \
+bron and the character will NOT level up.
 > 
-> If the character is a common, and you receive a duplicate, you will be refunded 2 \
-brons and the character will NOT level up.
+> If the character is a starred, and you receive a duplicate, you will be refunded 2 \
+brons and the character will level up 🆙.
 > 
-> If the character is a custom, and you receive a duplicate, you will be refunded 4 \
-brons and if possible, the character will level up 🆙 (limited for certain characters).
+> Every level up, your character will unlock a new image if there are available images.
 > 
-> Once a character hits level 5, it will unlock a more images for that character. 🔓
+> Once a character hits level 5, it will unlock a "lewd mode" (limited for certain characters). 🔓
 > 
-> You may level up a character using brons at increasing rates (see below).
+> You can switch the character's image by selecting the waifu in {/list} and using the select menu.
 > 
-> You can switch the character's image by selecting the waifu in {/list} or {/high} and using the select menu.
-> 
-> Once a character hits level 8, it will unlock "lewd mode" for the character (limited for certain characters).
-> 
-> You can toggle to lewd mode by using by selecting the waifu in {/list} or {/high} and using the select menu.
-> 
-> Once a character hits level 10, it will unlock more lewd images for the character (limited for certain characters).
+> You can toggle to lewd mode by using by selecting the waifu in {/list} and using the select menu.
 
-__Level Up Cost:__
-> From level 1 to level 2: 100 brons.
+__Image Unlocking rules:__
+> Your character level corresponds to the amount of images available to choose from, \
+provided that the character has enough images.
 > 
-> From level 2 to level 3: 500 brons.
+> Starting from level 5, you unlock the lewd mode toggle, which will automatically unlock \
+lewd images if available.
 > 
-> From level 3 to level 4: 1000 brons.
+> Lewd images are also locked propotionally to your level, where level 5 corresponds to 1 image.
 > 
-> You must receive a duplicate to go above level 4`;
+> If the character has enough images, and you reach the level threshold, there will be a \
+message displayed when you roll the character.`;
 
 // Helper to generate new character display
 async function generateCharacterDisplay(
@@ -1719,9 +1717,18 @@ async function generateCharacterDisplay(
         if (character.lvl > 1) {
             add_emoji = ` 🆙 ${refund_str}`;
             add_on = `**Reached level ${character.lvl}!**\n`;
+            // New img
+            if (character.lvl <= character.waifu!.img.length) {
+                add_on += 'You unlocked a new image! 🎉\n';
+                add_on += 'Find the waifu to switch the image!\n';
+            }
+            // Lewd mode available
             if (character.unlockedNMode) {
                 add_on += 'You unlocked a new mode! 🎉\n';
                 add_on += 'Find the waifu to switch to lewd mode!\n';
+            } else if (character.lvl - 4 <= character.waifu!.nimg.length) {
+                add_on += 'You unlocked a new lewd image! 🎉\n';
+                add_on += 'Use lewd mode on the waifu to switch the image!\n';
             }
         }
     }
@@ -1841,13 +1848,12 @@ export const whale: SlashCommand = {
                 .setDescription('Toggle sending as ephemeral message. (Default: false)'))
         .setDescription('Roll 11 special anime characters.'),
 
-    desc: 'Randomly gives you 11 starred waifus. Each whale costs 200 brons. Can only be done once a day.\n' +
+    desc: 'Randomly gives you 11 starred waifus. Each whale costs 100 brons. Can only be done once a day.\n' +
           'Guaranteed to roll from custom database.\n' +
-          'The last character is guaranteed to be an upgradable character.\n' +
+          'The last character is guaranteed to be a character that has multiple images (lewd or normal).\n' +
           `${gacha_docs}\n\n` +
           'Command suggested by Ryu Minoru#5834. Unlike multi, it will only give you 11 ' +
-          'starred characters (with one guaranteed upgradable) for a higher price.\n\n' +
-          '__Only for whels who want faster Map!__\n\n' +
+          'starred characters (with one guaranteed special character) for a higher price.\n\n' +
           'Usage: `/whale ephemeral: [ephemeral]`\n\n' +
           '__**Options**__\n' +
           '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
