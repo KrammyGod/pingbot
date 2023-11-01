@@ -795,7 +795,7 @@ function getStarredQuery() {
 }
 function getMultiStarredQuery() {
     return `SELECT wid FROM chars
-        WHERE fc = TRUE AND array_length(img, 1) > 1
+        WHERE fc = TRUE AND array_length(img, 1) > 1 OR array_length(nimg, 1) > 0
         ORDER BY RANDOM() LIMIT 1`;
 }
 function generateCharacterQuery(level) {
