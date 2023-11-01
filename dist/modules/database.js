@@ -26,8 +26,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
-exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = void 0;
+exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
+exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = void 0;
 const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
@@ -127,6 +127,8 @@ class Character {
         // _img and _nimg are used to store the index of the image
         this._img = row._img ?? 1;
         this._nimg = row._nimg ?? 1;
+        this.max_img = row.lvl;
+        this.max_nimg = row.lvl >= Character.ntoggleThreshold ? row.lvl - 4 : NaN;
         // Transform img and nimg to their actual links
         // In our database, we only store the ID if they are in our CDN
         // Thus, we need to convert it into an available link
@@ -140,12 +142,12 @@ class Character {
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get unlockedNMode() { return this.lvl === 5 && this.thisIsNToggleable(); }
+    get unlockedNMode() { return this.lvl === Character.ntoggleThreshold && this.thisIsNToggleable(); }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isNToggleable() { return this.lvl >= 5 && this.thisIsNToggleable(); }
+    get isNToggleable() { return this.lvl >= Character.ntoggleThreshold && this.thisIsNToggleable(); }
     async setImg(new_img) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
         this._img = _img ?? this._img;
@@ -180,17 +182,6 @@ class Character {
             return false;
         return this.waifu.thisIsNToggleable();
     }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    thisIsNSwitchable() {
-        if (!this.loaded)
-            throw new Error('Getting thisIsNSwitchable before waifu is loaded');
-        if (!this.fc)
-            return false;
-        return this.waifu.thisIsNSwitchable();
-    }
     getWFC(channel) {
         if (this.nsfw && Utils.channel_is_nsfw_safe(channel))
             return '🔞 ';
@@ -213,17 +204,10 @@ class Character {
             throw new Error('Getting uStatus before waifu is loaded');
         if (!this.fc)
             return '';
-        // Character doesn't have a level, default waifus database.
-        const lvl = this.lvl ? this.lvl : 1;
-        if (lvl >= 5) {
-            if (this.thisIsNSwitchable()) {
-                return `${l}🔥${r}`;
-            }
-            else if (this.thisIsNToggleable()) {
-                return `${l}👑${r}`;
-            }
+        if (this.isNToggleable) {
+            return `${l}🔥${r}`;
         }
-        return `${l}✨${r}`;
+        return `${l}👑${r}`;
     }
     /**
      * Only available if {@link loadWaifu} is called.
@@ -246,6 +230,7 @@ class Character {
         }).setImage(img);
     }
 }
+Character.ntoggleThreshold = 5;
 function getSource(img) {
     if (img.startsWith(config_1.default.cdn)) {
         // Using our CDN
@@ -521,10 +506,6 @@ function getAnimes(start) {
         ORDER BY origin LIMIT $1 OFFSET $2`, [defaultLimit, start]);
 }
 exports.getAnimes = getAnimes;
-function getAnimeCount(anime) {
-    return query('SELECT COUNT(*) FROM waifus WHERE origin = $1', [anime]).then(ret => parseInt(ret[0].count));
-}
-exports.getAnimeCount = getAnimeCount;
 function getAnime(anime) {
     return query(`SELECT * FROM chars
         WHERE origin = $1 AND fc = TRUE
@@ -709,11 +690,6 @@ function fetchUserAnimeCount(userID, origin) {
             WHERE uid = $1 AND origin = $2 AND fc = TRUE`, [userID, origin]).then(ret => parseInt(ret[0].count));
 }
 exports.fetchUserAnimeCount = fetchUserAnimeCount;
-function fetchUserAnimeWids(userID, origin) {
-    return query(`SELECT wid FROM all_user_chars
-            WHERE uid = $1 AND origin = $2 AND fc = TRUE`, [userID, origin]).then(res => res.map(ret => ret.wid));
-}
-exports.fetchUserAnimeWids = fetchUserAnimeWids;
 function getCommonQuery() {
     return 'SELECT wid FROM chars WHERE fc = FALSE ORDER BY RANDOM() LIMIT 1';
 }
