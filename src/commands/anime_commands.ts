@@ -114,7 +114,6 @@ async function search_character(
 
 // Global helper that waits for a confirm/cancel interaction
 async function wait_for_button(
-    client: CustomClient,
     interaction: DTypes.RepliableInteraction,
     message: DTypes.Message,
     fn: string
@@ -443,7 +442,7 @@ export const anime: SlashCommand = {
         let desc = `__Anime found:__\n*${series}*\n\n**Found ${count} character(s):**\n`;
         for (const [idx, char] of anime_chars.entries()) {
             let obtained = '🟩';
-            let uStatus = char.getUStatus();
+            let uStatus = '';
             let wFC = char.fc ? '⭐ ' : '';
             const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(() => { });
             if (user_char) {
@@ -1135,28 +1134,20 @@ async function get_char_as_embed(
     // Only enable if user is the author.
     if (authorID === target.id) {
         await character.loadWaifu();
-        if (character.thisIsUpgradable()) {
-            if (character.isUpgradable) {
-                menu.addOptions({
-                    label: 'Upgrade!',
-                    value: `${fn}/${authorID}/upgrade_char/${character.wid}`,
-                    emoji: '⏫'
-                });
-            }
-            const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
-            if (!is_nsfw && character.isSwitchable) {
-                menu.addOptions({
-                    label: 'Change image!',
-                    value: `${fn}/${authorID}/toggle_char/${character.wid}`,
-                    emoji: '🔄'
-                });
-            } else if (is_nsfw && character.isNSwitchable) {
-                menu.addOptions({
-                    label: 'Change lewd!',
-                    value: `${fn}/${authorID}/toggle_char/${character.wid}`,
-                    emoji: '🔄'
-                });
-            }
+        const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
+        // Switching image is always available; not all images are always available however.
+        if (!is_nsfw) {
+            menu.addOptions({
+                label: 'Change image!',
+                value: `${fn}/${authorID}/toggle_char/${character.wid}`,
+                emoji: '🔄'
+            });
+        } else if (is_nsfw) {
+            menu.addOptions({
+                label: 'Change lewd!',
+                value: `${fn}/${authorID}/toggle_char/${character.wid}`,
+                emoji: '🔄'
+            });
         }
         if (Utils.channel_is_nsfw_safe(channel) && character.isNToggleable) {
             menu.addOptions({
@@ -1166,9 +1157,9 @@ async function get_char_as_embed(
             });
         }
         menu.addOptions({
-            label: 'Delete this character!',
+            label: 'Sell this character!',
             value: `${fn}/${authorID}/delete_char/${character.wid}`,
-            emoji: '🚮'
+            emoji: '💰'
         });
     }
     // Enable if there are options
@@ -1222,123 +1213,107 @@ async function get_char_as_embed(
 }
 
 type FnMap = {
-    [key: string]: ((
+    [key: string]: (
         client: CustomClient,
         interaction: DTypes.AnySelectMenuInteraction,
         char: DB.Character
     ) => Promise<{
         embeds: DTypes.EmbedBuilder[],
         ephemeral: boolean
-    } | undefined>) | undefined;
+    } | undefined>;
 };
 const fnMappings: FnMap = {
-    'upgrade_char': upgrade,
     'toggle_char': switch_char_image,
     'ntoggle_char': toggle_char_nsfw,
     'delete_char': delete_char
 };
-
-// Upgrades a character and returns a followup component
-async function upgrade(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
-    const brons = await DB.getBrons(interaction.user.id);
-    // Match gacha_docs
-    const costs = [0, 100, 500, 1000];
-    const embed = new EmbedBuilder({ color: Colors.Red });
-    if (brons! < costs[char.lvl]) {
-        embed.setTitle(`You don't have enough brons to upgrade ${char.name} ` +
-            `to level ${char.lvl + 1}. Required: ${costs[char.lvl]} ` +
-            `${client.bot_emojis.brons}`);
-        return { embeds: [embed], ephemeral: true };
-    }
-    const buttons = new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('upgrade_char/confirm')
-                .setLabel('Yes!')
-                .setEmoji('⏫')
-                .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-                .setCustomId('upgrade_char/cancel')
-                .setLabel('No')
-                .setStyle(ButtonStyle.Secondary));
-    embed.setColor(Colors.Gold).setTitle(
-        `Are you sure you want to use ${costs[char.lvl]} ` +
-        `${client.bot_emojis.brons} to upgrade ${char.name} ` +
-        `to level ${char.lvl + 1}?`
-    );
-    const message = await interaction.followUp({
-        embeds: [embed],
-        components: [buttons],
-        ephemeral: true
-    });
-    const confirmed = await wait_for_button(client, interaction, message, 'upgrade_char');
-    if (!confirmed) return;
-
-    const ret = await char.upgrade(costs[char.lvl]);
-    if (ret) {
-        embed.setTitle(`Failed to upgrade ${char.name}. Reason: \`${ret}\``);
-    } else {
-        embed.setTitle(`Successfully upgraded ${char.name} to level ${char.lvl}!`);
-    }
-    return { embeds: [embed], ephemeral: true };
-}
 
 async function switch_char_image(
     client: CustomClient,
     interaction: DTypes.AnySelectMenuInteraction,
     char: DB.Character
 ) {
-    const embed = new EmbedBuilder({ color: Colors.Gold });
-    const menu = new StringSelectMenuBuilder()
-        .setCustomId('toggle_char/menu')
-        .setPlaceholder('Select an image.');
-    // Assuming char is switchable
-    const embeds = [];
     const is_nsfw = Utils.channel_is_nsfw_safe(interaction.channel!) && char.nsfw;
-    await char.loadWaifu();
-    if (is_nsfw) {
-        // Switching lewd image
-        for (const [i, nimg] of char.waifu!.nimg.entries()) {
-            embed.setTitle(`Image #${i + 1}:`)
-                .setDescription(`[Source](${DB.getSource(nimg)})\n[Raw Image](${nimg})`)
-                .setImage(nimg);
-            embeds.push(new EmbedBuilder(embed.data));
-            menu.addOptions({ label: `Image #${i + 1}`, value: (i + 1).toString() });
-        }
-        embed.setTitle(
-            `${char.name} has ${char.waifu!.nimg.length} lewd images.\n` +
-            'Select one to continue or click cancel.'
-        ).setImage(null).setDescription(null);
-        embeds.push(embed);
-    } else {
-        // Otherwise switching normal image
-        for (const [i, img] of char.waifu!.img.entries()) {
-            embed.setTitle(`Image #${i + 1}:`)
+    async function get_char_images_embed(start: number): Promise<DTypes.InteractionReplyOptions> {
+        const embed = new EmbedBuilder({ color: Colors.Gold });
+        const buttons = [];
+        // Assuming char is switchable
+        const embeds = [];
+        await char.loadWaifu();
+        // char.lvl - 4 gives user access to 1 image at level 5.
+        const accessibleImages = is_nsfw ? char.waifu!.nimg.slice(0, char.lvl - 4) : char.waifu!.img.slice(0, char.lvl);
+        const image_page = accessibleImages.slice(start, start + 10);
+        for (const [i, img] of image_page.entries()) {
+            embed.setTitle(`Image #${start + i + 1}:`)
                 .setDescription(`[Source](${DB.getSource(img)})\n[Raw Image](${img})`)
                 .setImage(img);
             embeds.push(new EmbedBuilder(embed.data));
-            menu.addOptions({ label: `Image #${i + 1}`, value: (i + 1).toString() });
+            buttons.push(new ButtonBuilder({
+                label: `Image #${start + i + 1}`,
+                style: ButtonStyle.Primary,
+                customId: `select_char/${start + i + 1}`
+            }));
         }
-        embed.setTitle(
-            `${char.name} has ${char.waifu!.img.length} images.\n` +
-            'Select one to continue or click cancel.'
-        ).setImage(null).setDescription(null);
-        embeds.push(embed);
+
+        // Buttons for navigating over 10 images
+        const toggle_buttons = [
+            new ButtonBuilder()
+                .setEmoji('⬅️')
+                .setStyle(ButtonStyle.Primary)
+                .setCustomId(`toggle_char/${start - 10}`)
+                .setDisabled(start === 0),
+            new ButtonBuilder()
+                .setEmoji('➡️')
+                .setStyle(ButtonStyle.Primary)
+                .setCustomId(`toggle_char/${start + 10}`)
+                .setDisabled(start + 10 >= accessibleImages.length),
+            new ButtonBuilder()
+                .setLabel('Cancel')
+                .setStyle(ButtonStyle.Danger)
+                .setCustomId('select_char/cancel')
+        ];
+        const components = [new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(toggle_buttons)];
+        while (buttons.length > 0) {
+            components.push(new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(buttons.splice(0, 5)));
+        }
+        return {
+            embeds,
+            components,
+            ephemeral: true
+        };
     }
-    menu.addOptions({ label: 'Cancel', value: '-1' });
-    const message = await interaction.followUp({
-        embeds: embeds,
-        components: [new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu)],
-        ephemeral: true
-    });
+    const opts = await get_char_images_embed(0);
+    const message = await interaction.followUp(opts);
+
+    // Recursively create ourselves to handle pagination
+    const createCollector = () => {
+        const collector = message.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            filter: i => i.customId.startsWith('toggle_char'),
+            max: 1,
+            time: 15 * 60 * 1000 // 15 minutes before interaction expires
+        });
+        collector.once('collect', async i => {
+            await i.deferUpdate();
+            const page = parseInt(i.customId.split('/')[1]);
+            const opts = await get_char_images_embed(page);
+            await i.editReply(opts);
+        });
+        collector.once('end', createCollector);
+    };
+    createCollector();
+
     const selected = await message.awaitMessageComponent({
-        componentType: ComponentType.StringSelect,
-        time: 60_000
+        componentType: ComponentType.Button,
+        filter: i => i.customId.startsWith('select_char'),
+        time: 15 * 60 * 1000 // 15 minutes before interaction expires
     }).then(i => {
-        if (i.values[0] === '-1') return;
-        return parseInt(i.values[0]);
-    }).catch(() => { });
-    Utils.deleteEphemeralMessage(interaction, message).then(() => { }).catch(() => { });
+        const val = i.customId.split('/')[1];
+        if (val === 'cancel') return;
+        return parseInt(val);
+    }).catch(() => undefined);
+    Utils.deleteEphemeralMessage(interaction, message).catch(() => { });
+
     let success = true;
     if (selected === undefined) {
         return;
@@ -1348,7 +1323,10 @@ async function switch_char_image(
         success = await char.setImg(selected);
     }
     if (!success) {
-        embed.setColor(Colors.Red).setTitle('Apologies, that action failed. Please contact the support server.');
+        const embed = new EmbedBuilder({
+            title: 'Apologies, that action failed. Please contact the support server.',
+            color: Colors.Red
+        });
         return { embeds: [embed], ephemeral: true };
     }
 }
@@ -1370,6 +1348,7 @@ async function toggle_char_nsfw(
     }
 }
 
+// TODO: Rewrite
 async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
     await char.loadWaifu();
     const embed = new EmbedBuilder({
@@ -1397,7 +1376,7 @@ async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMe
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(client, interaction, message, 'delete_char');
+    const confirmed = await wait_for_button(interaction, message, 'delete_char');
     if (!confirmed) return;
     embed.setDescription(null);
 
@@ -1731,29 +1710,20 @@ async function generateCharacterDisplay(
     const img = character.getImage(channel);
     let refund = 0;
     let add_on = '';
-    let add_emoji = '';
+    let add_emoji = ' 🆕';
     if (!character.new) {
         // CONSTANT: Refund brons
-        refund = character.fc ? 4 : 2;
+        refund = character.fc ? 2 : 1;
         const refund_str = `+${refund} ${client.bot_emojis.brons}`;
+        add_emoji = ` 🆒 ${refund_str}`;
         if (character.lvl > 1) {
             add_emoji = ` 🆙 ${refund_str}`;
             add_on = `**Reached level ${character.lvl}!**\n`;
-            if (character.unlockedImages) {
-                add_on += 'You unlocked new image(s)! 🎉\n';
-                add_on += 'Find the waifu to switch the image!\n';
-            } else if (character.unlockedNMode && character.thisIsNToggleable()) {
+            if (character.unlockedNMode) {
                 add_on += 'You unlocked a new mode! 🎉\n';
                 add_on += 'Find the waifu to switch to lewd mode!\n';
-            } else if (character.unlockedNImages && character.thisIsNSwitchable()) {
-                add_on += 'You unlocked new lewd image(s)! 🎉\n';
-                add_on += 'Find the waifu to switch the image!\n';
             }
-        } else {
-            add_emoji = ` 🆒 ${refund_str}`;
         }
-    } else {
-        add_emoji = ' 🆕';
     }
     const embed = new EmbedBuilder({
         description:
@@ -1997,7 +1967,7 @@ export const dall: SlashCommand = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(client, interaction, message, 'dall');
+        const confirmed = await wait_for_button(interaction, message, 'dall');
         if (!confirmed) return;
 
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
@@ -2302,58 +2272,6 @@ export const users: SlashCommand = {
         return interaction.editReply({ embeds: [embed] });
     }
 };
-
-// Commenting out because unsure if still needed.
-// export const uplist: SlashCommand = {
-//     data: new SlashCommandBuilder()
-//         .setName('uplist')
-//         .addIntegerOption(option =>
-//             option
-//                 .setName('page')
-//                 .setDescription('The page to jump to. (Default: 1)')
-//                 .setMinValue(1))
-//         .setDescription('View all upgradable waifus.'),
-
-//     desc: "Don't know what characters you can upgrade? Check using this command!\n" +
-//           'To switch the image, the character must be at least level 5.\n\n' +
-//           'Usage: `/uplist page: [page] user: [user]`\n\n' +
-//           '__**Options**__\n' +
-//           '*page:* The page number to jump to. (Default 1)\n' +
-//           "*user:* The user's list to compare to. (Default: You)\n\n" +
-//           'Examples: `/uplist`, `/uplist page: 2`',
-
-//     async execute(interaction) {
-
-//     }
-// };
-
-// export const nlist: SlashCommand = {
-//     data: new SlashCommandBuilder()
-//         .setName('nlist')
-//         .addIntegerOption(option =>
-//             option
-//                 .setName('page')
-//                 .setDescription('The page to jump to. (Default: 1)')
-//                 .setMinValue(1))
-//         .addUserOption(option =>
-//             option
-//                 .setName('user')
-//                 .setDescription('The user you want to view. (Default: You)'))
-//         .setDescription('View all lewdable waifus.'),
-
-//     desc: "Don't know what characters you can change into lewd mode? Check using this command!\n\n" +
-//           'To toggle to lewd mode, the character must be in this list and level 8 or higher.\n\n' +
-//           'While in lewd mode, you can change the image (provided there exists more images).\n\n' +
-//           'Usage: `/nlist page: [page] user: [user]`\n\n' +
-//           '__**Options**__\n' +
-//           '*page:* The page number to jump to. (Default: 1)\n' +
-//           "*user:* The user's list to compare to. (Default: You)\n\n" +
-//           'Examples: `/nlist`, `/nlist page: 2`, `/nlist user: @Krammy`',
-
-//     async execute(interaction) {
-
-//     },
-// };
 
 export const swap: SlashCommand = {
     data: new SlashCommandBuilder()
@@ -3088,7 +3006,7 @@ export const submit: CachedSlashCommand<{
         let id = 0;
         message.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 60 * 60 * 1_000 // Cleanup after 1 hr if ignored
+            time: 15 * 60 * 1_000 // Cleanup after 15 mins bc expired
         }).on('collect', async i => {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
@@ -3114,7 +3032,7 @@ export const submit: CachedSlashCommand<{
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 10 * 60 * 1_000 // Wait for 10 mins max
+                    time: 15 * 60 * 1_000 // Wait for 15 mins max
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
@@ -3151,7 +3069,7 @@ export const submit: CachedSlashCommand<{
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 10 * 60 * 1_000 // Wait for 10 mins max
+                    time: 15 * 60 * 1_000 // Wait for 15 mins max
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Anime submit search

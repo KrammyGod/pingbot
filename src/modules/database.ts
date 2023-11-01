@@ -88,23 +88,12 @@ class Waifu {
         return ' ' + this.gender;
     }
 
-    thisIsUpgradable() {
-        return this.img.length > 1;
-    }
-
     thisIsNToggleable() {
         return this.nimg.length !== 0;
     }
 
     thisIsNSwitchable() {
         return this.nimg.length > 1;
-    }
-
-    getUStatus(l = '', r = '') {
-        if (this.thisIsUpgradable()) {
-            return `${l}⏫${r}`;
-        }
-        return '';
     }
 }
 
@@ -181,32 +170,21 @@ class Character {
         this.img = transformImage(row.img);
         this.nimg = transformImage(row.nimg);
         this.nsfw = row.nsfw;
+        // Can be used to do more fun stuff with levels
         this.displayLvl = this.lvl < 0 ? '∞' : this.lvl.toString();
     }
 
-    get unlockedImages() { return this.lvl === 5; }
-    get unlockedNMode() { return this.lvl === 8; }
-    get unlockedNImages() { return this.lvl === 10; }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isUpgradable() { return 0 < this.lvl && this.lvl <= 4 && this.thisIsUpgradable(); }
+    get unlockedNMode() { return this.lvl === 5 && this.thisIsNToggleable(); }
+
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isSwitchable() { return (this.lvl === -1 || this.lvl >= 5) && this.thisIsUpgradable(); }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    get isNToggleable() { return (this.lvl === -1 || this.lvl >= 8) && this.thisIsNToggleable(); }
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
-    get isNSwitchable() { return (this.lvl === -1 || this.lvl >= 10) && this.thisIsNSwitchable(); }
+    get isNToggleable() { return this.lvl >= 5 && this.thisIsNToggleable(); }
 
     async setImg(new_img: number) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
@@ -230,13 +208,6 @@ class Character {
         return retval[0] === undefined;
     }
 
-    async upgrade(cost: number) {
-        const retval = await addUserCharacterLevel(this.uid, this.wid, cost);
-        if (retval) return retval;
-        this.lvl += 1;
-        this.displayLvl = this.lvl.toString();
-    }
-
     async loadWaifu() {
         this.waifu = await this.getWaifu();
         this.loaded = true;
@@ -246,16 +217,8 @@ class Character {
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    thisIsUpgradable() {
-        if (!this.fc) return false;
-        return this.waifu!.thisIsUpgradable();
-    }
-
-    /**
-     * Only available if {@link loadWaifu} is called.
-     * @throws {Error} If waifu is not loaded
-     */
     thisIsNToggleable() {
+        if (!this.loaded) throw new Error('Getting thisIsNToggleable before waifu is loaded');
         if (!this.fc) return false;
         return this.waifu!.thisIsNToggleable();
     }
@@ -265,6 +228,7 @@ class Character {
      * @throws {Error} If waifu is not loaded
      */
     thisIsNSwitchable() {
+        if (!this.loaded) throw new Error('Getting thisIsNSwitchable before waifu is loaded');
         if (!this.fc) return false;
         return this.waifu!.thisIsNSwitchable();
     }
@@ -288,22 +252,18 @@ class Character {
      * @throws {Error} If waifu is not loaded
      */
     getUStatus(l = '', r = '') {
-        if (!this.loaded) throw new Error('Getting ustatus before waifu is loaded');
+        if (!this.loaded) throw new Error('Getting uStatus before waifu is loaded');
+        if (!this.fc) return '';
         // Character doesn't have a level, default waifus database.
-        const lvl = (this.lvl === -1) ? Infinity : (this.lvl ? this.lvl : 1);
-        if (this.thisIsUpgradable()) {
-            if (lvl < 4) {
-                return `${l}⏫${r}`;
-            } else if (lvl === 4) {
-                return `${l}⏏️${r}`;
-            } else if (this.thisIsNSwitchable() && (lvl >= 10)) {
+        const lvl = this.lvl ? this.lvl : 1;
+        if (lvl >= 5) {
+            if (this.thisIsNSwitchable()) {
                 return `${l}🔥${r}`;
-            } else if (this.thisIsNToggleable() && (lvl >= 8)) {
-                return `${l}✨${r}`;
+            } else if (this.thisIsNToggleable()) {
+                return `${l}👑${r}`;
             }
-            return `${l}👑${r}`;
         }
-        return '';
+        return `${l}✨${r}`;
     }
 
     /**
@@ -347,14 +307,11 @@ const pool = new Pool({
 const defaultLimit = 10;
 // Chances to get specific rarities:
 // Can be changed to a sequence to increase chances.
-const special = [50];
-// Once user passes this value, brons cost changes
-const EXTRA_COST_CNT = 60_000;
+const specialRate = [50];
 // Can change brons cost here
-export function getCostPerPull(cnt: number, special: boolean) {
+export function getCostPerPull(special: boolean) {
     // Special = whale, else multi/roll
-    if (special) return 20;
-    else if (cnt >= EXTRA_COST_CNT) return 3;
+    if (special) return 10;
     else return 2;
 }
 
@@ -1010,7 +967,7 @@ function getCommonQuery() {
 function getStarredQuery() {
     return 'SELECT wid FROM chars WHERE fc = TRUE ORDER BY RANDOM() LIMIT 1';
 }
-function getUpgradableStarredQuery() {
+function getMultiStarredQuery() {
     return `SELECT wid FROM chars
         WHERE fc = TRUE AND array_length(img, 1) > 1
         ORDER BY RANDOM() LIMIT 1`;
@@ -1018,25 +975,25 @@ function getUpgradableStarredQuery() {
 const enum GuaranteeLevel {
     COMMON = 0,
     STARRED,
-    UPGRADABLE
+    MULTI_STARS
 }
 function generateCharacterQuery(level: GuaranteeLevel) {
     const random = Math.floor(Math.random() * 101);
     switch (level) {
         case GuaranteeLevel.COMMON:
-            if (special.includes(random)) {
+            if (specialRate.includes(random)) {
                 return getStarredQuery();
             } else {
                 return getCommonQuery();
             }
         case GuaranteeLevel.STARRED:
-            if (special.includes(random)) {
-                return getUpgradableStarredQuery();
+            if (specialRate.includes(random)) {
+                return getMultiStarredQuery();
             } else {
                 return getStarredQuery();
             }
-        case GuaranteeLevel.UPGRADABLE:
-            return getUpgradableStarredQuery();
+        case GuaranteeLevel.MULTI_STARS:
+            return getMultiStarredQuery();
     }
 }
 // Special type of character that also includes whether it is new or old
@@ -1044,8 +1001,7 @@ export type CharacterInsert = Character & { new: boolean };
 // Used for single pulls
 export async function generateAndAddCharacter(userID: string, amtTaken: { amt: number }):
     Promise<CharacterInsert | string> {
-    const cnt = await fetchUserCharacterCount(userID);
-    const amt = getCostPerPull(cnt, false);
+    const amt = getCostPerPull(false);
     amtTaken.amt = -amt; // Returning to the front end brons difference
     return multi_query<CharacterDetails & { new: boolean }>(
         [
@@ -1067,13 +1023,12 @@ export async function generateAndAddCharacter(userID: string, amtTaken: { amt: n
         return 'there was an error with the database.';
     });
 }
-export async function generateAndAddCharacters(userID: string, special: boolean, amtTaken: { amt: number }):
+export function generateAndAddCharacters(userID: string, special: boolean, amtTaken: { amt: number }):
     Promise<CharacterInsert[] | string> {
     // special = false - multi
     // special = true - whales
     const PULL_AMT = 10;
-    const cnt = await fetchUserCharacterCount(userID);
-    const amt = getCostPerPull(cnt, special) * PULL_AMT;
+    const amt = getCostPerPull(special) * PULL_AMT;
     amtTaken.amt = -amt; // Returning to the front end brons difference
     const queries = ['CALL sub_brons($1, $2, $3)'];
     const params: string[][] = [[userID, special.toString(), amt.toString()]];
@@ -1094,7 +1049,7 @@ export async function generateAndAddCharacters(userID: string, special: boolean,
         }
     }
     // Finally, add the guaranteed character.
-    qstring = generateCharacterQuery(special ? GuaranteeLevel.UPGRADABLE : GuaranteeLevel.STARRED);
+    qstring = generateCharacterQuery(special ? GuaranteeLevel.MULTI_STARS : GuaranteeLevel.STARRED);
     queries.push(`SELECT * FROM add_character($1, (${qstring}))`);
     params.push([userID]);
     return multi_query<CharacterDetails & { new: boolean }>(
@@ -1111,23 +1066,6 @@ export async function generateAndAddCharacters(userID: string, special: boolean,
         if (err instanceof DatabaseMaintenanceError) throw err;
         else if (err.message.includes('user_info_brons_check')) return 'not enough brons';
         else if (err.message.includes('whale_fail_error')) return 'you already whaled today';
-        else if (err.message.includes('user_not_found_error')) return 'you do not have an existing account';
-        // This means that nothing happened (ACID).
-        return 'there was an error with the database.';
-    });
-}
-function addUserCharacterLevel(userID: string, wid: string, amt: number) {
-    return multi_query(
-        [
-            'CALL sub_brons($1, FALSE, $2)',
-            `UPDATE user_chars SET lvl = lvl + 1
-                WHERE uid = $1 AND wid = $2
-            RETURNING *`
-        ],
-        [[userID, amt], [userID, wid]]
-    ).then(() => { }).catch((err: Error) => {
-        if (err instanceof DatabaseMaintenanceError) throw err;
-        else if (err.message.includes('user_info_brons_check')) return 'not enough brons';
         else if (err.message.includes('user_not_found_error')) return 'you do not have an existing account';
         // This means that nothing happened (ACID).
         return 'there was an error with the database.';

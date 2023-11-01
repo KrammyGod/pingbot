@@ -132,9 +132,7 @@ CREATE TABLE waifus (
     img text[] not null,
     nimg text[] not null,
     UNIQUE(name, gender, origin),
-    CHECK (array_length(img, 1) > 0),
-    CHECK (array_length(img, 1) < 10),
-    CHECK (array_length(nimg, 1) < 10)
+    CHECK (array_length(img, 1) > 0)
 );
 CREATE INDEX ON waifus (name);
 CREATE INDEX ON waifus (origin);
@@ -177,7 +175,8 @@ CREATE TABLE user_chars (
     CHECK (lvl > 0),
     CHECK (_img > 0),
     CHECK (_nimg > 0),
-    CHECK (idx > 0)
+    CHECK (idx > 0),
+    CHECK (_img <= lvl)
 );
 
 -- Trigger to automatically generate an index for user
@@ -310,8 +309,7 @@ SELECT
 FROM get_user_chars(uuid)
 NATURAL JOIN
 (
-    SELECT wid FROM chars
-    WHERE fc = TRUE AND array_length(img, 1) > 1
+    SELECT wid FROM chars WHERE fc = TRUE
 ) A
 ORDER BY idx
 $$ LANGUAGE SQL;
@@ -322,11 +320,11 @@ CREATE OR REPLACE FUNCTION is_upgradable(wwid bigint)
     RETURNS boolean
 AS $$
 DECLARE
-    img_len int;
+    upgradable boolean;
 BEGIN
-    SELECT array_length(img, 1) INTO STRICT img_len
+    SELECT fc INTO STRICT upgradable
     FROM chars WHERE wid = wwid;
-    RETURN img_len > 1;
+    RETURN upgradable;
 END;
 $$ LANGUAGE plpgsql;
 
