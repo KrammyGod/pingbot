@@ -769,83 +769,6 @@ export function fetchAllUsers(wid: string) {
         [wid]
     ).then(Character.fromRows);
 }
-/** NOTE: Return value does not include 'nimg' property. */
-export function fetchUserUpList(userID: string) {
-    // This fetches the upgradable list, joined w/
-    // the user's character list.
-    // Wild af query
-    return query(
-        `SELECT 
-            B.uid,
-            A.wid,
-            A.name,
-            A.gender,
-            A.origin,
-            COALESCE(B.img, A.img[1]) AS img,
-            A.fc,
-            B.lvl,
-            B.nsfw,
-            B.idx
-        FROM
-        (
-            SELECT * FROM chars
-            WHERE fc = TRUE AND array_length(img, 1) > 1
-            ORDER BY name
-            LIMIT 10
-        ) A
-        LEFT JOIN
-        (
-            SELECT uid, wid, lvl, fc, img, nimg, nsfw, idx FROM
-            get_user_chars($1)
-        ) B
-        ON A.wid = B.wid`,
-        [userID]
-    ).then(Character.fromRows);
-    // A little violation with this function,
-    // it is actually not a full character,
-    // uid might be null.
-}
-/** NOTE: Return value does not include 'img' property. */
-export function fetchUserLewdList(userID: string) {
-    // This fetches the lewd list, joined w/
-    // the user's character list.
-    /*
-     * After a long thought, nlist should not show nimg
-     * unless user owns character. Also nlist should
-     * only be available in nsfw channels, so we don't
-     * have to show img.
-     */
-    return query(
-        `SELECT 
-            B.uid,
-            A.wid,
-            A.name,
-            A.gender,
-            A.origin,
-            COALESCE(B.nimg, A.img[1]) AS nimg,
-            A.fc,
-            B.lvl,
-            B.nsfw,
-            B.idx
-        FROM
-        (
-            SELECT * FROM chars
-            WHERE fc = TRUE AND array_length(nimg, 1) > 0
-            ORDER BY name
-            LIMIT 10
-        ) A
-        LEFT JOIN
-        (
-            SELECT uid, wid, lvl, fc, img, nimg, nsfw, idx FROM
-            get_user_chars($1)
-        ) B
-        ON A.wid = B.wid`,
-        [userID]
-    ).then(Character.fromRows);
-    // A little violation with this function,
-    // it is actually not a full character,
-    // uid might be null.
-}
 // For high list
 export function fetchUserHighCount(userID: string) {
     return query<{ max: string }>(
@@ -896,14 +819,14 @@ export function fetchUserCharacter(userID: string, wid: string) {
         `SELECT * FROM all_user_chars
             WHERE uid = $1 AND wid = $2`,
         [userID, wid]
-    ).then(res => new Character(res[0]));
+    ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserHighCharacter(userID: string, wid: string) {
     return query<CharacterDetails>(
         `SELECT * FROM get_high_user_chars($1)
             WHERE wid = $2`,
         [userID, wid]
-    ).then(res => new Character(res[0]));
+    ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserHighestCharacter(userID: string) {
     return query<CharacterDetails>(
@@ -911,7 +834,7 @@ export function fetchUserHighestCharacter(userID: string) {
             WHERE uid = $1
         ORDER BY lvl DESC, idx LIMIT 1`,
         [userID]
-    ).then(res => res[0] ? new Character(res[0]) : undefined);
+    ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserCharactersList(userID: string, start: number) {
     if (start <= 0) throw new Error('Invalid start');

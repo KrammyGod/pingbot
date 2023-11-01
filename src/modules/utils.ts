@@ -299,11 +299,13 @@ export async function get_results<T>(
     });
 
     // Return promise to let caller await it.
-    const res = await message.awaitMessageComponent({ componentType: ComponentType.StringSelect, time: 60_000 })
-        .then(i => {
-            if (i.values[0] === '-1') return null;
-            return choices[parseInt(i.values[0])];
-        }).catch(() => null);
+    const res = await message.awaitMessageComponent({
+        componentType: ComponentType.StringSelect,
+        time: 15 * 60 * 1000 // 15 minutes before interaction token expires.
+    }).then(i => {
+        if (i.values[0] === '-1') return null;
+        return choices[parseInt(i.values[0])];
+    }).catch(() => null);
     return deleteEphemeralMessage(interaction, message).then(() => res);
 }
 

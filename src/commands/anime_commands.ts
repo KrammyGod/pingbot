@@ -1104,7 +1104,7 @@ async function get_char_as_embed(
                 return DB.fetchUserHighCharactersList(target.id, idx).then(c => c[0]);
             return DB.fetchUserCharactersList(target.id, idx).then(c => c[0]);
         }
-        let char: DB.Character | null = null;
+        let char: DB.Character | undefined;
         if (high) {
             char = await DB.fetchUserHighCharacter(target.id, wid!);
         } else {
@@ -1477,7 +1477,7 @@ const listHelpers = {
             await DB.fetchUserCharacter(interaction.user.id, wid);
         const callFn = fnMappings[fn];
         if (callFn) {
-            const res = await callFn(client, interaction, char);
+            const res = await callFn(client, interaction, char!);
             if (res) {
                 await interaction.followUp(res);
             }
@@ -1492,7 +1492,7 @@ const listHelpers = {
         if (fn === 'delete_char') {
             res = get_char_as_embed(
                 interaction.channel!, interaction.user.id,
-                interaction.user, char.idx!, high
+                interaction.user, char!.idx!, high
             );
         } else {
             res = get_char_as_embed(
