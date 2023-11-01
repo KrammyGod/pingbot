@@ -26,8 +26,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchUserLewdList = exports.fetchUserUpList = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
-exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = void 0;
+exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimeCount = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
+exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeWids = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = exports.fetchUserHighCharactersList = void 0;
 const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
@@ -622,79 +622,6 @@ function fetchAllUsers(wid) {
     [wid]).then(Character.fromRows);
 }
 exports.fetchAllUsers = fetchAllUsers;
-/** NOTE: Return value does not include 'nimg' property. */
-function fetchUserUpList(userID) {
-    // This fetches the upgradable list, joined w/
-    // the user's character list.
-    // Wild af query
-    return query(`SELECT 
-            B.uid,
-            A.wid,
-            A.name,
-            A.gender,
-            A.origin,
-            COALESCE(B.img, A.img[1]) AS img,
-            A.fc,
-            B.lvl,
-            B.nsfw,
-            B.idx
-        FROM
-        (
-            SELECT * FROM chars
-            WHERE fc = TRUE AND array_length(img, 1) > 1
-            ORDER BY name
-            LIMIT 10
-        ) A
-        LEFT JOIN
-        (
-            SELECT uid, wid, lvl, fc, img, nimg, nsfw, idx FROM
-            get_user_chars($1)
-        ) B
-        ON A.wid = B.wid`, [userID]).then(Character.fromRows);
-    // A little violation with this function,
-    // it is actually not a full character,
-    // uid might be null.
-}
-exports.fetchUserUpList = fetchUserUpList;
-/** NOTE: Return value does not include 'img' property. */
-function fetchUserLewdList(userID) {
-    // This fetches the lewd list, joined w/
-    // the user's character list.
-    /*
-     * After a long thought, nlist should not show nimg
-     * unless user owns character. Also nlist should
-     * only be available in nsfw channels, so we don't
-     * have to show img.
-     */
-    return query(`SELECT 
-            B.uid,
-            A.wid,
-            A.name,
-            A.gender,
-            A.origin,
-            COALESCE(B.nimg, A.img[1]) AS nimg,
-            A.fc,
-            B.lvl,
-            B.nsfw,
-            B.idx
-        FROM
-        (
-            SELECT * FROM chars
-            WHERE fc = TRUE AND array_length(nimg, 1) > 0
-            ORDER BY name
-            LIMIT 10
-        ) A
-        LEFT JOIN
-        (
-            SELECT uid, wid, lvl, fc, img, nimg, nsfw, idx FROM
-            get_user_chars($1)
-        ) B
-        ON A.wid = B.wid`, [userID]).then(Character.fromRows);
-    // A little violation with this function,
-    // it is actually not a full character,
-    // uid might be null.
-}
-exports.fetchUserLewdList = fetchUserLewdList;
 // For high list
 function fetchUserHighCount(userID) {
     return query(`SELECT MAX(idx) FROM
@@ -735,18 +662,18 @@ function fetchUserCharacter(userID, wid) {
     if (parseInt(wid) <= 0)
         throw new Error('Invalid wid');
     return query(`SELECT * FROM all_user_chars
-            WHERE uid = $1 AND wid = $2`, [userID, wid]).then(res => new Character(res[0]));
+            WHERE uid = $1 AND wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserCharacter = fetchUserCharacter;
 function fetchUserHighCharacter(userID, wid) {
     return query(`SELECT * FROM get_high_user_chars($1)
-            WHERE wid = $2`, [userID, wid]).then(res => new Character(res[0]));
+            WHERE wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserHighCharacter = fetchUserHighCharacter;
 function fetchUserHighestCharacter(userID) {
     return query(`SELECT * FROM all_user_chars
             WHERE uid = $1
-        ORDER BY lvl DESC, idx LIMIT 1`, [userID]).then(res => res[0] ? new Character(res[0]) : undefined);
+        ORDER BY lvl DESC, idx LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserHighestCharacter = fetchUserHighestCharacter;
 function fetchUserCharactersList(userID, start) {

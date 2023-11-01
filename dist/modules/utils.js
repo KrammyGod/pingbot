@@ -206,8 +206,10 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
         ephemeral: true
     });
     // Return promise to let caller await it.
-    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60000 })
-        .then(i => {
+    const res = await message.awaitMessageComponent({
+        componentType: discord_js_1.ComponentType.StringSelect,
+        time: 15 * 60 * 1000 // 15 minutes before interaction token expires.
+    }).then(i => {
         if (i.values[0] === '-1')
             return null;
         return choices[parseInt(i.values[0])];

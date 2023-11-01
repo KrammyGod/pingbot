@@ -1002,7 +1002,7 @@ async function get_char_as_embed(channel, authorID, target, idx_or_wid, high) {
                 return DB.fetchUserHighCharactersList(target.id, idx).then(c => c[0]);
             return DB.fetchUserCharactersList(target.id, idx).then(c => c[0]);
         }
-        let char = null;
+        let char;
         if (high) {
             char = await DB.fetchUserHighCharacter(target.id, wid);
         }
