@@ -33,7 +33,6 @@ const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const cdn_1 = require("../modules/cdn");
-const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 exports.name = 'Animes/Gacha';
 exports.desc = 'This category is for commands that deal with the character gacha.';
@@ -2400,16 +2399,9 @@ exports.submit = {
             });
             const waifu = await DB.fetchWaifuByDetails(submission.data);
             const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
-                if (err instanceof exceptions_1.DatabaseMaintenanceError)
-                    throw err;
-                return null;
+                interaction.editReply({ components: [this.secretButtons] });
+                throw err;
             });
-            if (!new_waifu) {
-                const embed = discord_js_1.EmbedBuilder.from(interaction.message.embeds[0]);
-                await this.setWaifuInfoEmbed(embed, submission.data);
-                await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
-                return interaction.followUp({ content: 'Waifu got too many images (updated)!', ephemeral: true });
-            }
             const newCharacterInfo = '```' +
                 `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
                 `Normal Images: ${new_waifu.img.length}${waifu ? ` (+${img.length})` : ''}\n` +
@@ -2505,36 +2497,9 @@ exports.submit = {
                 ephemeral: true
             });
         }
-        else if (img.length > 9 || nimg.length > 9) {
-            return interaction.followUp({
-                content: 'You can only submit up to 9 images!',
-                ephemeral: true
-            });
-        }
-        else if (waifu) {
-            if ((waifu.img.length + img.length > 9) || (waifu.nimg.length + nimg.length > 9)) {
-                return interaction.followUp({
-                    content: 'Waifu getting too many images!',
-                    ephemeral: true
-                });
-            }
-            else if (waifu.img.length === 1 && waifu.nimg.length > 0) {
-                return interaction.followUp({
-                    content: 'Waifu with lewd images must have at least 2 normal images!',
-                    ephemeral: true
-                });
-            }
-            // After here, we know its a new submission, so we don't need to check if !waifu
-        }
-        else if (img.length === 0) {
+        else if (!waifu && img.length === 0) {
             return interaction.followUp({
                 content: 'New waifus must have at least 1 normal image!',
-                ephemeral: true
-            });
-        }
-        else if (img.length === 1 && nimg.length > 0) {
-            return interaction.followUp({
-                content: 'New waifus with lewd images must have at least 2 normal images!',
                 ephemeral: true
             });
         }
@@ -2591,12 +2556,10 @@ exports.submit = {
                 ephemeral: true
             }).then(() => undefined);
         }
-        const imgLength = waifu.img.length === 9 ? `${waifu.img.length} (MAX)` : waifu.img.length;
-        const nimgLength = waifu.nimg.length === 9 ? `${waifu.nimg.length} (MAX)` : waifu.nimg.length;
         embed.setDescription(`⭐ **${waifu.name}**${waifu.getGender()}\n` +
             `__From:__ ${waifu.origin}\n` +
-            `__Number of Normal Images:__ **${imgLength}**\n` +
-            `__Number of lewd images:__ **${nimgLength}**`).setImage(waifu.img[0]).setTitle('Waifu Selection');
+            `__Number of Normal Images:__ **${waifu.img.length}**\n` +
+            `__Number of lewd images:__ **${waifu.nimg.length}**`).setImage(waifu.img[0]).setTitle('Waifu Selection');
         return {
             name: waifu.name,
             origin: waifu.origin,
