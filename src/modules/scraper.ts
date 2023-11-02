@@ -11,10 +11,6 @@ let pixiv: Pixiv;
 export default async function scrape(source: string) {
     const images: string[] = [];
 
-    // Let a separate server handle the parsing of twitter images with playwright.
-    const { imgs } = await fetch(`${config.scraper}?url=${source}`).then(res => res.json()).catch(() => ({ imgs: [] }));
-    images.push(...imgs);
-
     // This part is parsing pixiv images.
     if (source.startsWith('https://www.pixiv.net/')) {
         if (pixiv === undefined) {
@@ -35,7 +31,7 @@ export default async function scrape(source: string) {
             // We try to refresh token to hopefully fix the error.
             return pixiv.refreshToken().then(() => {
                 return pixiv.illust.get(source);
-            }).catch(() => {
+            }, () => {
                 console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!');
             });
         });
@@ -66,6 +62,13 @@ export default async function scrape(source: string) {
         if (raw_image) {
             images.push(raw_image);
         }
+    }
+
+    if (!images.length) {
+        // Let a separate server handle the parsing of twitter images with playwright.
+        const { imgs } = await fetch(`${config.scraper}?url=${source}`)
+            .then(res => res.json(), () => ({ imgs: [] }));
+        images.push(...imgs);
     }
 
     // No images could be found, tell caller to try uploading source
