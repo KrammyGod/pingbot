@@ -118,13 +118,15 @@ async function wait_for_button(
     message: DTypes.Message,
     fn: string
 ) {
-    const res = await message.awaitMessageComponent({ componentType: ComponentType.Button, time: 60_000 })
-        .then(i => {
-            if (i.customId === `${fn}/cancel`) {
-                return false;
-            }
-            return true;
-        }).catch(() => false);
+    const res = await message.awaitMessageComponent({
+        componentType: ComponentType.Button,
+        time: 15 * 60 * 1000 // 15 minutes before interaction expires
+    }).then(i => {
+        if (i.customId === `${fn}/cancel`) {
+            return false;
+        }
+        return true;
+    }).catch(() => false);
     return Utils.deleteEphemeralMessage(interaction, message).then(() => res);
 }
 
@@ -1975,8 +1977,16 @@ export const dall: SlashCommand = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(interaction, message, 'dall');
-        if (!confirmed) return;
+        const confirmed = await message.awaitMessageComponent({
+            componentType: ComponentType.Button,
+            time: 15 * 60 * 1000 // 15 minutes before interaction expires
+        }).then(i => {
+            if (i.customId === 'dall/cancel') {
+                return false;
+            }
+            return true;
+        }).catch(() => false);
+        if (!confirmed) return Utils.deleteEphemeralMessage(interaction, message);
 
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
