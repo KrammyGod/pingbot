@@ -12,6 +12,7 @@ const filePath = './files/waifus.txt';
 
 // Copied necessary stuff from database.ts
 type WaifuDetails = {
+    wid: string;
     iid: string;
     name: string;
     gender: 'Female' | 'Male' | 'Unknown';
@@ -20,6 +21,7 @@ type WaifuDetails = {
     nimg: string[];
 };
 class Waifu {
+    wid: string;
     iid: string;
     name: string;
     gender: 'Female' | 'Male' | 'Unknown';
@@ -37,6 +39,7 @@ class Waifu {
 
     constructor(row: WaifuDetails) {
         if (!row) throw new Error('Waifu details partial');
+        this.wid = row.wid;
         this.iid = row.iid;
         this.name = row.name;
         this.gender = row.gender;
@@ -82,7 +85,7 @@ function loadFromFile() {
         const img = _img.replace('[', '').replace(']', '').split(', ').filter(i => i !== '');
         const nimg = _nimg.replace('[', '').replace(']', '').split(', ').filter(i => i !== '');
         const gender = _gender === 'Female' ? _gender : (_gender === 'Male' ? _gender : 'Unknown');
-        backupWaifus.push(new Waifu({ iid, name, gender, origin, img, nimg }));
+        backupWaifus.push(new Waifu({ wid: '', iid, name, gender, origin, img, nimg }));
     }
     return backupWaifus;
 }
@@ -111,8 +114,18 @@ function findDiff(old: Waifu, updated: Waifu) {
     return diff;
 }
 
+function imgDiff(rows: QueryResultRow[], img_type: string) {
+    return `\x1b[96m${rows.map(row => row.uid).join(', ')} ${img_type}.\x1b[0m\n`;
+}
+
 async function upload() {
-    const database_waifus = await query('SELECT * FROM waifus ORDER BY iid').then(Waifu.fromRows);
+    const database_waifus = await query(`
+        SELECT * FROM
+            waifus
+            NATURAL JOIN
+            char_mapping
+        WHERE fc = TRUE ORDER BY waifus.iid
+    `).then(Waifu.fromRows);
     const file_waifus = loadFromFile();
     const modified: { old: Waifu, updated: Waifu }[] = [];
     for (const waifu of database_waifus) {
@@ -131,6 +144,38 @@ async function upload() {
             modify.updated.name, modify.updated.gender, modify.updated.origin,
             modify.updated.img, modify.updated.nimg, modify.old.iid
         ]);
+        // Deleting imgs
+        if (modify.old.img.length > modify.updated.img.length) {
+            const res = await query(
+                'UPDATE user_chars SET _img = $1 WHERE _img > $1 AND wid = $2 RETURNING *',
+                [modify.updated.img.length, modify.old.wid]
+            );
+            if (res.length) {
+                console.log(imgDiff(res, 'normal image changed'));
+            }
+        }
+        // Deleting nimgs
+        if (modify.old.nimg.length > modify.updated.nimg.length) {
+            const res = await query(
+                'UPDATE user_chars SET _nimg = $1 WHERE _nimg > $1 AND wid = $2 RETURNING *',
+                [modify.updated.nimg.length, modify.old.wid]
+            );
+            if (res.length) {
+                console.log(imgDiff(res, 'lewd image changed'));
+            }
+        } else if (modify.old.nimg.length !== 0 && modify.updated.nimg.length === 0) {
+            // All nimg deleted, remove nsfw from everyone
+            const res = await query(
+                `UPDATE user_chars
+                SET _nimg = 1, nsfw = FALSE
+                WHERE wid = $1 AND
+                (nsfw OR _nimg > 1) RETURNING *`,
+                [modify.old.wid]
+            );
+            if (res.length) {
+                console.log(imgDiff(res, 'lewd image reset'));
+            }
+        }
     }
     return query('REFRESH MATERIALIZED VIEW chars');
 }
