@@ -117,8 +117,10 @@ async function search_character(interaction, userID, number_or_name, high) {
 }
 // Global helper that waits for a confirm/cancel interaction
 async function wait_for_button(interaction, message, fn) {
-    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.Button, time: 60000 })
-        .then(i => {
+    const res = await message.awaitMessageComponent({
+        componentType: discord_js_1.ComponentType.Button,
+        time: 15 * 60 * 1000 // 15 minutes before interaction expires
+    }).then(i => {
         if (i.customId === `${fn}/cancel`) {
             return false;
         }
@@ -1761,9 +1763,17 @@ exports.dall = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(interaction, message, 'dall');
+        const confirmed = await message.awaitMessageComponent({
+            componentType: discord_js_1.ComponentType.Button,
+            time: 15 * 60 * 1000 // 15 minutes before interaction expires
+        }).then(i => {
+            if (i.customId === 'dall/cancel') {
+                return false;
+            }
+            return true;
+        }).catch(() => false);
         if (!confirmed)
-            return;
+            return Utils.deleteEphemeralMessage(interaction, message);
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
         embed.setDescription(`Succesfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
