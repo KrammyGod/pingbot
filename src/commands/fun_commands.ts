@@ -297,7 +297,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             if (i.customId === 'hcancel') return;
             return true;
         }).catch(() => undefined);
-        await Utils.deleteEphemeralMessage(interaction, message);
+        await Utils.delete_ephemeral_message(interaction, message);
         if (!confirmed) return;
 
         const res = await DB.deleteCookie(interaction.user.id, id);

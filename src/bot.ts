@@ -73,7 +73,7 @@ async function replace_emojis(message: DTypes.Message) {
     for (const i of emojis) {
         const emoji = await convert_emoji(i, (e, id) => {
             // Check if the user is in the guild, only those in the guild are allowed to use it.
-            return e?.guild.members.fetch(id).then(() => e.toString()).catch(() => undefined);
+            return e?.guild.members.fetch(id).then(() => e.toString(), () => undefined);
         }, message.author.id);
         if (emoji) {
             msg = msg.replaceAll(i, emoji);
@@ -122,7 +122,7 @@ async function handle_command(message: DTypes.Message) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
-        return command.execute(message, args.filter(a => a !== ''), client).then(() => { }).catch(err =>
+        return command.execute(message, args.filter(a => a !== ''), client).catch(err =>
             handle_message_errors(message, commandName, err)
         );
     }
@@ -171,12 +171,12 @@ client.on(Events.InteractionCreate, interaction => {
     if (interaction.isCommand()) {
         if (interaction.isContextMenuCommand() && isContextCommand(command)) {
             // Error handling after command.
-            return command.execute(interaction, client).then(() => { }).catch(err =>
+            return command.execute(interaction, client).catch(err =>
                 handle_interaction_errors(interaction, interaction.commandName, err)
             );
         } else if (interaction.isChatInputCommand() && isSlashCommand(command)) {
             // Error handling after command.
-            return command.execute(interaction, client).then(() => { }).catch(err =>
+            return command.execute(interaction, client).catch(err =>
                 handle_interaction_errors(interaction, interaction.commandName, err)
             );
         } else {
@@ -191,7 +191,7 @@ client.on(Events.InteractionCreate, interaction => {
         // 0 means global button
         if (id !== '0' && interaction.user.id !== id) return;
 
-        return command.buttonReact(interaction, client).then(() => { }).catch(err =>
+        return command.buttonReact(interaction, client).catch(err =>
             handle_interaction_errors(interaction, commandName, err)
         );
     } else if (interaction.isAnySelectMenu()) {
@@ -201,13 +201,13 @@ client.on(Events.InteractionCreate, interaction => {
         // 0 means global selection
         if (id !== '0' && interaction.user.id !== id) return;
 
-        return command.menuReact(interaction, client).then(() => { }).catch(err =>
+        return command.menuReact(interaction, client).catch(err =>
             handle_interaction_errors(interaction, commandName, err)
         );
     } else if (interaction.isModalSubmit()) {
         if (!command.textInput) return;
         // With modal, it only applies to user so no need to check for issues.
-        return command.textInput(interaction, client).then(() => { }).catch(err =>
+        return command.textInput(interaction, client).catch(err =>
             handle_interaction_errors(interaction, commandName, err)
         );
     } else {

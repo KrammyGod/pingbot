@@ -61,17 +61,17 @@ export interface MessageCommand {
     name: string;
     admin: boolean;
     desc: string;
-    execute: (msg: DTypes.Message, args: string[], client: CustomClient) => Promise<unknown>;
+    execute: (msg: DTypes.Message, args: string[], client: CustomClient) => Promise<void>;
 }
 
 // Basics that every slash command must have
 interface Command {
     data: DTypes.SlashCommandBuilder | DTypes.SlashCommandSubcommandBuilder | DTypes.SlashCommandSubcommandGroupBuilder;
     desc: string; // Long description for help command
-    execute: (i: DTypes.ChatInputCommandInteraction, client: CustomClient) => Promise<unknown>;
-    buttonReact?: (i: DTypes.ButtonInteraction, client: CustomClient) => Promise<unknown>;
-    menuReact?: (i: DTypes.AnySelectMenuInteraction, client: CustomClient) => Promise<unknown>;
-    textInput?: (i: DTypes.ModalSubmitInteraction, client: CustomClient) => Promise<unknown>;
+    execute: (i: DTypes.ChatInputCommandInteraction, client: CustomClient) => Promise<void>;
+    buttonReact?: (i: DTypes.ButtonInteraction, client: CustomClient) => Promise<void>;
+    menuReact?: (i: DTypes.AnySelectMenuInteraction, client: CustomClient) => Promise<void>;
+    textInput?: (i: DTypes.ModalSubmitInteraction, client: CustomClient) => Promise<void>;
 }
 export interface SlashSubcommand extends Command {
     data: DTypes.SlashCommandSubcommandBuilder;
@@ -93,7 +93,7 @@ export type CachedSlashSubcommandGroup<T extends object> = SlashCommand & CacheD
 // Basics that every context command must have
 export interface ContextCommand {
     data: DTypes.ContextMenuCommandBuilder;
-    execute: (i: DTypes.ContextMenuCommandInteraction, client: CustomClient) => Promise<unknown>;
+    execute: (i: DTypes.ContextMenuCommandInteraction, client: CustomClient) => Promise<void>;
 }
 
 export type InteractionCommand = SlashCommand | ContextCommand;
