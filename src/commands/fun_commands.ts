@@ -63,7 +63,7 @@ export const count: SlashCommand & CountPrivates = {
         const amt = this.counter.get(id)!;
         this.counter.set(id, amt + 1);
         const image = images[Math.floor(Math.random() * images.length)];
-        return interaction.editReply({
+        await interaction.editReply({
             content: `Hey there, its been ${amt} times already...\nTake this....`,
             embeds: [new EmbedBuilder().setImage(image).setColor('Random')]
         });
@@ -108,7 +108,7 @@ export const invite: SlashCommand = {
             permissions: permissions,
             scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands]
         });
-        return interaction.editReply({
+        await interaction.editReply({
             content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
                      'Please do not forget to use `/help command: invite` to verify permissions required!'
         });
@@ -134,7 +134,7 @@ export const support: SlashCommand = {
         }, invite_code);
         // Constant non-expiring invite
         const link = invite_link ?? `https://discord.gg/${invite_code}`;
-        return interaction.editReply({
+        await interaction.editReply({
             content: `Hey there, here's the [invite link](${link}) for the support server!\n`
         });
     }
@@ -179,9 +179,10 @@ export const getid: SlashCommand = {
         if (res === null) {
             return interaction.deleteReply();
         } else if (!res) {
-            return interaction.editReply({ content: `No users found with name ${query}!` });
+            await interaction.editReply({ content: `No users found with name ${query}!` });
+        } else {
+            await interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
         }
-        return interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
     }
 };
 
@@ -446,7 +447,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
         if (!res) {
@@ -459,10 +460,10 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         // Adding new account always brings user to first page to properly reload everything.
         const retval = await this.getAccount(interaction, 1);
         await interaction.editReply(retval);
-        return interaction.followUp({
+        await interaction.followUp({
             content: 'Successfully added account to autocollector!',
             ephemeral: true
-        }).then(() => { });
+        });
     },
 
     async buttonReact(interaction, client) {
@@ -474,7 +475,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         await interaction.deferUpdate();
         if (!isNaN(page)) {
             const retval = await this.getAccount(interaction, page);
-            return interaction.editReply(retval);
+            return interaction.editReply(retval).then(() => { });
         } else if (action === 'delete') {
             return this.delete(client, interaction, id);
         }
@@ -483,13 +484,13 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         const game = action[1];
         await this.toggleNotify(interaction, type, game, id);
         const retval = await this.getAccount(interaction, id);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     },
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const retval = await this.getAccount(interaction, 1);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     }
 };
 
@@ -633,7 +634,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         await interaction.deferUpdate();
         const action = interaction.customId.split('/')[1];
         let pollInfo = await this.cache.get(interaction.message!.id);
-        if (!pollInfo) return interaction.message?.delete().catch(() => { }); // Somehow lost cache
+        if (!pollInfo) return interaction.message?.delete().then(() => { }, () => { }); // Somehow lost cache
         if (pollInfo.mid) {
             pollInfo = await this.cache.get(pollInfo.mid) ?? pollInfo;
         }
@@ -643,11 +644,17 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             const c = interaction.fields.getTextInputValue('choice');
             const choices = c.trim().split('\n').map(x => x.trim()).filter(x => x !== '');
             if (!choices.length) {
-                return interaction.followUp({ content: 'You must provide at least one choice.', ephemeral: true });
+                return interaction.followUp({
+                    content: 'You must provide at least one choice.', ephemeral: true
+                }).then(() => { });
             } else if (choices.length > 25) {
-                return interaction.followUp({ content: 'You cannot provide more than 25 choices.', ephemeral: true });
+                return interaction.followUp({
+                    content: 'You cannot provide more than 25 choices.', ephemeral: true
+                }).then(() => { });
             } else if (new Set(choices).size !== choices.length) {
-                return interaction.followUp({ content: 'All choices must be unique.', ephemeral: true });
+                return interaction.followUp({
+                    content: 'All choices must be unique.', ephemeral: true
+                }).then(() => { });
             }
             pollInfo.choices = choices.map(c => {
                 const prevChoice = pollInfo!.choices.find(x => x.name === c);
@@ -661,12 +668,12 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
                         ephemeral: true
-                    });
+                    }).then(() => { });
                 } else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
                         ephemeral: true
-                    });
+                    }).then(() => { });
                 }
                 pollInfo.expires = date;
             } else {
@@ -677,13 +684,13 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         }
         await this.cache.set(interaction.message!.id, pollInfo);
         const retval = await this.getPollEditor(interaction.message!.id);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     },
 
     async buttonReact(interaction, client) {
         const action = interaction.customId.split('/')[2];
         const pollInfo = await this.cache.get(interaction.message.id);
-        if (!pollInfo) return interaction.message.delete().catch(() => { }); // Somehow lost cache
+        if (!pollInfo) return interaction.message.delete().then(() => { }, () => { }); // Somehow lost cache
         const idx = parseInt(action);
         if (isNaN(idx)) {
             const send = async () => {
@@ -704,7 +711,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     await interaction.deleteReply().catch(() => {
                         // If we can't delete the reply, we can't delete the original message either.
                         // So we just edit it to remove the buttons.
-                        return interaction.message.edit({ embeds, components: [] }).catch(() => { });
+                        return interaction.message.edit({ embeds, components: [] }).then(() => { }, () => { });
                     });
                 } else {
                     message = await channel.send({ embeds, components });
@@ -794,13 +801,13 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         }
         await this.cache.set(interaction.message.id, pollInfo);
         const retval = await this.getPoll(interaction.message.id);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     },
 
     async menuReact(interaction, client) {
         await interaction.deferUpdate();
         const pollInfo = await this.cache.get(interaction.message.id);
-        if (!pollInfo) return interaction.message.delete().catch(() => { }); // Somehow lost cache
+        if (!pollInfo) return interaction.message.delete().then(() => { }, () => { }); // Somehow lost cache
         const channel = (
             interaction as DTypes.ChannelSelectMenuInteraction
         ).channels.first() as DTypes.TextChannel | DTypes.NewsChannel;
@@ -808,18 +815,18 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
                 ephemeral: true
-            });
+            }).then(() => { });
         } else if (!channel.permissionsFor(client.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true
-            });
+            }).then(() => { });
         }
 
         pollInfo.cid = channel.id;
         await this.cache.set(interaction.message.id, pollInfo);
         const retval = await this.getPollEditor(interaction.message.id);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     },
 
     async execute(interaction) {
@@ -832,7 +839,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             choices: []
         }, Utils.date_after_hours(24)); // Expires in 24 hours.
         const retval = await this.getPollEditor(id);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     }
 };
 
@@ -853,12 +860,12 @@ export const poll_edit: ContextCommand = {
         } else if (pollInfo.uid !== interaction.user.id) {
             return interaction.editReply({
                 content: 'You are not the owner of this poll!'
-            });
+            }).then(() => { });
         }
         // Create a new edit dialog, and make it expire in 24 hours.
         await poll.cache.set(thisId, pollInfo, Utils.date_after_hours(24));
         const retval = await poll.getPollEditor(thisId);
-        return interaction.editReply(retval);
+        await interaction.editReply(retval);
     }
 };
 
