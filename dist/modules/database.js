@@ -971,7 +971,7 @@ class Cache {
 exports.Cache = Cache;
 // We use this function to delete when any subscribed object is deleted
 function deleteLocalData(id) {
-    return query('DELETE FROM local_data WHERE id = $1', [id]).then(() => { }).catch(() => { });
+    return query('DELETE FROM local_data WHERE id = $1', [id]).then(() => { }, () => { });
 }
 exports.deleteLocalData = deleteLocalData;
 //# sourceMappingURL=database.js.map

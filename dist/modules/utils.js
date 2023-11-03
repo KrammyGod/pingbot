@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.purge_from_dm = exports.purge_from_channel = exports.purge_clean_channel = exports.fetch_history = exports.get_results = exports.deleteEphemeralMessage = exports.timestamp = exports.date_after_hours = exports.sendEmbedsByWave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.purge_from_dm = exports.purge_from_channel = exports.purge_clean_channel = exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
 const client_1 = require("../classes/client");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
@@ -123,7 +123,7 @@ function channel_is_nsfw_safe(channel) {
 exports.channel_is_nsfw_safe = channel_is_nsfw_safe;
 // Useful helpers used in all modules
 // Helper that sends all embeds by wave
-async function sendEmbedsByWave(interaction, embeds) {
+async function send_embeds_by_wave(interaction, embeds) {
     // 10 embeds per message
     let wave = embeds.splice(0, 10);
     await interaction.editReply({ embeds: wave }).catch(() => { throw new exceptions_1.TimedOutError(); });
@@ -132,7 +132,7 @@ async function sendEmbedsByWave(interaction, embeds) {
         await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => { });
     }
 }
-exports.sendEmbedsByWave = sendEmbedsByWave;
+exports.send_embeds_by_wave = send_embeds_by_wave;
 // Helper that gets the date object corresponding to some offset from now
 function date_after_hours(hours) {
     return new Date(new Date().getTime() + hours * 60 * 60 * 1000);
@@ -158,10 +158,21 @@ exports.timestamp = timestamp;
  * doesn't currently support deleting ephemeral messages for ephemeral followups and etc.
  * However, Discord has a route to support this, and that's what this function does.
  */
-function deleteEphemeralMessage(i, msg) {
-    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id));
+function delete_ephemeral_message(i, msg) {
+    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => { });
 }
-exports.deleteEphemeralMessage = deleteEphemeralMessage;
+exports.delete_ephemeral_message = delete_ephemeral_message;
+/**
+ * Waits for a specific confirm button to be pressed, on a given message.
+ * The confirm_id is the customId of the confirm button.
+ */
+function wait_for_button(message, confirm_id) {
+    return message.awaitMessageComponent({
+        componentType: discord_js_1.ComponentType.Button,
+        time: 15 * 60 * 1000 // 15 minutes before interaction expires
+    }).then(i => i.customId === confirm_id, () => false);
+}
+exports.wait_for_button = wait_for_button;
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
  * Warning: This will create a followup message and delete it
@@ -205,7 +216,6 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
         components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
         ephemeral: true
     });
-    // Return promise to let caller await it.
     const res = await message.awaitMessageComponent({
         componentType: discord_js_1.ComponentType.StringSelect,
         time: 15 * 60 * 1000 // 15 minutes before interaction token expires.
@@ -214,7 +224,7 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    return deleteEphemeralMessage(interaction, message).then(() => res);
+    return delete_ephemeral_message(interaction, message).then(() => res);
 }
 exports.get_results = get_results;
 // Really only used for purge commands, but nicely defined if any other command requires

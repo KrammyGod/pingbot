@@ -60,7 +60,7 @@ exports.purge = {
             else
                 amount = parseInt(args[0]);
             if (isNaN(amount) || amount <= 0) {
-                return message.reply({ content: 'Enter a positive number.' });
+                return message.reply({ content: 'Enter a positive number.' }).then(() => { });
             }
         }
         if (message.channel.isDMBased()) {
@@ -74,14 +74,14 @@ exports.purge = {
             return message.reply({
                 content: 'You do not have permission to purge.\n' +
                     'You need the `Manage Messages` permission.'
-            });
+            }).then(() => { });
         }
         else if (!message.channel.permissionsFor(message.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: "I don't have permission to purge.\n" +
                     'I need the `Manage Messages` permission.'
-            });
+            }).then(() => { });
         }
         else if (all) {
             // Extra permissions for purge all
@@ -132,7 +132,7 @@ exports.purge = {
         const deleted = await Utils.purge_from_channel(message.channel, amount + 1);
         // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
-            .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
+            .then(m => { setTimeout(() => m.delete(), 3000); }).catch(() => { });
     }
 };
 exports.resetdb = {
@@ -145,7 +145,7 @@ exports.resetdb = {
         await (0, reset_db_1.default)();
         return message.channel.send({
             content: 'Successfully reset.'
-        }).then(msg => msg.delete().then(() => { }).catch(() => { }));
+        }).then(msg => msg.delete().then(() => { }, () => { }));
     }
 };
 exports.add = {
@@ -233,7 +233,7 @@ exports.upload = {
             }
             res.push(...await (0, cdn_1.uploadToCDN)(formdata));
         }
-        return message.reply({ content: `<${res.join('>\n<')}>` });
+        await message.reply({ content: `<${res.join('>\n<')}>` });
     }
 };
 exports.update = {
@@ -257,7 +257,7 @@ exports.update = {
         const urls = args.splice(0, args.length / 2);
         const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')), args // Rest of the args are new sources
         );
-        return message.reply({ content: `API replied with: ${res}` });
+        await message.reply({ content: `API replied with: ${res}` });
     }
 };
 exports.del = {
@@ -274,7 +274,7 @@ exports.del = {
         await message.channel.sendTyping();
         // Remove CDN url to get the filename
         const res = await (0, cdn_1.deleteFromCDN)(args.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')));
-        return message.reply({ content: `API replied with: ${res}` });
+        await message.reply({ content: `API replied with: ${res}` });
     }
 };
 exports.start = {
@@ -284,14 +284,16 @@ exports.start = {
     async execute(message, _args, client) {
         setTimeout(() => message.delete().catch(() => { }), 200);
         if (client.is_listening) {
-            return message.reply({ content: "I'm already listening." })
+            await message.reply({ content: "I'm already listening." })
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-        client.is_listening = true;
-        return message.reply({ content: "I'm listening again." })
-            .then(msg => setTimeout(() => msg.delete(), 2000))
-            .catch(() => { });
+        else {
+            client.is_listening = true;
+            await message.reply({ content: "I'm listening again." })
+                .then(msg => setTimeout(() => msg.delete(), 2000))
+                .catch(() => { });
+        }
     }
 };
 exports.stop = {
@@ -301,14 +303,16 @@ exports.stop = {
     async execute(message, _args, client) {
         setTimeout(() => message.delete().catch(() => { }), 200);
         if (!client.is_listening) {
-            return message.channel.send({ content: 'I already stopped listening.' })
+            await message.channel.send({ content: 'I already stopped listening.' })
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-        client.is_listening = false;
-        return message.channel.send({ content: 'I stopped listening.' })
-            .then(msg => setTimeout(() => msg.delete(), 2000))
-            .catch(() => { });
+        else {
+            client.is_listening = false;
+            await message.channel.send({ content: 'I stopped listening.' })
+                .then(msg => setTimeout(() => msg.delete(), 2000))
+                .catch(() => { });
+        }
     }
 };
 //# sourceMappingURL=admin_commands.js.map
