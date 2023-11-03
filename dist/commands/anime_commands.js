@@ -115,17 +115,6 @@ async function search_character(interaction, userID, number_or_name, high) {
         sel_fmt: choice => `${choice.getWFC(interaction.channel)} ${choice.name}`
     });
 }
-// Global helper that waits for a confirm/cancel interaction
-async function wait_for_button(interaction, message, fn) {
-    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.Button, time: 60000 })
-        .then(i => {
-        if (i.customId === `${fn}/cancel`) {
-            return false;
-        }
-        return true;
-    }).catch(() => false);
-    return Utils.deleteEphemeralMessage(interaction, message).then(() => res);
-}
 // Simple function to calculate how many pages there are if there are 10 items per page.
 function totalPages(pages) {
     return Math.floor(pages / 10) + (pages % 10 ? 1 : 0);
@@ -292,18 +281,18 @@ exports.animes = {
         await interaction.deferUpdate();
         const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
-            return interaction.deleteReply();
+            return interaction.deleteReply().then(() => { });
         const page = parseInt(value);
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         const { embeds, components, followUp } = await this.getPage(interaction.user.id, user, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     },
     async buttonReact(interaction, client) {
         const [page, userID] = interaction.customId.split('/').splice(2);
@@ -331,7 +320,7 @@ exports.animes = {
                 return interaction.showModal(input);
             }
             else if (page === 'help') {
-                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true });
+                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true }).then(() => { });
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -340,9 +329,9 @@ exports.animes = {
         await interaction.deferUpdate();
         const user = await client.users.fetch(userID).catch(() => null);
         if (!user)
-            return interaction.deleteReply();
+            return interaction.deleteReply().then(() => { });
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
     async menuReact(interaction, client) {
         await interaction.deferUpdate();
@@ -357,7 +346,7 @@ exports.animes = {
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
         await interaction.editReply({ embeds, components });
         if (gain) {
-            return interaction.followUp({
+            await interaction.followUp({
                 content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
                     `and gained +${gain} ${client.bot_emojis.brons}!`,
                 ephemeral: true
@@ -371,7 +360,7 @@ exports.animes = {
         const { embeds, components, followUp } = await this.getPage(interaction.user.id, user, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     }
 };
 exports.anime = {
@@ -405,7 +394,7 @@ exports.anime = {
         }
         else if (!series) {
             embed.setTitle(`No anime found with name \`${name}\`.`).setColor(discord_js_1.Colors.Red);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setTitle('Search results:');
         const anime_chars = await DB.getAnime(series);
@@ -437,7 +426,7 @@ exports.anime = {
             if (cnt === anime_chars.length) {
                 const gain = await collect_anime(user.id, series);
                 if (gain) {
-                    return interaction.followUp({
+                    await interaction.followUp({
                         content: `You collected bonuses for \`${series}\`! ` +
                             `+${gain} ${client.bot_emojis.brons}`,
                         ephemeral: true
@@ -468,24 +457,24 @@ exports.bal = {
             if (user.id === interaction.user.id) {
                 return interaction.editReply({
                     content: `You don't have an account. Create one by using ${dailyCmd}`
-                });
+                }).then(() => { });
             }
             return interaction.editReply({
                 content: `${user} does not have an account. Tell them to join by using ${dailyCmd}`,
                 allowedMentions: { users: [] }
-            });
+            }).then(() => { });
         }
         if (user.id === interaction.user.id) {
             return interaction.editReply({
                 content: `You currently have ${brons} ${client.bot_emojis.brons}.`
-            });
+            }).then(() => { });
         }
         else if (user.id === client.user.id) {
             return interaction.editReply({
                 content: `I have ∞ ${client.bot_emojis.brons}.`
-            });
+            }).then(() => { });
         }
-        return interaction.editReply({
+        await interaction.editReply({
             content: `${user} has ${brons} ${client.bot_emojis.brons}.`,
             allowedMentions: { users: [] }
         });
@@ -626,12 +615,12 @@ exports.lb = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     },
     async buttonReact(interaction, client) {
         const [page] = interaction.customId.split('/').splice(2);
@@ -662,7 +651,7 @@ exports.lb = {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by stars',
                     ephemeral: true
-                });
+                }).then(() => { });
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -670,7 +659,7 @@ exports.lb = {
         }
         await interaction.deferUpdate();
         const { embeds, components } = await this.getPage(client, interaction.user.id, val);
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
     async execute(interaction, client) {
         await interaction.deferReply();
@@ -678,7 +667,7 @@ exports.lb = {
         const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     }
 };
 exports.daily = {
@@ -704,7 +693,7 @@ exports.daily = {
             if (amt === 1000) {
                 // First sign up
                 embed.setColor(discord_js_1.Colors.Gold).setTitle(`You have collected your first daily! +1000 ${client.bot_emojis.brons}!`);
-                return interaction.editReply({ embeds: [embed] });
+                return interaction.editReply({ embeds: [embed] }).then(() => { });
             }
             embed.setTitle(`You have collected your daily! +200 ${client.bot_emojis.brons}!`);
             const chosen = await DB.fetchRandomStarred(interaction.user.id);
@@ -716,16 +705,16 @@ exports.daily = {
                     `Your affection with ${chosen.name} is too low right now!` :
                     `Congrats on level ${chosen.lvl}!`;
                 embed.setColor(discord_js_1.Colors.Gold).setTitle(`${embed.data.title}\naaaaand ${chosen.name} gave you another +` +
-                    `${bonus_brons}${client.bot_emojis.brons}! ${level_str}`);
+                    `${bonus_brons} ${client.bot_emojis.brons}! ${level_str}`);
                 DB.addBrons(interaction.user.id, bonus_brons);
             }
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         // Otherwise already collected
         // Hack I figured out a long time ago. Something about 5am UTC.
         const time_left = new Date().setUTCHours(new Date().getUTCHours() >= 5 ? 29 : 5, 0, 0, 0);
         embed.setColor(discord_js_1.Colors.Red).setTitle(`You have already collected your dailies.\nNext daily reset ${Utils.timestamp(time_left, 'R')}.`);
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.profile = {
@@ -761,7 +750,7 @@ exports.profile = {
                 description: `**${user.bot ? 'Bots have no accounts :(' : 'No info :('}**`,
                 color: discord_js_1.Colors.Gold
             }).setThumbnail(user.displayAvatarURL());
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         const brons = lbs?.brons ?? -1;
         /* Setup fields for embed */
@@ -838,7 +827,7 @@ exports.profile = {
             }
         }
         embed.setFooter({ text: 'Note: The favourite waifu is the waifu at position #1.' });
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.profile_menu = {
@@ -1191,7 +1180,7 @@ async function switch_char_image(client, interaction, char) {
             return;
         return parseInt(val);
     }).catch(() => undefined);
-    Utils.deleteEphemeralMessage(interaction, message).catch(() => { });
+    Utils.delete_ephemeral_message(interaction, message).catch(() => { });
     let success = true;
     if (selected === undefined) {
         return;
@@ -1247,7 +1236,8 @@ async function delete_char(client, interaction, char) {
         components: [buttons],
         ephemeral: true
     });
-    const confirmed = await wait_for_button(interaction, message, 'delete_char');
+    const confirmed = await Utils.wait_for_button(message, 'delete_char/confirm');
+    await Utils.delete_ephemeral_message(interaction, message);
     if (!confirmed)
         return;
     embed.setDescription(null);
@@ -1310,7 +1300,7 @@ const listHelpers = {
                 return interaction.showModal(input);
             }
             else if (page === 'help') {
-                return interaction.reply({
+                await interaction.reply({
                     content: GLOBAL_HELP +
                         '🔍: Search and jump to a specific waifu by name or index\n' +
                         '⬆️: Selects the first waifu on the current page\n' +
@@ -1329,7 +1319,7 @@ const listHelpers = {
         const { embeds, components } = cmdName === 'list' ?
             await get_list_as_embed(interaction.channel, interaction.user.id, user, val, high) :
             await get_char_as_embed(interaction.channel, interaction.user.id, user, val, high);
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
     async menuReact(interaction, high, client) {
         const [fn, wid] = interaction.values[0].split('/').splice(2);
@@ -1359,7 +1349,7 @@ const listHelpers = {
             res = get_char_as_embed(interaction.channel, interaction.user.id, interaction.user, wid, high);
         }
         const { embeds, components } = await res;
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
     async textInput(interaction, high, client) {
         const [cmdName, userID] = interaction.customId.split('/').splice(1);
@@ -1374,12 +1364,12 @@ const listHelpers = {
                 return interaction.followUp({
                     content: 'Invalid page number.',
                     ephemeral: true
-                });
+                }).then(() => { });
             }
             const { embeds, components, followUp } = await get_list_as_embed(interaction.channel, interaction.user.id, user, page, high);
             await interaction.editReply({ embeds, components });
             if (followUp)
-                return interaction.followUp(followUp).then(() => { });
+                await interaction.followUp(followUp);
         }
         else if (cmdName === 'find') {
             const error_embed = new discord_js_1.EmbedBuilder({
@@ -1391,16 +1381,16 @@ const listHelpers = {
             }
             else if (!char) {
                 error_embed.setTitle(`No character found with name \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
             }
             else if (char === NO_NUM) {
                 error_embed.setTitle(`No character found with index \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
             }
             const { embeds, components, followUp } = await get_char_as_embed(interaction.channel, interaction.user.id, user, char.wid, high);
             await interaction.editReply({ embeds, components });
             if (followUp)
-                return interaction.followUp(followUp).then(() => { });
+                await interaction.followUp(followUp);
         }
         else {
             throw new Error(`Command type: ${cmdName} not found.`);
@@ -1413,7 +1403,7 @@ const listHelpers = {
         const { embeds, components, followUp } = await get_list_as_embed(interaction.channel, interaction.user.id, user, page, high);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp).then(() => { });
+            await interaction.followUp(followUp);
     }
 };
 exports.list = {
@@ -1589,7 +1579,7 @@ exports.roll = {
         const error_embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Red });
         if (typeof res === 'string') {
             error_embed.setTitle(`Roll failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [error_embed] });
+            return interaction.editReply({ embeds: [error_embed] }).then(() => { });
         }
         let total_refund = 0;
         const { embed, refund } = await generateCharacterDisplay(client, res, interaction.channel, interaction.user);
@@ -1600,7 +1590,7 @@ exports.roll = {
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         // Reusing error_embed
         error_embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
-        return Utils.sendEmbedsByWave(interaction, [embed, error_embed]);
+        return Utils.send_embeds_by_wave(interaction, [embed, error_embed]);
     }
 };
 exports.multi = {
@@ -1624,7 +1614,7 @@ exports.multi = {
         const embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Red });
         if (typeof res === 'string') {
             embed.setTitle(`Multi failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         let total_refund = 0;
         const embeds = [];
@@ -1639,7 +1629,7 @@ exports.multi = {
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
-        return Utils.sendEmbedsByWave(interaction, embeds);
+        return Utils.send_embeds_by_wave(interaction, embeds);
     }
 };
 exports.whale = {
@@ -1667,7 +1657,7 @@ exports.whale = {
         const embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Red });
         if (typeof res === 'string') {
             embed.setTitle(`Whale failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         let total_refund = 0;
         const embeds = [];
@@ -1682,7 +1672,7 @@ exports.whale = {
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
-        return Utils.sendEmbedsByWave(interaction, embeds);
+        return Utils.send_embeds_by_wave(interaction, embeds);
     }
 };
 exports.dall = {
@@ -1741,7 +1731,7 @@ exports.dall = {
         const commons = await DB.fetchUserCommonCount(interaction.user.id, { start, end });
         if (commons === 0) {
             embed.setTitle('No common characters found.').setColor(discord_js_1.Colors.Red);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setTitle('Confirm delete?').setDescription(`## Found ${commons} common(s).\n` +
             `## Total refund: +${commons} ` +
@@ -1761,13 +1751,13 @@ exports.dall = {
             embeds: [embed],
             components: [buttons]
         });
-        const confirmed = await wait_for_button(interaction, message, 'dall');
+        const confirmed = await Utils.wait_for_button(message, 'dall/confirm');
         if (!confirmed)
-            return;
+            return Utils.delete_ephemeral_message(interaction, message);
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
         embed.setDescription(`Succesfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.stars = {
@@ -1806,7 +1796,7 @@ exports.stars = {
             title: `${whoHas} ${starsString} ${starSymbol}!`,
             color: discord_js_1.Colors.Gold
         });
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.top = {
@@ -1822,7 +1812,7 @@ exports.top = {
         '__**Options**__\n' +
         '*page:* The page number to jump to. (Default: 1)\n\n' +
         'Examples: `/top`, `/top page: 2`',
-    async getPage(client, authorID, page) {
+    async getPage(authorID, page) {
         const max_pages = totalPages(await DB.getUserCount());
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Starred leaderboards',
@@ -1916,7 +1906,7 @@ exports.top = {
         }
         return retval;
     },
-    async textInput(interaction, client) {
+    async textInput(interaction) {
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
         const page = parseInt(value);
@@ -1924,14 +1914,14 @@ exports.top = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
-        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     },
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const [page] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -1960,23 +1950,23 @@ exports.top = {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by brons',
                     ephemeral: true
-                });
+                }).then(() => { });
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(client, interaction.user.id, parseInt(page));
-        return interaction.editReply({ embeds, components });
+        const { embeds, components } = await this.getPage(interaction.user.id, parseInt(page));
+        await interaction.editReply({ embeds, components });
     },
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     }
 };
 exports.users = {
@@ -2008,11 +1998,11 @@ exports.users = {
         const waifu = await search_waifu(interaction, waifu_name);
         if (waifu === null) {
             error_embed.setTitle('No character selected.');
-            return interaction.editReply({ embeds: [error_embed] });
+            return interaction.editReply({ embeds: [error_embed] }).then(() => { });
         }
         else if (waifu === undefined) {
             error_embed.setTitle(`No character found with name \`${waifu_name}\`.`);
-            return interaction.editReply({ embeds: [error_embed] });
+            return interaction.editReply({ embeds: [error_embed] }).then(() => { });
         }
         const users = await DB.fetchAllUsers(waifu.wid);
         let desc = `__Name:__ **${waifu.name}**\n` +
@@ -2039,7 +2029,7 @@ exports.users = {
                     `${interaction.user.id === char.uid ? '⬅️ (You)' : ''}\n`;
         }
         embed.setDescription(desc);
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.swap = {
@@ -2075,11 +2065,11 @@ exports.swap = {
         }
         else if (!char1) {
             embed.setTitle(`First character not found with name \`${c1}\`.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         else if (char1 === NO_NUM) {
             embed.setTitle(`First character not found with index \`${c1}\`.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         const char2 = await search_character(interaction, interaction.user.id, c2, false);
         if (char2 === null) {
@@ -2087,22 +2077,22 @@ exports.swap = {
         }
         else if (!char2) {
             embed.setTitle(`Second character not found with name \`${c2}\`.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         else if (char2 === NO_NUM) {
             embed.setTitle(`Second character not found with index \`${c2}\`.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         if (char1.idx === char2.idx) {
             embed.setTitle('Why are you swapping the same character?');
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         await DB.swapUserCharacters(char1, char2);
         embed.setTitle(`${char1.getWFC(interaction.channel)} ${char1.name}` +
             `${char1.getGender()} (position ${char1.idx}) is now at position ${char2.idx}\n` +
             `${char2.getWFC(interaction.channel)} ${char2.name}` +
             `${char2.getGender()} (position ${char2.idx}) is now at position ${char1.idx}`).setColor(discord_js_1.Colors.Gold);
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.move = {
@@ -2139,25 +2129,25 @@ exports.move = {
         }
         else if (!char) {
             embed.setTitle(`Character not found with name \`${c}\`.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         else if (char === NO_NUM) {
             embed.setTitle(`Character not found with index \`${c}\`.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         else if (char.idx === pos) {
             embed.setTitle(`${char.name} is already at that position.`);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         const success = await DB.moveUserCharacter(char, pos);
         if (!success) {
             embed.setTitle('Position is out of range.');
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setTitle(`${char.getWFC(interaction.channel)} ${char.name} ` +
             `${char.getGender()} is now at position ${pos}`)
             .setColor(discord_js_1.Colors.Gold);
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 exports.submit = {
@@ -2358,7 +2348,7 @@ exports.submit = {
             return interaction.update({ content: 'Cache lost.' }).then(m => m.delete());
         const user = await client.users.fetch(submission.uid).catch(() => { });
         if (!user)
-            return msg.delete();
+            return msg.delete().then(() => { });
         const action = interaction.customId.split('/')[2];
         const { name, gender, origin, img, nimg } = submission.data;
         const characterInfo = '```' + `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
@@ -2440,7 +2430,7 @@ exports.submit = {
                         `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
-            return msg.delete();
+            return msg.delete().then(() => { });
         }
         else if (action === 'upload') {
             await interaction.update({ components: [] });
@@ -2475,7 +2465,7 @@ exports.submit = {
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = await this.getWaifuInfoEmbed(submission);
-            return interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
+            return interaction.editReply({ embeds: [embed], components: [this.secretButtons] }).then(() => { });
         }
         else if (action === 'edit') {
             return this.startSubmit(interaction, { name, gender, origin, img, nimg });
@@ -2499,7 +2489,7 @@ exports.submit = {
             return interaction.followUp({
                 content: 'Gender must be one of `Female`, `Male` or `Unknown`!',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         // Ensure that they meant to add to the anime, rather than creating a new one.
         const complete_origin = await DB.fetchCompleteOrigin(origin);
@@ -2511,13 +2501,13 @@ exports.submit = {
             return interaction.followUp({
                 content: 'You must submit at least 1 image!',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         else if (!waifu && img.length === 0) {
             return interaction.followUp({
                 content: 'New waifus must have at least 1 normal image!',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         const submission_log = await client.channels.fetch(submission_log_id);
         const new_submission = {

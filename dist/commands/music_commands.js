@@ -151,11 +151,12 @@ async function playNext(guildId) {
     releasePlayNextLock(guildId);
     if (!success) {
         await guildVoice.textChannel.send({ content: 'End of queue.' });
-        return guildVoice.player.stop();
+        guildVoice.player.stop();
+        return;
     }
     // Send now playing stats
     const embed = await nowPlaying(guildId);
-    return guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+    await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
 }
 const join = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -181,16 +182,16 @@ const join = {
         if (!permissions.has(discord_js_1.PermissionsBitField.Flags.Connect) || !permissions.has(discord_js_1.PermissionsBitField.Flags.Speak)) {
             return interaction.editReply({
                 content: `I need the permissions to join and speak in ${voiceChannel}!`
-            });
+            }).then(() => { });
         }
         else if (!channel.permissionsFor(me).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.editReply({
                 content: `I need the permissions to send messages in ${channel}!`
-            });
+            }).then(() => { });
         }
         if (guildVoice) {
             // Fix later
-            return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` });
+            return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` }).then(() => { });
         }
         else {
             guildVoice = new GuildVoice_1.default(channel, voiceChannel, member);
@@ -202,12 +203,12 @@ const join = {
                     guildVoice.destroy();
                     return guildVoice.textChannel.send({
                         content: `No one wants to listen to me in ${guildVoice.voiceChannel} so I'm leaving... 😭`
-                    });
+                    }).then(() => { });
                 }
                 return playNext(guildVoice.voiceChannel.guildId);
             });
         }
-        return interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
+        await interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
     }
 };
 const leave = {
@@ -225,14 +226,14 @@ const leave = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_move_permission(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         guildVoice.destroy();
-        return interaction.editReply({ content: `💨 Leaving ${guildVoice.voiceChannel} bye!` });
+        await interaction.editReply({ content: `💨 Leaving ${guildVoice.voiceChannel} bye!` });
     },
 };
 const np = {
@@ -246,13 +247,13 @@ const np = {
         await interaction.deferReply();
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         else if (!guildVoice.getCurrentSong()) {
-            return interaction.editReply({ content: 'I am not playing anything.' });
+            return interaction.editReply({ content: 'I am not playing anything.' }).then(() => { });
         }
         const embed = await nowPlaying(interaction.guildId);
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };
 const play = {
@@ -323,7 +324,7 @@ const play = {
         if (!member)
             return;
         if (member.voice.channelId !== guildVoice.voiceChannel.id) {
-            return interaction.editReply({ content: 'I am not with you, b-baka.' });
+            return interaction.editReply({ content: 'I am not with you, b-baka.' }).then(() => { });
         }
         const link = interaction.options.getString('query').trim();
         const shuffle = interaction.options.getBoolean('shuffle') || false;
@@ -464,7 +465,7 @@ const host = {
         await interaction.deferReply();
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         let host = guildVoice.host.toString();
         if (guildVoice.host.id === client.user.id) {
@@ -473,7 +474,7 @@ const host = {
         else if (guildVoice.host.id === interaction.user.id) {
             host = 'you';
         }
-        return interaction.editReply({ content: `The host is ${host}`, allowedMentions: { users: [] } });
+        await interaction.editReply({ content: `The host is ${host}`, allowedMentions: { users: [] } });
     }
 };
 const clear = {
@@ -490,14 +491,14 @@ const clear = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         guildVoice.fullReset();
-        return interaction.editReply({ content: '🚮 **RIP Queue.**' });
+        await interaction.editReply({ content: '🚮 **RIP Queue.**' });
     }
 };
 const loop = {
@@ -520,14 +521,14 @@ const loop = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         guildVoice.loop = interaction.options.getString('type');
-        return interaction.editReply({ content: `✅ Loop type set to ${guildVoice.loop}` });
+        await interaction.editReply({ content: `✅ Loop type set to ${guildVoice.loop}` });
     }
 };
 const pause = {
@@ -544,21 +545,21 @@ const pause = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         if (guildVoice.paused) {
             guildVoice.player.unpause();
             guildVoice.paused = false;
-            return interaction.editReply({ content: '▶️ Resumed.' });
+            await interaction.editReply({ content: '▶️ Resumed.' });
         }
         else {
             guildVoice.player.pause();
             guildVoice.paused = true;
-            return interaction.editReply({ content: '⏸️ Paused.' });
+            await interaction.editReply({ content: '⏸️ Paused.' });
         }
     }
 };
@@ -576,19 +577,19 @@ const resume = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         if (guildVoice.paused) {
             guildVoice.player.unpause();
             guildVoice.paused = false;
-            return interaction.editReply({ content: '▶️ Resumed.' });
+            await interaction.editReply({ content: '▶️ Resumed.' });
         }
         else {
-            return interaction.editReply({ content: 'I am not paused.' });
+            await interaction.editReply({ content: 'I am not paused.' });
         }
     }
 };
@@ -708,12 +709,12 @@ const queue = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true
-            });
+            }).then(() => { });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
-            return interaction.followUp(followUp);
+            await interaction.followUp(followUp);
     },
     async buttonReact(interaction) {
         const [page] = interaction.customId.split('/').slice(3);
@@ -749,20 +750,19 @@ const queue = {
             return; // No longer playing music
         await interaction.deferUpdate();
         const { embeds, components } = this.getPage(interaction.user.id, guildVoice, val);
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
     async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
-        if (followUp) {
-            return interaction.followUp(followUp);
-        }
+        if (followUp)
+            await interaction.followUp(followUp);
     }
 };
 const shuffle = {
@@ -782,12 +782,12 @@ const shuffle = {
             return interaction.deleteReply();
         const reply = check_host(member, guildVoice, 'this button');
         if (reply)
-            return interaction.followUp({ ...reply, ephemeral: true });
+            return interaction.followUp({ ...reply, ephemeral: true }).then(() => { });
         guildVoice.shuffle();
         const page = parseInt(interaction.customId.split('/').slice(3)[0]);
         const { embeds, components } = queue.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
-        return interaction.followUp({ content: '🔀 Successfully shuffled the queue.', ephemeral: true });
+        await interaction.followUp({ content: '🔀 Successfully shuffled the queue.', ephemeral: true });
     },
     async execute(interaction) {
         await interaction.deferReply();
@@ -796,14 +796,14 @@ const shuffle = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         guildVoice.shuffle();
-        return interaction.editReply({ content: '🔀 Successfully shuffled the queue.' });
+        await interaction.editReply({ content: '🔀 Successfully shuffled the queue.' });
     }
 };
 const prev = {
@@ -820,21 +820,21 @@ const prev = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         // Using lower-level access, however more efficient.
         const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs[0]?.id);
         if (currIdx === 0)
-            return interaction.editReply({ content: '❌ There is no previous song.' });
+            return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => { });
         // Hack we do, pretend we just started playing so it doesn't skip the new song we added.
         guildVoice.songs.unshift(guildVoice.fullQueue[currIdx - 1]);
         guildVoice.started = false;
         guildVoice.player.stop();
-        return interaction.editReply({ content: '✅ Successfully rewinded to previous song.' });
+        await interaction.editReply({ content: '✅ Successfully rewinded to previous song.' });
     }
 };
 const skip = {
@@ -851,18 +851,18 @@ const skip = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         // A bit of outside handling, but its minor
         // Shift the internal queue to force next song when loop type is One.
         if (guildVoice.loop === "ONE" /* LoopType.one */)
             guildVoice.songs.shift();
         guildVoice.player.stop();
-        return interaction.editReply({ content: '✅ Successfully skipped the current song.' });
+        await interaction.editReply({ content: '✅ Successfully skipped the current song.' });
     }
 };
 const remove_song = {
@@ -887,24 +887,26 @@ const remove_song = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         const idx = interaction.options.getInteger('index') - 1;
         const res = guildVoice.removeSong(idx);
         if (res === -1) {
-            return interaction.editReply({ content: `There are only ${guildVoice.fullQueue.length} songs.` });
+            return interaction.editReply({
+                content: `There are only ${guildVoice.fullQueue.length} songs.`
+            }).then(() => { });
         }
         else if (res === 0) {
             const skip_cmd = await Utils.get_rich_cmd('skip');
             return interaction.editReply({
                 content: `Song at index ${idx + 1} is currently playing. Use ${skip_cmd} instead.`
-            });
+            }).then(() => { });
         }
-        return interaction.editReply({ content: `✅ Successfully removed song at index ${idx + 1}.` });
+        await interaction.editReply({ content: `✅ Successfully removed song at index ${idx + 1}.` });
     }
 };
 const remove = {
@@ -944,13 +946,13 @@ const vote_skip = {
         // const vote = interaction.options.getBoolean('skip')!;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const song = guildVoice.getCurrentSong();
         if (!song) {
-            return interaction.editReply({ content: 'There is no song playing.' });
+            return interaction.editReply({ content: 'There is no song playing.' }).then(() => { });
         }
-        return interaction.editReply({ content: 'This command is not implemented yet.' });
+        await interaction.editReply({ content: 'This command is not implemented yet.' });
     }
 };
 const vote = {
@@ -980,14 +982,14 @@ const restart = {
             return;
         const guildVoice = client_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply);
+            return interaction.editReply(reply).then(() => { });
         if (!guildVoice.fullQueue.length) {
-            return interaction.editReply({ content: 'There is no queue.' });
+            return interaction.editReply({ content: 'There is no queue.' }).then(() => { });
         }
         const message = await interaction.editReply({
             content: '# Are you sure you want to restart the queue?',
@@ -1011,10 +1013,10 @@ const restart = {
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
                 playNext(interaction.guildId);
-                return i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
+                await i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             }
             else {
-                return i.editReply({ content: 'There is no queue.', components: [] });
+                await i.editReply({ content: 'There is no queue.', components: [] });
             }
         }
         else {

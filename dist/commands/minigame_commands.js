@@ -159,7 +159,7 @@ const guess_number = {
         const ret = on_cd(rich_cmd, cd);
         // Exists embeds to send.
         if (ret.embeds)
-            return interaction.editReply(ret);
+            return interaction.editReply(ret).then(() => { });
         // Generate a random number from 1 to 10.
         const embed = new discord_js_1.EmbedBuilder();
         const num = Math.floor(Math.random() * 10) + 1;
@@ -200,13 +200,13 @@ const guess_number = {
                 description: `(Pssst try ${daily_cmd})`,
                 color: discord_js_1.Colors.Red
             });
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${client.bot_emojis.brons}`)
             .setDescription(this.cds.get(interaction.user.id).tries_left())
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
-        return interaction.editReply({ embeds: [embed], files: [`files/${num}.png`] });
+        await interaction.editReply({ embeds: [embed], files: [`files/${num}.png`] });
     }
 };
 // Guess Character here
@@ -311,7 +311,7 @@ exports.flip = {
         const cd = this.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
         if (ret.embeds)
-            return interaction.editReply(ret);
+            return interaction.editReply(ret).then(() => { });
         const cmd = interaction.options.getSubcommand();
         const [embed, files, success] = await generate_flip(client, interaction, cmd, bet);
         if (!success) {
@@ -324,10 +324,10 @@ exports.flip = {
                 description: `(Pssst try ${daily_cmd})`,
                 color: discord_js_1.Colors.Red
             });
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setDescription(cd.tries_left());
-        return interaction.editReply({ embeds: [embed], files });
+        await interaction.editReply({ embeds: [embed], files });
     }
 };
 //# sourceMappingURL=minigame_commands.js.map

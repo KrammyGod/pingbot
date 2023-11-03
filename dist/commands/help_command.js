@@ -83,7 +83,7 @@ async function get_results_category(client, interaction, choices) {
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    Utils.deleteEphemeralMessage(interaction, message);
+    Utils.delete_ephemeral_message(interaction, message);
     return res;
 }
 async function get_results_cmd(client, interaction, search) {
@@ -172,7 +172,7 @@ async function get_results_cmd(client, interaction, search) {
             return null;
         return choices[parseInt(i.values[0])];
     }).catch(() => null);
-    Utils.deleteEphemeralMessage(interaction, message);
+    Utils.delete_ephemeral_message(interaction, message);
     return res;
 }
 async function get_cog_page(client, authorID, page) {
@@ -397,7 +397,7 @@ exports.help = {
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
                         ephemeral: true
-                    });
+                    }).then(() => { });
                 }
                 else if (cmdName === 'cog') {
                     return interaction.reply({
@@ -409,7 +409,7 @@ exports.help = {
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
                         ephemeral: true
-                    });
+                    }).then(() => { });
                 }
                 else {
                     throw new Error(`Command type: ${cmdName} not found.`);
@@ -421,7 +421,7 @@ exports.help = {
         }
         await interaction.deferUpdate();
         const { embeds, components } = await get_cog_page(client, interaction.user.id, val);
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
     async textInput(interaction, client) {
         const [cmdName] = interaction.customId.split('/').splice(1);
@@ -437,18 +437,18 @@ exports.help = {
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
                         color: discord_js_1.Colors.Red
                     });
-                    return interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
                 }
                 const { embeds, components, followUp } = await get_cog_page(client, interaction.user.id, client.cogs.indexOf(category) + 1);
                 await interaction.editReply({ embeds, components });
                 if (followUp)
-                    return interaction.followUp(followUp);
+                    await interaction.followUp(followUp);
             }
             else {
                 const { embeds, components, followUp } = await get_cog_page(client, interaction.user.id, page);
                 await interaction.editReply({ embeds, components });
                 if (followUp)
-                    return interaction.followUp(followUp);
+                    await interaction.followUp(followUp);
             }
         }
         else if (cmdName === 'cmd') {
@@ -459,10 +459,10 @@ exports.help = {
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red
                 });
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
             }
             const res = await get_cmd_page(client, interaction.user.id, command);
-            return interaction.editReply(res);
+            await interaction.editReply(res);
         }
         else {
             throw new Error(`Command type: ${cmdName} not found.`);
@@ -491,7 +491,7 @@ exports.help = {
                     title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red
                 });
-                return interaction.editReply({ embeds: [error_embed] });
+                return interaction.editReply({ embeds: [error_embed] }).then(() => { });
             }
             res = await get_cmd_page(client, interaction.user.id, command);
         }
@@ -516,7 +516,7 @@ exports.help = {
             res = await get_cog_page(client, interaction.user.id, 1);
         }
         const { embeds, components } = res;
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     }
 };
 //# sourceMappingURL=help_command.js.map
