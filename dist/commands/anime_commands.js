@@ -2470,7 +2470,7 @@ exports.submit = {
             components: [this.secretButtons]
         });
         new_submission.mid = msg.id;
-        await this.cache.set(msg.id, new_submission);
+        return this.cache.set(msg.id, new_submission);
     },
     async searchWaifu(interaction, embed) {
         await interaction.deferUpdate();
@@ -2549,7 +2549,8 @@ exports.submit = {
         modalInput.components[4].components[0].setValue(data.nimg.join('\n'));
         return interaction.showModal(modalInput);
     },
-    async startSelector(interaction, img, nimg) {
+    async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const embed = new discord_js_1.EmbedBuilder({
             title: 'No Selection',
             description: 'Click select now to start an empty submission.',
@@ -2592,7 +2593,8 @@ exports.submit = {
             ]
         });
         const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
-        let waifu = { img, nimg };
+        // Can be changed for img/nimg input with command.
+        let waifu = { img: [], nimg: [] };
         let id = 0;
         message.createMessageComponentCollector({
             componentType: discord_js_1.ComponentType.Button,
@@ -2695,10 +2697,6 @@ exports.submit = {
                 throw new Error('Unknown button pressed.');
             }
         });
-    },
-    async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
-        return this.startSelector(interaction, [], []);
     }
 };
 //# sourceMappingURL=anime_commands.js.map
