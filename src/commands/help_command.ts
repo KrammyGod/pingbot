@@ -70,7 +70,7 @@ async function get_results_category(
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    Utils.deleteEphemeralMessage(interaction, message);
+    Utils.delete_ephemeral_message(interaction, message);
     return res;
 }
 
@@ -162,7 +162,7 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
             if (i.values[0] === '-1') return null;
             return choices[parseInt(i.values[0])];
         }).catch(() => null);
-    Utils.deleteEphemeralMessage(interaction, message);
+    Utils.delete_ephemeral_message(interaction, message);
     return res;
 }
 
@@ -421,7 +421,7 @@ export const help: SlashCommand = {
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
                         ephemeral: true
-                    });
+                    }).then(() => { });
                 } else if (cmdName === 'cog') {
                     return interaction.reply({
                         content:
@@ -433,7 +433,7 @@ export const help: SlashCommand = {
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
                         ephemeral: true
-                    });
+                    }).then(() => { });
                 } else {
                     throw new Error(`Command type: ${cmdName} not found.`);
                 }
@@ -443,7 +443,7 @@ export const help: SlashCommand = {
         }
         await interaction.deferUpdate();
         const { embeds, components } = await get_cog_page(client, interaction.user.id, val);
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     },
 
     async textInput(interaction, client) {
@@ -467,19 +467,19 @@ export const help: SlashCommand = {
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
                         color: Colors.Red
                     });
-                    return interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
                 }
                 const { embeds, components, followUp } = await get_cog_page(
                     client, interaction.user.id, client.cogs.indexOf(category) + 1
                 );
                 await interaction.editReply({ embeds, components });
-                if (followUp) return interaction.followUp(followUp);
+                if (followUp) await interaction.followUp(followUp);
             } else {
                 const { embeds, components, followUp } = await get_cog_page(
                     client, interaction.user.id, page
                 );
                 await interaction.editReply({ embeds, components });
-                if (followUp) return interaction.followUp(followUp);
+                if (followUp) await interaction.followUp(followUp);
             }
         } else if (cmdName === 'cmd') {
             const command = await get_results_cmd(client, interaction, value);
@@ -489,10 +489,10 @@ export const help: SlashCommand = {
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
                     color: Colors.Red
                 });
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
             }
             const res = await get_cmd_page(client, interaction.user.id, command);
-            return interaction.editReply(res);
+            await interaction.editReply(res);
         } else {
             throw new Error(`Command type: ${cmdName} not found.`);
         }
@@ -520,7 +520,7 @@ export const help: SlashCommand = {
                     title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
                     color: Colors.Red
                 });
-                return interaction.editReply({ embeds: [error_embed] });
+                return interaction.editReply({ embeds: [error_embed] }).then(() => { });
             }
             res = await get_cmd_page(client, interaction.user.id, command);
         } else if (categoryName) {
@@ -547,6 +547,6 @@ export const help: SlashCommand = {
             res = await get_cog_page(client, interaction.user.id, 1);
         }
         const { embeds, components } = res;
-        return interaction.editReply({ embeds, components });
+        await interaction.editReply({ embeds, components });
     }
 };
