@@ -1204,5 +1204,5 @@ export function deleteLocalData(id?: string) {
     return query(
         'DELETE FROM local_data WHERE id = $1',
         [id]
-    ).then(() => { }).catch(() => { });
+    ).then(() => { }, () => { });
 }

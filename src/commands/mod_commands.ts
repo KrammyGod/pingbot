@@ -56,7 +56,7 @@ export const purge: SlashCommand & PurgePrivates = {
         const amt = interaction.options.getString('amount', true);
         const amount = parseInt(amt);
         if (amt.toLowerCase() !== 'all' && (isNaN(amount) || amount <= 0)) {
-            return interaction.editReply({ content: 'Enter a positive number.' });
+            return interaction.editReply({ content: 'Enter a positive number.' }).then(() => { });
         }
         const user = interaction.options.getUser('user');
 
@@ -65,23 +65,23 @@ export const purge: SlashCommand & PurgePrivates = {
         if (interaction.channel!.isDMBased()) {
             // DMs
             if (isNaN(amount)) {
-                return interaction.editReply({ content: "Can't delete all messages in DMs." });
+                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => { });
             }
             const deleted = await Utils.purge_from_dm(interaction.channel, amount);
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
-                .then(m => { setTimeout(() => Utils.deleteEphemeralMessage(interaction, m), 3000); });
+                .then(m => { setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000); });
         } else if (!interaction.channel!.permissionsFor(interaction.member!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: 'You do not have permission to purge.\n' +
                     'You need the `Manage Messages` permission.'
-            });
+            }).then(() => { });
         } else if (!interaction.channel!.permissionsFor(interaction.guild!.members.me!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: "I don't have permission to purge.\n" +
                     'I need the `Manage Messages` permission.'
-            });
+            }).then(() => { });
         }
 
         // Purge all, or anything over 100 messages, really
@@ -139,8 +139,8 @@ export const purge: SlashCommand & PurgePrivates = {
         const user_filter = (m: DTypes.Message) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
         const deleted = await Utils.purge_from_channel(interaction.channel!, amount, user_filter);
-        await Utils.deleteEphemeralMessage(interaction, message);
-        return interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
+        await Utils.delete_ephemeral_message(interaction, message);
+        await interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
     }
 };
