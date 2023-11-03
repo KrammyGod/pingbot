@@ -2411,11 +2411,6 @@ type SubmitPrivates = {
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
-    startSelector: (
-        interaction: DTypes.CommandInteraction,
-        img: string[],
-        nimg: string[]
-    ) => Promise<void>
     startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu) => Promise<void>;
 };
 export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
@@ -2743,7 +2738,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             components: [this.secretButtons]
         });
         new_submission.mid = msg.id;
-        await this.cache.set(msg.id, new_submission);
+        return this.cache.set(msg.id, new_submission);
     },
 
     async searchWaifu(interaction, embed) {
@@ -2833,7 +2828,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         return interaction.showModal(modalInput);
     },
 
-    async startSelector(interaction, img, nimg) {
+    async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const embed = new EmbedBuilder({
             title: 'No Selection',
             description: 'Click select now to start an empty submission.',
@@ -2876,7 +2872,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             ]
         });
         const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
-        let waifu: ImpartialWaifu = { img, nimg };
+        // Can be changed for img/nimg input with command.
+        let waifu: ImpartialWaifu = { img: [], nimg: [] };
         let id = 0;
         message.createMessageComponentCollector({
             componentType: ComponentType.Button,
@@ -2971,10 +2968,5 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 throw new Error('Unknown button pressed.');
             }
         });
-    },
-
-    async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
-        return this.startSelector(interaction, [], []);
     }
 };
