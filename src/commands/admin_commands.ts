@@ -129,7 +129,7 @@ export const resetdb: MessageCommand = {
         await reset();
         return message.channel.send({
             content: 'Successfully reset.'
-        }).then(msg => msg.delete().then(() => { }).catch(() => { }));
+        }).then(msg => msg.delete().then(() => { }, () => { }));
     }
 };
 

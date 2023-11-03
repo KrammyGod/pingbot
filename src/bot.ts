@@ -482,7 +482,7 @@ function cleanup() {
         'music for you again in a few moments.';
     const promises = [DB.end(), client.destroy()];
     for (const guildVoice of GuildVoices.values()) {
-        promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }).catch(() => { }));
+        promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }, () => { }));
         guildVoice.destroy();
     }
     Promise.all(promises).then(() => {
