@@ -31,6 +31,7 @@ const path_1 = __importDefault(require("path"));
 const load_commands_1 = __importDefault(require("./modules/load_commands"));
 const _config_1 = __importDefault(require("./classes/config.js"));
 const DB = __importStar(require("./modules/database"));
+const util_1 = require("util");
 const utils_1 = require("./modules/utils");
 const exceptions_1 = require("./classes/exceptions");
 const client_1 = require("./classes/client");
@@ -338,7 +339,7 @@ function handle_error(err, opts = {}) {
     console.error(err);
     // Send the error to the log channel and don't log when testing
     if (!_config_1.default.testing && client.is_ready) {
-        const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
+        const err_str = (0, util_1.inspect)(err).replaceAll('```', '\\`\\`\\`');
         let nameCommand = commandName ? `\`${commandName}\`` : commandName;
         if (nameCommand && interaction) {
             // Using this to include subcommands and subcommand groups for slash commands
