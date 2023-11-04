@@ -333,7 +333,7 @@ type ErrorOpts = {
 function handle_error(err: Error, opts: ErrorOpts = {}) {
     const { commandName, interaction, message } = opts;
     // Log the error
-    console.error(err.stack);
+    console.error(err);
     // Send the error to the log channel and don't log when testing
     if (!config.testing && client.is_ready) {
         const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
