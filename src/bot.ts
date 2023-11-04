@@ -3,6 +3,7 @@ import path from 'path';
 import load from '@modules/load_commands';
 import config from '@config';
 import * as DB from '@modules/database';
+import { inspect } from 'util';
 import { convert_emoji } from '@modules/utils';
 import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
 import { CustomClient, GuildVoices, InteractionCommand, isContextCommand, isSlashCommand } from '@classes/client';
@@ -336,7 +337,7 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
     console.error(err);
     // Send the error to the log channel and don't log when testing
     if (!config.testing && client.is_ready) {
-        const err_str = err.stack?.replaceAll('```', '\\`\\`\\`') ?? 'No stack trace available.';
+        const err_str = inspect(err).replaceAll('```', '\\`\\`\\`');
         let nameCommand = commandName ? `\`${commandName}\`` : commandName;
         if (nameCommand && interaction) {
             // Using this to include subcommands and subcommand groups for slash commands
