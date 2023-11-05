@@ -165,7 +165,8 @@ const join: SlashSubcommand = {
         // This should never be true, but typescript is screaming.
         if (channel.isDMBased()) return;
         const voiceChannel = member.voice.channel!;
-        let guildVoice = GuildVoices.get(interaction.guildId!);
+        const guildID = interaction.guildId!;
+        let guildVoice = GuildVoices.get(guildID);
 
         const permissions = voiceChannel.permissionsFor(me);
         if (!permissions.has(PermissionsBitField.Flags.Connect) || !permissions.has(PermissionsBitField.Flags.Speak)) {
@@ -183,17 +184,20 @@ const join: SlashSubcommand = {
             return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` }).then(() => { });
         } else {
             guildVoice = new GuildVoice(channel, voiceChannel, member);
-            GuildVoices.set(interaction.guildId!, guildVoice);
+            GuildVoices.set(guildID, guildVoice);
             // Register listener for when song ends
             guildVoice.player.on(AudioPlayerStatus.Idle, () => {
+                // Allows us to release the guildVoice object.
+                const guildVoice = GuildVoices.get(guildID);
+                if (!guildVoice) return;
                 // Leave if host is self, which means nobody is listening.
-                if (guildVoice!.host.id === me.user.id) {
-                    guildVoice!.destroy();
-                    return guildVoice!.textChannel.send({
-                        content: `No one wants to listen to me in ${guildVoice!.voiceChannel} so I'm leaving... 😭`
+                if (guildVoice.host.id === me.user.id) {
+                    guildVoice.destroy();
+                    return guildVoice.textChannel.send({
+                        content: `No one wants to listen to me in ${guildVoice.voiceChannel} so I'm leaving... 😭`
                     }).then(() => { });
                 }
-                return playNext(guildVoice!.voiceChannel.guildId);
+                return playNext(guildVoice.voiceChannel.guildId);
             });
         }
 
