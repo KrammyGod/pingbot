@@ -1437,6 +1437,7 @@ const listHelpers = {
                         `🔄: ${high ? 'Swap to normal list' : 'Swap to list sorted by highest upgradable waifus'}`,
                     ephemeral: true
                 });
+                return;
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
@@ -2565,10 +2566,9 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             `Normal Images: ${img.length}\nLewd Images: ${nimg.length}` + '```';
 
         if (action === 'reject') {
-            let id = 0;
             const input = new ModalBuilder({
                 title: 'Add new character',
-                customId: `submitRejectReason${id++}`, // Fixes a specific bug
+                customId: 'submitRejectReason',
                 components: [
                     new ActionRowBuilder<DTypes.TextInputBuilder>({
                         components: [new TextInputBuilder({
@@ -2642,7 +2642,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                         `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
-            return msg.delete().then(() => { });
+            await msg.delete();
         } else if (action === 'upload') {
             await interaction.update({ components: [] });
             // All image uploads go here.
@@ -2676,11 +2676,12 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = await this.getWaifuInfoEmbed(submission);
-            return interaction.editReply({ embeds: [embed], components: [this.secretButtons] }).then(() => { });
+            await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         } else if (action === 'edit') {
             return this.startSubmit(interaction, { name, gender, origin, img, nimg });
+        } else {
+            throw new Error(`No action found for button with custom id: ${interaction.customId}`);
         }
-        throw new Error(`No action found for button with custom id: ${interaction.customId}`);
     },
 
     async textInput(interaction, client) {
