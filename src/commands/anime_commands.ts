@@ -1437,6 +1437,7 @@ const listHelpers = {
                         `🔄: ${high ? 'Swap to normal list' : 'Swap to list sorted by highest upgradable waifus'}`,
                     ephemeral: true
                 });
+                return;
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
@@ -1696,26 +1697,26 @@ async function generateCharacterDisplay(
     let add_on = '';
     let add_emoji = ' 🆕';
     if (!character.new) {
+        add_emoji = ' 🆒';
         // CONSTANT: Refund brons
         refund = character.fc ? 2 : 1;
-        const refund_str = `+${refund} ${client.bot_emojis.brons}`;
-        add_emoji = ` 🆒 ${refund_str}`;
+        add_on = `**Received +${refund} ${client.bot_emojis.brons}**\n`;
         if (character.lvl > 1) {
-            add_emoji = ` 🆙 ${refund_str}`;
-            add_on = `**Reached level ${character.lvl}!**\n`;
+            add_emoji = ' 🆙';
+            add_on += `**Lvl (${character.lvl - 1} -> ${character.lvl})**\n`;
             // Unlocked new img
             if (character.max_img <= character.waifu!.img.length) {
                 add_on += 'You unlocked a new image! 🎉\n';
-                add_on += 'Find the waifu to switch the image!\n';
+                add_on += 'Find the character to switch the image!\n';
             }
             // Lewd mode available
             if (character.unlockedNMode) {
                 add_on += 'You unlocked a new mode! 🎉\n';
-                add_on += 'Find the waifu to switch to lewd mode!\n';
+                add_on += 'Find the character to switch to lewd mode!\n';
             // Unlocked new nimg
             } else if (character.max_nimg <= character.waifu!.nimg.length) {
                 add_on += 'You unlocked a new lewd image! 🎉\n';
-                add_on += 'Use lewd mode on the waifu to switch the image!\n';
+                add_on += 'Use lewd mode on the character to switch the image!\n';
             }
         }
     }
@@ -2411,88 +2412,11 @@ type SubmitPrivates = {
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
-    startSelector: (
-        interaction: DTypes.CommandInteraction,
-        img: string[],
-        nimg: string[]
-    ) => Promise<void>
     startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu) => Promise<void>;
 };
 export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
     data: new SlashCommandBuilder()
         .setName('submit')
-        .addAttachmentOption(option =>
-            option
-                .setName('image1')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image2')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image3')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image4')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image5')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image6')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image7')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image8')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('image9')
-                .setDescription('The image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd1')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd2')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd3')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd4')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd5')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd6')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd7')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd8')
-                .setDescription('The lewd image of the character.'))
-        .addAttachmentOption(option =>
-            option
-                .setName('lewd9')
-                .setDescription('The lewd image of the character.'))
         .setDescription('Create a submission request to add a character.'),
 
     desc: 'Want to add a character that is not currently in the starred database?\n' +
@@ -2503,14 +2427,9 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
           '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
           "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
           '4. If its a new character, the character must have at least **one normal image**.\n' +
-          '5. Optionally, if you would like, you can add a file to the `image` option or `lewd` option (up to 9).\n' +
-          'These links will then be prepopulated in the modal. **DO NOT CHANGE THESE.**\n\n' +
-          'Note that you can only submit one file per option at time. This is a discord limitation.\n\n' +
-          'Usage: `/submit image(1-9): [file] lewd(1-9): [file]`\n\n' +
-          '__**Options**__\n' +
-          '*image(1-9):* The normal image(s) to add to the character.\n' +
-          '*lewd(1-9):* The lewd image(s) to add to the character.\n\n' +
-          'Examples: `/submit`, `/submit image1: girl.png image2: girl2.png lewd1: girllewd.png`',
+          'When using submit character or anime, values will be prepopulated in the modal. ' +
+          '**DO NOT CHANGE THESE.**\n\n' +
+          'Usage: `/submit`',
 
     // We can't use this.data.name
     cache: new DB.Cache('submit'),
@@ -2647,10 +2566,9 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             `Normal Images: ${img.length}\nLewd Images: ${nimg.length}` + '```';
 
         if (action === 'reject') {
-            let id = 0;
             const input = new ModalBuilder({
                 title: 'Add new character',
-                customId: `submitRejectReason${id++}`, // Fixes a specific bug
+                customId: 'submitRejectReason',
                 components: [
                     new ActionRowBuilder<DTypes.TextInputBuilder>({
                         components: [new TextInputBuilder({
@@ -2724,7 +2642,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                         `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
-            return msg.delete().then(() => { });
+            await msg.delete();
         } else if (action === 'upload') {
             await interaction.update({ components: [] });
             // All image uploads go here.
@@ -2758,11 +2676,12 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
             const embed = await this.getWaifuInfoEmbed(submission);
-            return interaction.editReply({ embeds: [embed], components: [this.secretButtons] }).then(() => { });
+            await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         } else if (action === 'edit') {
             return this.startSubmit(interaction, { name, gender, origin, img, nimg });
+        } else {
+            throw new Error(`No action found for button with custom id: ${interaction.customId}`);
         }
-        throw new Error(`No action found for button with custom id: ${interaction.customId}`);
     },
 
     async textInput(interaction, client) {
@@ -2820,7 +2739,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             components: [this.secretButtons]
         });
         new_submission.mid = msg.id;
-        await this.cache.set(msg.id, new_submission);
+        return this.cache.set(msg.id, new_submission);
     },
 
     async searchWaifu(interaction, embed) {
@@ -2910,7 +2829,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         return interaction.showModal(modalInput);
     },
 
-    async startSelector(interaction, img, nimg) {
+    async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const embed = new EmbedBuilder({
             title: 'No Selection',
             description: 'Click select now to start an empty submission.',
@@ -2953,7 +2873,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             ]
         });
         const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
-        let waifu: ImpartialWaifu = { img, nimg };
+        // Can be changed for img/nimg input with command.
+        let waifu: ImpartialWaifu = { img: [], nimg: [] };
         let id = 0;
         message.createMessageComponentCollector({
             componentType: ComponentType.Button,
@@ -2962,8 +2883,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
                 return this.startSubmit(i, waifu);
-            }
-            if (i.customId === 'searchWaifu') {
+            } else if (i.customId === 'searchWaifu') {
                 // Search for waifu
                 const modal = new ModalBuilder({
                     title: 'Waifu Search',
@@ -3049,20 +2969,5 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 throw new Error('Unknown button pressed.');
             }
         });
-    },
-
-    async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
-        const img = [];
-        for (let i = 0; i < 9; ++i) {
-            const attachment = interaction.options.getAttachment(`image${i + 1}`);
-            if (attachment) img.push(attachment.url);
-        }
-        const nimg = [];
-        for (let i = 0; i < 9; ++i) {
-            const attachment = interaction.options.getAttachment(`lewd${i + 1}`);
-            if (attachment) nimg.push(attachment.url);
-        }
-        return this.startSelector(interaction, img, nimg);
     }
 };
