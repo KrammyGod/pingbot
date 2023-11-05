@@ -153,37 +153,37 @@ async function upload() {
         }
     }
     console.log(`Modifying ${modified.length} waifus...`);
-    for (const modify of modified) {
-        console.log(findDiff(modify.old, modify.updated));
+    for (const { old, updated } of modified) {
+        console.log(findDiff(old, updated));
         await query(client, `
             UPDATE waifus SET name = $1, gender = $2, origin = $3, img = $4, nimg = $5
             WHERE iid = $6
         `, [
-            modify.updated.name, modify.updated.gender, modify.updated.origin,
-            modify.updated.img, modify.updated.nimg, modify.old.iid
+            updated.name, updated.gender, updated.origin,
+            updated.img, updated.nimg, old.iid
         ]);
         // Deleting imgs
-        if (modify.old.img.length > modify.updated.img.length) {
+        if (old.img.length > updated.img.length) {
             const res = await query(
                 client,
                 'UPDATE user_chars SET _img = $1 WHERE _img > $1 AND wid = $2 RETURNING *',
-                [modify.updated.img.length, modify.old.wid]
+                [updated.img.length, old.wid]
             );
             if (res.length) {
                 console.log(imgDiff(res, 'normal image changed'));
             }
         }
         // Deleting nimgs
-        if (modify.old.nimg.length > modify.updated.nimg.length) {
+        if (old.nimg.length > updated.nimg.length) {
             const res = await query(
                 client,
                 'UPDATE user_chars SET _nimg = $1 WHERE _nimg > $1 AND wid = $2 RETURNING *',
-                [modify.updated.nimg.length, modify.old.wid]
+                [updated.nimg.length, old.wid]
             );
             if (res.length) {
                 console.log(imgDiff(res, 'lewd image changed'));
             }
-        } else if (modify.old.nimg.length !== 0 && modify.updated.nimg.length === 0) {
+        } else if (old.nimg.length !== 0 && updated.nimg.length === 0) {
             // All nimg deleted, remove nsfw from everyone
             const res = await query(
                 client,
@@ -191,7 +191,7 @@ async function upload() {
                 SET _nimg = 1, nsfw = FALSE
                 WHERE wid = $1 AND
                 (nsfw OR _nimg > 1) RETURNING *`,
-                [modify.old.wid]
+                [old.wid]
             );
             if (res.length) {
                 console.log(imgDiff(res, 'lewd image reset'));
@@ -204,9 +204,8 @@ async function upload() {
         input: process.stdin,
         output: process.stdout
     });
-    const ans = await confirm.question('Confirm upload? (y/n) ').catch(() => 'n');
+    const confirmed = await confirm.question('Confirm upload? (y/n) ').then(ans => ans === 'y', () => false);
     confirm.close();
-    const confirmed = ans === 'y';
     if (!confirmed) {
         console.log('Cancelled. Exiting...');
     } else {
