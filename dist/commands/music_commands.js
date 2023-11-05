@@ -177,7 +177,8 @@ const join = {
         if (channel.isDMBased())
             return;
         const voiceChannel = member.voice.channel;
-        let guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildID = interaction.guildId;
+        let guildVoice = client_1.GuildVoices.get(guildID);
         const permissions = voiceChannel.permissionsFor(me);
         if (!permissions.has(discord_js_1.PermissionsBitField.Flags.Connect) || !permissions.has(discord_js_1.PermissionsBitField.Flags.Speak)) {
             return interaction.editReply({
@@ -195,9 +196,13 @@ const join = {
         }
         else {
             guildVoice = new GuildVoice_1.default(channel, voiceChannel, member);
-            client_1.GuildVoices.set(interaction.guildId, guildVoice);
+            client_1.GuildVoices.set(guildID, guildVoice);
             // Register listener for when song ends
             guildVoice.player.on(voice_1.AudioPlayerStatus.Idle, () => {
+                // Allows us to release the guildVoice object.
+                const guildVoice = client_1.GuildVoices.get(guildID);
+                if (!guildVoice)
+                    return;
                 // Leave if host is self, which means nobody is listening.
                 if (guildVoice.host.id === me.user.id) {
                     guildVoice.destroy();
