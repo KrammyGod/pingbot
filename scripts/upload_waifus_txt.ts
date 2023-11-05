@@ -4,8 +4,8 @@
  */
 import 'dotenv/config';
 import * as fs from 'fs';
-import * as rl from 'readline';
-import { Pool, QueryResultRow } from 'pg';
+import * as rl from 'readline/promises';
+import { Pool, PoolClient, QueryResultRow } from 'pg';
 
 // The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
@@ -71,8 +71,24 @@ class Waifu {
 
 // Not const because we upload to test database first, and then confirm for production
 let pool = new Pool();
-function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
-    return pool.query<R, I[]>(query, values).then(res => res.rows);
+function getClient() {
+    return pool.connect().then(client => {
+        return client.query('BEGIN').then(() => client);
+    });
+}
+function releaseClient(client: PoolClient, revert: boolean) {
+    const releaseClient = () => client.release();
+    if (revert) {
+        return client.query('ROLLBACK').then(releaseClient, releaseClient);
+    }
+    return client.query('COMMIT').then(releaseClient, releaseClient);
+}
+function query<R extends QueryResultRow = QueryResultRow, I = unknown>(
+    client: PoolClient,
+    query: string,
+    values?: I[]
+) {
+    return client.query<R, I[]>(query, values).then(res => res.rows);
 }
 
 function loadFromFile() {
@@ -119,7 +135,9 @@ function imgDiff(rows: QueryResultRow[], img_type: string) {
 }
 
 async function upload() {
-    const database_waifus = await query(`
+    const client = await getClient();
+
+    const database_waifus = await query(client, `
         SELECT * FROM
             waifus
             NATURAL JOIN
@@ -137,7 +155,7 @@ async function upload() {
     console.log(`Modifying ${modified.length} waifus...`);
     for (const modify of modified) {
         console.log(findDiff(modify.old, modify.updated));
-        await query(`
+        await query(client, `
             UPDATE waifus SET name = $1, gender = $2, origin = $3, img = $4, nimg = $5
             WHERE iid = $6
         `, [
@@ -147,6 +165,7 @@ async function upload() {
         // Deleting imgs
         if (modify.old.img.length > modify.updated.img.length) {
             const res = await query(
+                client,
                 'UPDATE user_chars SET _img = $1 WHERE _img > $1 AND wid = $2 RETURNING *',
                 [modify.updated.img.length, modify.old.wid]
             );
@@ -157,6 +176,7 @@ async function upload() {
         // Deleting nimgs
         if (modify.old.nimg.length > modify.updated.nimg.length) {
             const res = await query(
+                client,
                 'UPDATE user_chars SET _nimg = $1 WHERE _nimg > $1 AND wid = $2 RETURNING *',
                 [modify.updated.nimg.length, modify.old.wid]
             );
@@ -166,6 +186,7 @@ async function upload() {
         } else if (modify.old.nimg.length !== 0 && modify.updated.nimg.length === 0) {
             // All nimg deleted, remove nsfw from everyone
             const res = await query(
+                client,
                 `UPDATE user_chars
                 SET _nimg = 1, nsfw = FALSE
                 WHERE wid = $1 AND
@@ -177,32 +198,31 @@ async function upload() {
             }
         }
     }
-    return query('REFRESH MATERIALIZED VIEW chars');
+    await query(client, 'REFRESH MATERIALIZED VIEW chars');
+
+    const confirm = rl.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    const ans = await confirm.question('Confirm upload? (y/n) ').catch(() => 'n');
+    confirm.close();
+    const confirmed = ans === 'y';
+    if (!confirmed) {
+        console.log('Cancelled. Exiting...');
+    } else {
+        console.log('Confirmed, uploading...\n');
+    }
+
+    await releaseClient(client, !confirmed);
+    return pool.end().then(() => confirmed);
 }
 
 if (require.main === module) {
-    upload().then(() => {
-        const confirm = rl.createInterface({
-            input: process.stdin,
-            output: process.stdout
+    upload().then(cont => {
+        if (!cont) return;
+        pool = new Pool({
+            host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
         });
-        // This is why you use promises, kids.
-        confirm.question('Confirm upload to production database? (y/n) ', ans => {
-            confirm.close();
-            if (ans === 'y') {
-                console.log('Confirmed, uploading...');
-                pool.end().then(() => {
-                    pool = new Pool({
-                        host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
-                    });
-                    upload().then(() => {
-                        pool.end();
-                    });
-                });
-            } else {
-                console.log('Cancelled. Exiting...');
-                pool.end();
-            }
-        });
+        return upload();
     });
 }
