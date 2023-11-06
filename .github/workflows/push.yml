@@ -63,9 +63,8 @@ jobs:
           git push
 
   publish:
-    needs: [lint, build]
+    needs: build
     runs-on: ubuntu-latest
-    environment: Production
     permissions:
       contents: write
 

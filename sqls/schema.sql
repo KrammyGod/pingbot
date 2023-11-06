@@ -3,7 +3,7 @@
 
 CREATE TYPE gend AS ENUM ('Male', 'Female', 'Unknown');
 
-CREATE TABLE commons (
+CREATE TABLE IF NOT EXISTS commons (
     iid bigint PRIMARY KEY,
     name text NOT NULL,
     gender gend NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE commons (
 CREATE INDEX ON commons (name);
 CREATE INDEX ON commons (origin);
 
-CREATE TABLE completed_series (
+CREATE TABLE IF NOT EXISTS completed_series (
     uid bigint NOT NULL REFERENCES user_info ON DELETE CASCADE,
     origin text NOT NULL,
     count int NOT NULL
@@ -39,7 +39,7 @@ FOR EACH ROW
 EXECUTE PROCEDURE check_valid_cnt();
 
 -- HoyoLab autocollect emoji mapping
-CREATE TABLE emojis (
+CREATE TABLE IF NOT EXISTS emojis (
     name text PRIMARY KEY,
     emoji text NOT NULL
 );
@@ -48,7 +48,7 @@ CREATE TABLE emojis (
 -- Checkin will do a checkin silently
 -- None will not attempt checkin
 CREATE TYPE checkin_type AS ENUM ('none', 'checkin', 'notify');
-CREATE TABLE hoyolab_cookies_list (
+CREATE TABLE IF NOT EXISTS hoyolab_cookies_list (
     idx bigint GENERATED ALWAYS AS IDENTITY,
     id bigint NOT NULL,
     cookie text NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE hoyolab_cookies_list (
     PRIMARY KEY (id, cookie)
 );
 
-CREATE TABLE guess_info (
+CREATE TABLE IF NOT EXISTS guess_info (
     uid bigint PRIMARY KEY,
     easy_max_streak int NOT NULL DEFAULT 0,
     easy_streak int NOT NULL DEFAULT 0,
@@ -92,7 +92,7 @@ FOR EACH ROW
 EXECUTE PROCEDURE update_max_streak();
 
 -- Table to store guild welcome settings
-CREATE TABLE guild_new_member (
+CREATE TABLE IF NOT EXISTS guild_new_member (
     gid bigint PRIMARY KEY,
     msg text,
     roleid bigint,
@@ -100,7 +100,7 @@ CREATE TABLE guild_new_member (
 );
 
 -- Table to store temporary data for any command
-CREATE TABLE local_data (
+CREATE TABLE IF NOT EXISTS local_data (
     cmd text NOT NULL,
     id text NOT NULL,
     data jsonb NOT NULL,
@@ -109,14 +109,14 @@ CREATE TABLE local_data (
 );
 CREATE INDEX ON local_data (id);
 
-CREATE TABLE char_mapping (
+CREATE TABLE IF NOT EXISTS char_mapping (
     wid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     iid bigint NOT NULL,
     fc boolean NOT NULL,
     UNIQUE (iid, fc)
 );
 
-CREATE TABLE user_info (
+CREATE TABLE IF NOT EXISTS user_info (
     uid bigint PRIMARY KEY,
     brons int NOT NULL,
     collected boolean NOT NULL DEFAULT TRUE,
@@ -124,7 +124,7 @@ CREATE TABLE user_info (
     CHECK (brons >= 0) -- Crucial for improved performance w/ transactions
 );
 
-CREATE TABLE waifus (
+CREATE TABLE IF NOT EXISTS waifus (
     iid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name text not null,
     gender gend not null,
@@ -137,7 +137,7 @@ CREATE TABLE waifus (
 CREATE INDEX ON waifus (name);
 CREATE INDEX ON waifus (origin);
 
-CREATE MATERIALIZED VIEW chars AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS chars AS
 -- Common chars
 SELECT D.wid, B.name, B.gender, B.origin,
     string_to_array(B.img, '') AS img, '{}' AS nimg, D.fc FROM
@@ -160,7 +160,7 @@ CREATE INDEX ON chars (fc);
 -- REFRESH MATERIALIZED VIEW chars;
 -- The above is to be done inside the code.
 
-CREATE TABLE user_chars (
+CREATE TABLE IF NOT EXISTS user_chars (
     uid bigint NOT NULL REFERENCES user_info ON DELETE CASCADE,
     wid bigint NOT NULL REFERENCES char_mapping ON DELETE CASCADE,
     lvl int NOT NULL DEFAULT 1,
