@@ -30,8 +30,26 @@ jobs:
       - name: Lint
         run: npm run lint
 
-  build:
+  cleanup:
     needs: lint
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Delete dev
+        uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: Development
+          onlyRemoveDeployments: true
+      - name: Delete prod
+        uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: Development
+          onlyRemoveDeployments: true
+
+  build:
+    needs: [lint, cleanup]
     runs-on: ubuntu-latest
     environment: Development
     permissions:
@@ -80,6 +98,7 @@ jobs:
   publish:
     needs: [lint, build]
     runs-on: ubuntu-latest
+    environment: Development
     permissions:
       contents: write
     
@@ -106,5 +125,5 @@ jobs:
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
+          DEV_DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: pm2 deploy development > /dev/null
