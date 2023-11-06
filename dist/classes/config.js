@@ -23,7 +23,7 @@ exports.default = {
     /**
      * The base url of the CDN that hosts images.
      */
-    cdn: process.env.CDN_URL,
+    cdn: 'https://d1irvsiobt1r8d.cloudfront.net',
     /**
      * The url for uploading images to AWS CDN.
      */
