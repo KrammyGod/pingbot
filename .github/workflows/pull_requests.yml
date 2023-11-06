@@ -30,26 +30,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-  cleanup:
-    needs: lint
-    runs-on: ubuntu-latest
-    permissions: write-all
-    steps:
-      - name: Delete dev
-        uses: strumwolf/delete-deployment-environment@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment: Development
-          onlyRemoveDeployments: true
-      - name: Delete prod
-        uses: strumwolf/delete-deployment-environment@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment: Development
-          onlyRemoveDeployments: true
-
   build:
-    needs: [lint, cleanup]
+    needs: lint
     runs-on: ubuntu-latest
     environment: Development
     permissions:
