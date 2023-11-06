@@ -22,7 +22,6 @@ jobs:
   build:
     needs: lint
     runs-on: ubuntu-latest
-    environment: Production
     permissions:
       contents: write
 

@@ -33,7 +33,6 @@ jobs:
   build:
     needs: lint
     runs-on: ubuntu-latest
-    environment: Development
     permissions:
       contents: write
 
@@ -60,8 +59,8 @@ jobs:
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
-          TOKEN: ${{ secrets.TOKEN }}
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          TOKEN: ${{ secrets.DEV_TOKEN }}
+          CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
         run: |
           npm run deploy
           rsync -a * .dist
