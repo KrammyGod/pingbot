@@ -9,6 +9,16 @@ import { Pool, PoolClient, QueryResultRow } from 'pg';
 
 // The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
+const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
+// Change this to change input
+const imgReplacer = (i: string) => {
+    // reverse of download_waifus_txt.ts
+    // We want to keep IDs of images to upload to database
+    if (i.startsWith(CDN_URL!)) {
+        return i.replace(`${CDN_URL}/images/`, '');
+    }
+    return i;
+};
 
 // Copied necessary stuff from database.ts
 type WaifuDetails = {
@@ -44,22 +54,8 @@ class Waifu {
         this.name = row.name;
         this.gender = row.gender;
         this.origin = row.origin;
-        this.img = row.img.map(i => {
-            // reverse of download_waifus_txt.ts
-            // We want to keep IDs of images to upload to database
-            if (i.startsWith(process.env.CDN_URL!)) {
-                return i.replace(`${process.env.CDN_URL}/images/`, '');
-            }
-            return i;
-        });
-        this.nimg = row.nimg.map(i => {
-            // reverse of download_waifus_txt.ts
-            // We want to keep IDs of images to upload to database
-            if (i.startsWith(process.env.CDN_URL!)) {
-                return i.replace(`${process.env.CDN_URL}/images/`, '');
-            }
-            return i;
-        });
+        this.img = row.img.map(imgReplacer);
+        this.nimg = row.nimg.map(imgReplacer);
     }
 
     equal(other: Waifu) {

@@ -16,6 +16,7 @@ node_modules/
 
 # Private waifus list
 waifus.txt
+waifus.csv
 
 # Build distribution directory
 dist/

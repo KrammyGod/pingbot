@@ -2,13 +2,14 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import { Pool, QueryResultRow } from 'pg';
 
+const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
 // The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
 const imgReplacer = (i: string) => {
     if (i.startsWith('https://i.imgur')) return i;
     // Just to make it look prettier, include full link
     // Change this to change output
-    return `${process.env.CDN_URL}/images/${i}`;
+    return `${CDN_URL}/images/${i}`;
 };
 
 const pool = new Pool({
