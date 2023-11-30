@@ -145,6 +145,14 @@ exports.purge = {
             return new_channel.send({ content: `${interaction.user} Purged all messages.` })
                 .then(msg => { setTimeout(() => msg.delete(), 3000); }).catch(() => { });
         }
+        else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
+            .has(discord_js_1.PermissionsBitField.Flags.ReadMessageHistory)) {
+            // Read message history required to purge specific messages
+            return interaction.editReply({
+                content: "I don't have permission to purge here.\n" +
+                    'I need the `Read Message History` permission.'
+            }).then(() => { });
+        }
         const user_filter = (m) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
         const deleted = await Utils.purge_from_channel(interaction.channel, amount, user_filter);

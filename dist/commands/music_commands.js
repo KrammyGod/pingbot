@@ -103,6 +103,9 @@ async function nowPlaying(guildId) {
     // Really this is bad, but what can I do?
     const client = new client_1.CustomClient();
     const guildVoice = client_1.GuildVoices.get(guildId);
+    // This happens if the user immediately disconnects exactly when this is called.
+    if (!guildVoice)
+        return;
     const song = guildVoice.getCurrentSong();
     const playbackTime = guildVoice.currentSongResource.playbackDuration / 1000;
     const durationLeft = song.duration - playbackTime;
@@ -147,6 +150,8 @@ async function playNext(guildId) {
     if (!getPlayNextLock(guildId))
         return;
     const guildVoice = client_1.GuildVoices.get(guildId);
+    if (!guildVoice)
+        return;
     const success = await guildVoice.playNextSong();
     releasePlayNextLock(guildId);
     if (!success) {
@@ -156,7 +161,9 @@ async function playNext(guildId) {
     }
     // Send now playing stats
     const embed = await nowPlaying(guildId);
-    await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+    if (embed) {
+        await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+    }
 }
 const join = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -211,7 +218,7 @@ const join = {
                     }).then(() => { });
                 }
                 return playNext(guildVoice.voiceChannel.guildId);
-            });
+            }).on('error', console.error);
         }
         await interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
     }
@@ -258,7 +265,9 @@ const np = {
             return interaction.editReply({ content: 'I am not playing anything.' }).then(() => { });
         }
         const embed = await nowPlaying(interaction.guildId);
-        await interaction.editReply({ embeds: [embed] });
+        if (embed) {
+            await interaction.editReply({ embeds: [embed] });
+        }
     }
 };
 const play = {
@@ -1082,8 +1091,8 @@ exports.music = {
         return subcommand.menuReact(interaction, client);
     },
     async execute(interaction, client) {
-        const subcmd = this.subcommands.get(interaction.options.getSubcommand(false) ??
-            interaction.options.getSubcommandGroup());
+        const subcmd = this.subcommands.get(interaction.options.getSubcommandGroup(false) ??
+            interaction.options.getSubcommand());
         return subcmd.execute(interaction, client);
     }
 };
