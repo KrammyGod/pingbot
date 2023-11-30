@@ -92,4 +92,4 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: pm2 deploy production > /dev/null
+        run: pm2 deploy production -f > /dev/null
