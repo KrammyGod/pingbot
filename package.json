@@ -53,11 +53,7 @@
   },
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
-    "@discordjs/voice": "^0.16.1",
     "cheerio": "^1.0.0-rc.12",
-    "chrono-node": "^2.7.3",
-    "cookie": "^0.6.0",
-    "discord.js": "^14.14.1",
     "chrono-node": "^2.7.3",
     "cookie": "^0.6.0",
     "discord.js": "^14.14.1",
