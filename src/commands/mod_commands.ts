@@ -134,6 +134,13 @@ export const purge: SlashCommand & PurgePrivates = {
             });
             return new_channel.send({ content: `${interaction.user} Purged all messages.` })
                 .then(msg => { setTimeout(() => msg.delete(), 3000); }).catch(() => { });
+        } else if (!interaction.channel!.permissionsFor(interaction.guild!.members.me!)
+            .has(PermissionsBitField.Flags.ReadMessageHistory)) {
+            // Read message history required to purge specific messages
+            return interaction.editReply({
+                content: "I don't have permission to purge here.\n" +
+                    'I need the `Read Message History` permission.'
+            }).then(() => { });
         }
 
         const user_filter = (m: DTypes.Message) => !user || m.author.id === user.id;
