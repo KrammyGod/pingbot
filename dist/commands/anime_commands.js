@@ -2222,7 +2222,7 @@ exports.submit = {
                         customId: 'gender',
                         placeholder: 'Female, Male, or Unknown',
                         style: discord_js_1.TextInputStyle.Short,
-                        maxLength: 7,
+                        maxLength: 7, // Length of "Unknown"
                         required: true
                     })]
             }),
@@ -2610,7 +2610,7 @@ exports.submit = {
                 // Search for waifu
                 const modal = new discord_js_1.ModalBuilder({
                     title: 'Waifu Search',
-                    customId: `submitSearchWaifu${id++}`,
+                    customId: `submitSearchWaifu${id++}`, // Fixes a very specific bug
                     components: [new discord_js_1.ActionRowBuilder({
                             components: [new discord_js_1.TextInputBuilder({
                                     label: "Character's name",
@@ -2650,7 +2650,7 @@ exports.submit = {
                 // Search for anime
                 const modal = new discord_js_1.ModalBuilder({
                     title: 'Anime Search',
-                    customId: `submitSearchOrigin${id++}`,
+                    customId: `submitSearchOrigin${id++}`, // Fixes a very specific bug
                     components: [new discord_js_1.ActionRowBuilder({
                             components: [new discord_js_1.TextInputBuilder({
                                     label: 'Anime name',
