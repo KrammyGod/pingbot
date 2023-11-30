@@ -125,7 +125,7 @@ export const resetdb: MessageCommand = {
 
     async execute(message) {
         message.delete();
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         await reset();
         return message.channel.send({
             content: 'Successfully reset.'
@@ -142,7 +142,7 @@ export const add: MessageCommand = {
         if (message.guild?.id !== config.guild) {
             setTimeout(() => message.delete().catch(() => { }), 200);
         }
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
 
         if (args.length < 2) {
             return message.channel.send({ content: 'Too less arguments.' })
@@ -200,7 +200,7 @@ export const upload: MessageCommand = {
             });
         }
         const res = [];
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         const all: { images: string[], source: string }[] = [];
         for (const url of args) {
             // Use our helper to get the image data.
@@ -238,7 +238,7 @@ export const update: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         const urls = args.splice(0, args.length / 2);
         const res = await updateCDN(
             urls.map(a => a.replace(`${config.cdn}/images/`, '')),
@@ -260,7 +260,7 @@ export const del: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         // Remove CDN url to get the filename
         const res = await deleteFromCDN(args.map(a => a.replace(`${config.cdn}/images/`, '')));
         await message.reply({ content: `API replied with: ${res}` });
