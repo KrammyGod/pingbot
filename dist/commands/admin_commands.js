@@ -141,7 +141,7 @@ exports.resetdb = {
     desc: 'Performs emergency reset on whales and daily.',
     async execute(message) {
         message.delete();
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         await (0, reset_db_1.default)();
         return message.channel.send({
             content: 'Successfully reset.'
@@ -156,7 +156,7 @@ exports.add = {
         if (message.guild?.id !== _config_1.default.guild) {
             setTimeout(() => message.delete().catch(() => { }), 200);
         }
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         if (args.length < 2) {
             return message.channel.send({ content: 'Too less arguments.' })
                 .then(msg => {
@@ -216,7 +216,7 @@ exports.upload = {
             });
         }
         const res = [];
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         const all = [];
         for (const url of args) {
             // Use our helper to get the image data.
@@ -253,7 +253,7 @@ exports.update = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         const urls = args.splice(0, args.length / 2);
         const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')), args // Rest of the args are new sources
         );
@@ -271,7 +271,7 @@ exports.del = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.channel.sendTyping();
+        await message.channel.sendTyping().catch(() => { });
         // Remove CDN url to get the filename
         const res = await (0, cdn_1.deleteFromCDN)(args.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')));
         await message.reply({ content: `API replied with: ${res}` });
