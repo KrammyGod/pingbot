@@ -90,7 +90,9 @@ const barLength = 13;
 async function nowPlaying(guildId: string) {
     // Really this is bad, but what can I do?
     const client = new CustomClient();
-    const guildVoice = GuildVoices.get(guildId)!;
+    const guildVoice = GuildVoices.get(guildId);
+    // This happens if the user immediately disconnects exactly when this is called.
+    if (!guildVoice) return;
     const song = guildVoice.getCurrentSong()!;
     const playbackTime = guildVoice.currentSongResource!.playbackDuration / 1000;
     const durationLeft = song.duration - playbackTime;
@@ -133,7 +135,8 @@ function releasePlayNextLock(guildId: string) {
 // This function will help play the next song in a guild
 async function playNext(guildId: string) {
     if (!getPlayNextLock(guildId)) return;
-    const guildVoice = GuildVoices.get(guildId)!;
+    const guildVoice = GuildVoices.get(guildId);
+    if (!guildVoice) return;
     const success = await guildVoice.playNextSong();
     releasePlayNextLock(guildId);
     if (!success) {
@@ -143,7 +146,9 @@ async function playNext(guildId: string) {
     }
     // Send now playing stats
     const embed = await nowPlaying(guildId);
-    await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+    if (embed) {
+        await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+    }
 }
 
 const join: SlashSubcommand = {
@@ -198,7 +203,7 @@ const join: SlashSubcommand = {
                     }).then(() => { });
                 }
                 return playNext(guildVoice.voiceChannel.guildId);
-            });
+            }).on('error', console.error);
         }
 
         await interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
@@ -249,7 +254,9 @@ const np: SlashSubcommand = {
             return interaction.editReply({ content: 'I am not playing anything.' }).then(() => { });
         }
         const embed = await nowPlaying(interaction.guildId!);
-        await interaction.editReply({ embeds: [embed] });
+        if (embed) {
+            await interaction.editReply({ embeds: [embed] });
+        }
     }
 };
 
@@ -1125,8 +1132,8 @@ export const music: SlashCommand = {
 
     async execute(interaction, client) {
         const subcmd = this.subcommands!.get(
-            interaction.options.getSubcommand(false) ??
-            interaction.options.getSubcommandGroup()!
+            interaction.options.getSubcommandGroup(false) ??
+            interaction.options.getSubcommand()!
         );
         return subcmd!.execute(interaction, client);
     }
