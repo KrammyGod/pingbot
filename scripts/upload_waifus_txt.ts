@@ -14,7 +14,7 @@ const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
 const imgReplacer = (i: string) => {
     // reverse of download_waifus_txt.ts
     // We want to keep IDs of images to upload to database
-    if (i.startsWith(CDN_URL!)) {
+    if (i.startsWith(CDN_URL)) {
         return i.replace(`${CDN_URL}/images/`, '');
     }
     return i;
