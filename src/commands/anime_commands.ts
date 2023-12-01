@@ -2412,7 +2412,7 @@ type SubmitPrivates = {
         interaction: DTypes.ModalSubmitInteraction,
         embed: DTypes.EmbedBuilder
     ) => Promise<ImpartialWaifu | undefined>;
-    startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu) => Promise<void>;
+    startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu, uid: string) => Promise<void>;
 };
 export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
     data: new SlashCommandBuilder()
@@ -2678,7 +2678,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             const embed = await this.getWaifuInfoEmbed(submission);
             await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         } else if (action === 'edit') {
-            return this.startSubmit(interaction, { name, gender, origin, img, nimg });
+            return this.startSubmit(interaction, { name, gender, origin, img, nimg }, submission.uid);
         } else {
             throw new Error(`No action found for button with custom id: ${interaction.customId}`);
         }
@@ -2688,6 +2688,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         // This handles the actual submission from the user
         await interaction.deferUpdate();
         const submission = await this.cache.get(interaction.message?.id);
+        const uid = interaction.customId.split('/')[1];
         const name = interaction.fields.getTextInputValue('name').trim();
         let gender = interaction.fields.getTextInputValue('gender').trim();
         let origin = interaction.fields.getTextInputValue('origin').trim();
@@ -2721,11 +2722,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             }).then(() => { });
         }
         const submission_log = await client.channels.fetch(submission_log_id) as DTypes.TextBasedChannel;
-        const new_submission = {
-            mid: '',
-            uid: submission ? submission.uid : interaction.user.id,
-            data: data
-        };
+        const new_submission = { mid: '', uid, data };
         const embed = await this.getWaifuInfoEmbed(new_submission);
 
         if (submission) interaction.deleteReply();
@@ -2812,10 +2809,11 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         };
     },
 
-    async startSubmit(interaction, data) {
+    async startSubmit(interaction, data, uid) {
         // Real submission starts here.
         // Converting into a new object is the only way to deep copy.
         const modalInput = new ModalBuilder(this.input.toJSON());
+        modalInput.setCustomId(`submit/${uid}`);
         if (data.name && data.gender && data.origin) {
             modalInput.setTitle('Edit character');
         } else if (data.origin) {
@@ -2829,7 +2827,35 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         return interaction.showModal(modalInput);
     },
 
-    async execute(interaction) {
+    async execute(interaction, client) {
+        let uid = interaction.user.id;
+        // Admins can submit on behalf of other users.
+        if (uid === client.admin.id) {
+            const modal = new ModalBuilder({
+                title: 'Admin Submission',
+                customId: 'submitAdmin',
+                components: [
+                    new ActionRowBuilder<DTypes.TextInputBuilder>({
+                        components: [new TextInputBuilder({
+                            label: 'User ID',
+                            customId: 'uid',
+                            value: uid,
+                            style: TextInputStyle.Short,
+                            maxLength: 100,
+                            required: true
+                        })]
+                    })
+                ]
+            });
+            await interaction.showModal(modal);
+            const res = await interaction.awaitModalSubmit({
+                filter: s => s.customId === modal.data.custom_id,
+                time: 15 * 60 * 1_000 // Wait for 15 mins max
+            }).catch(() => { });
+            if (!res) return;
+            uid = res.fields.getTextInputValue('uid');
+            interaction = res as unknown as DTypes.ChatInputCommandInteraction;
+        }
         await interaction.deferReply({ ephemeral: true });
         const embed = new EmbedBuilder({
             title: 'No Selection',
@@ -2872,7 +2898,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 })
             ]
         });
-        const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
+        const message = await interaction.followUp({ embeds: [embed], components: [buttons, buttons2] });
         // Can be changed for img/nimg input with command.
         let waifu: ImpartialWaifu = { img: [], nimg: [] };
         let id = 0;
@@ -2882,7 +2908,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         }).on('collect', async i => {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
-                return this.startSubmit(i, waifu);
+                return this.startSubmit(i, waifu, uid);
             } else if (i.customId === 'searchWaifu') {
                 // Search for waifu
                 const modal = new ModalBuilder({
