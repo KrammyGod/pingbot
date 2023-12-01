@@ -2409,7 +2409,7 @@ exports.submit = {
             await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         }
         else if (action === 'edit') {
-            return this.startSubmit(interaction, { name, gender, origin, img, nimg });
+            return this.startSubmit(interaction, { name, gender, origin, img, nimg }, submission.uid);
         }
         else {
             throw new Error(`No action found for button with custom id: ${interaction.customId}`);
@@ -2419,6 +2419,7 @@ exports.submit = {
         // This handles the actual submission from the user
         await interaction.deferUpdate();
         const submission = await this.cache.get(interaction.message?.id);
+        const uid = interaction.customId.split('/')[1];
         const name = interaction.fields.getTextInputValue('name').trim();
         let gender = interaction.fields.getTextInputValue('gender').trim();
         let origin = interaction.fields.getTextInputValue('origin').trim();
@@ -2453,11 +2454,7 @@ exports.submit = {
             }).then(() => { });
         }
         const submission_log = await client.channels.fetch(submission_log_id);
-        const new_submission = {
-            mid: '',
-            uid: submission ? submission.uid : interaction.user.id,
-            data: data
-        };
+        const new_submission = { mid: '', uid, data };
         const embed = await this.getWaifuInfoEmbed(new_submission);
         if (submission)
             interaction.deleteReply();
@@ -2534,10 +2531,11 @@ exports.submit = {
             nimg: []
         };
     },
-    async startSubmit(interaction, data) {
+    async startSubmit(interaction, data, uid) {
         // Real submission starts here.
         // Converting into a new object is the only way to deep copy.
         const modalInput = new discord_js_1.ModalBuilder(this.input.toJSON());
+        modalInput.setCustomId(`submit/${uid}`);
         if (data.name && data.gender && data.origin) {
             modalInput.setTitle('Edit character');
         }
@@ -2551,7 +2549,36 @@ exports.submit = {
         modalInput.components[4].components[0].setValue(data.nimg.join('\n'));
         return interaction.showModal(modalInput);
     },
-    async execute(interaction) {
+    async execute(interaction, client) {
+        let uid = interaction.user.id;
+        // Admins can submit on behalf of other users.
+        if (uid === client.admin.id) {
+            const modal = new discord_js_1.ModalBuilder({
+                title: 'Admin Submission',
+                customId: 'submitAdmin',
+                components: [
+                    new discord_js_1.ActionRowBuilder({
+                        components: [new discord_js_1.TextInputBuilder({
+                                label: 'User ID',
+                                customId: 'uid',
+                                value: uid,
+                                style: discord_js_1.TextInputStyle.Short,
+                                maxLength: 100,
+                                required: true
+                            })]
+                    })
+                ]
+            });
+            await interaction.showModal(modal);
+            const res = await interaction.awaitModalSubmit({
+                filter: s => s.customId === modal.data.custom_id,
+                time: 15 * 60 * 1000 // Wait for 15 mins max
+            }).catch(() => { });
+            if (!res)
+                return;
+            uid = res.fields.getTextInputValue('uid');
+            interaction = res;
+        }
         await interaction.deferReply({ ephemeral: true });
         const embed = new discord_js_1.EmbedBuilder({
             title: 'No Selection',
@@ -2594,7 +2621,7 @@ exports.submit = {
                 })
             ]
         });
-        const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
+        const message = await interaction.followUp({ embeds: [embed], components: [buttons, buttons2] });
         // Can be changed for img/nimg input with command.
         let waifu = { img: [], nimg: [] };
         let id = 0;
@@ -2604,7 +2631,7 @@ exports.submit = {
         }).on('collect', async (i) => {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
-                return this.startSubmit(i, waifu);
+                return this.startSubmit(i, waifu, uid);
             }
             else if (i.customId === 'searchWaifu') {
                 // Search for waifu
