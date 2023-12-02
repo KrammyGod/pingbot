@@ -450,3 +450,17 @@ CREATE OR REPLACE TRIGGER waifus_changed
 BEFORE INSERT OR DELETE ON waifus
 FOR EACH ROW
 EXECUTE PROCEDURE update_char_mapping();
+
+-- ON UPDATE CASCADE was not enabled for user_chars
+CREATE OR REPLACE FUNCTION update_user_chars_mapping() RETURNS trigger AS $$
+BEGIN
+    -- Only works on updates
+    UPDATE user_chars SET wid = NEW.wid WHERE wid = OLD.wid;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER update_user_chars_mapping
+AFTER UPDATE ON char_mapping
+FOR EACH ROW
+EXECUTE PROCEDURE update_user_chars_mapping();
