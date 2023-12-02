@@ -2367,7 +2367,7 @@ exports.submit = {
             }
             else {
                 await new_characters_log.send({
-                    content: `New character added by @${user} ` +
+                    content: `New character added by ${user} ` +
                         `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
@@ -2621,7 +2621,7 @@ exports.submit = {
                 })
             ]
         });
-        const message = await interaction.followUp({ embeds: [embed], components: [buttons, buttons2] });
+        const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
         // Can be changed for img/nimg input with command.
         let waifu = { img: [], nimg: [] };
         let id = 0;
