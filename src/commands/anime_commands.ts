@@ -2638,7 +2638,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 });
             } else {
                 await new_characters_log.send({
-                    content: `New character added by @${user} ` +
+                    content: `New character added by ${user} ` +
                         `(accepted by ${interaction.user}):\n${newCharacterInfo}`
                 });
             }
@@ -2898,7 +2898,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 })
             ]
         });
-        const message = await interaction.followUp({ embeds: [embed], components: [buttons, buttons2] });
+        const message = await interaction.editReply({ embeds: [embed], components: [buttons, buttons2] });
         // Can be changed for img/nimg input with command.
         let waifu: ImpartialWaifu = { img: [], nimg: [] };
         let id = 0;
