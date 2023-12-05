@@ -2942,7 +2942,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 15 * 60 * 1_000 // Wait for 15 mins max
+                    time: 10 * 60 * 1_000 // Wait for 10 mins max to ensure interaction doesn't expire
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
@@ -2979,7 +2979,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 15 * 60 * 1_000 // Wait for 15 mins max
+                    time: 10 * 60 * 1_000 // Wait for 10 mins max
                 }).catch(() => { });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Anime submit search
