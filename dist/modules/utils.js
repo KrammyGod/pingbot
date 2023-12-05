@@ -169,7 +169,7 @@ exports.delete_ephemeral_message = delete_ephemeral_message;
 function wait_for_button(message, confirm_id) {
     return message.awaitMessageComponent({
         componentType: discord_js_1.ComponentType.Button,
-        time: 15 * 60 * 1000 // 15 minutes before interaction expires
+        time: 10 * 60 * 1000 // 10 minutes before interaction expires
     }).then(i => i.customId === confirm_id, () => false);
 }
 exports.wait_for_button = wait_for_button;
@@ -218,7 +218,7 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     });
     const res = await message.awaitMessageComponent({
         componentType: discord_js_1.ComponentType.StringSelect,
-        time: 15 * 60 * 1000 // 15 minutes before interaction token expires.
+        time: 10 * 60 * 1000 // 10 minutes before interaction token expires.
     }).then(i => {
         if (i.values[0] === '-1')
             return null;

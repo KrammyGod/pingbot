@@ -1167,7 +1167,11 @@ async function switch_char_image(client, interaction, char) {
             const opts = await get_char_images_embed(page);
             await i.editReply(opts);
         });
-        collector.once('end', createCollector);
+        collector.once('end', (_, reason) => {
+            if (reason !== 'time' && reason !== 'messageDelete') {
+                return createCollector();
+            }
+        });
     };
     createCollector();
     const selected = await message.awaitMessageComponent({
@@ -1324,6 +1328,7 @@ const listHelpers = {
     },
     async menuReact(interaction, high, client) {
         const [fn, wid] = interaction.values[0].split('/').splice(2);
+        const startDate = new Date();
         await interaction.deferUpdate();
         const char = high ?
             await DB.fetchUserHighCharacter(interaction.user.id, wid) :
@@ -1340,6 +1345,14 @@ const listHelpers = {
                 content: 'This feature does not exist. Please contact the support server.',
                 ephemeral: true
             });
+        }
+        // 15 minutes passed, interaction expired
+        if (startDate.getTime() + 15 * 60 * 1000 >= new Date().getTime()) {
+            // Why did we do this? It's actually quite an interesting bug.
+            // Discord throws 401 when using expired webhook token to edit interaction messages
+            // Discord.JS in turn, tries to protect us from CF (CloudFront?) bans, and nulls the bot's token
+            // This is a very bad thing, because now the bot is not functional.
+            return;
         }
         let res = null;
         // Delete char means wid will not exist anymore.
@@ -2653,7 +2666,7 @@ exports.submit = {
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 15 * 60 * 1000 // Wait for 15 mins max
+                    time: 10 * 60 * 1000 // Wait for 10 mins max to ensure interaction doesn't expire
                 }).catch(() => { });
                 if (!res)
                     return i.deleteReply(); // Timed out, took too long
@@ -2693,7 +2706,7 @@ exports.submit = {
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 15 * 60 * 1000 // Wait for 15 mins max
+                    time: 10 * 60 * 1000 // Wait for 10 mins max
                 }).catch(() => { });
                 if (!res)
                     return i.deleteReply(); // Timed out, took too long
