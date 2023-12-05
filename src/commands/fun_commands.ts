@@ -293,7 +293,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
 
         const confirmed = await message.awaitMessageComponent({
             componentType: ComponentType.Button,
-            time: 15 * 60 * 1000 // 15 mins before interaction expires
+            time: 10 * 60 * 1000 // 10 mins before interaction expires
         }).then(async i => {
             if (i.customId === 'hcancel') return;
             return true;
