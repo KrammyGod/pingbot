@@ -248,7 +248,7 @@ export function delete_ephemeral_message(i: DTypes.RepliableInteraction, msg: DT
 export function wait_for_button(message: DTypes.Message, confirm_id: string) {
     return message.awaitMessageComponent({
         componentType: ComponentType.Button,
-        time: 15 * 60 * 1000 // 15 minutes before interaction expires
+        time: 10 * 60 * 1000 // 10 minutes before interaction expires
     }).then(i => i.customId === confirm_id, () => false);
 }
 
@@ -311,7 +311,7 @@ export async function get_results<T>(
 
     const res = await message.awaitMessageComponent({
         componentType: ComponentType.StringSelect,
-        time: 15 * 60 * 1000 // 15 minutes before interaction token expires.
+        time: 10 * 60 * 1000 // 10 minutes before interaction token expires.
     }).then(i => {
         if (i.values[0] === '-1') return null;
         return choices[parseInt(i.values[0])];
