@@ -1347,7 +1347,7 @@ const listHelpers = {
             });
         }
         // 15 minutes passed, interaction expired
-        if (startDate.getTime() + 15 * 60 * 1000 >= new Date().getTime()) {
+        if (startDate.getTime() + 15 * 60 * 1000 <= new Date().getTime()) {
             // Why did we do this? It's actually quite an interesting bug.
             // Discord throws 401 when using expired webhook token to edit interaction messages
             // Discord.JS in turn, tries to protect us from CF (CloudFront?) bans, and nulls the bot's token
