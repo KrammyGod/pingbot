@@ -4,26 +4,26 @@
 CREATE TYPE gend AS ENUM ('Male', 'Female', 'Unknown');
 
 CREATE TABLE IF NOT EXISTS commons (
-    iid bigint PRIMARY KEY,
-    name text NOT NULL,
+    iid BIGINT PRIMARY KEY,
+    name TEXT NOT NULL,
     gender gend NOT NULL,
-    origin text NOT NULL,
-    img text NOT NULL
+    origin TEXT NOT NULL,
+    img TEXT NOT NULL
 );
 CREATE INDEX ON commons (name);
 CREATE INDEX ON commons (origin);
 
 CREATE TABLE IF NOT EXISTS completed_series (
-    uid bigint NOT NULL REFERENCES user_info ON DELETE CASCADE,
-    origin text NOT NULL,
-    count int NOT NULL
+    uid BIGINT NOT NULL REFERENCES user_info ON DELETE CASCADE,
+    origin TEXT NOT NULL,
+    count INT NOT NULL
 );
 
 -- Equivalent to a multi-table check constraint,
 -- raises exception when count is invalid
 CREATE OR REPLACE FUNCTION check_valid_cnt() RETURNS trigger AS $$
 DECLARE
-    cnt int;
+    cnt INT;
 BEGIN
     SELECT COUNT(*) INTO STRICT cnt FROM chars WHERE origin = NEW.origin AND fc = TRUE;
     IF NEW.count < 0 OR NEW.count > cnt THEN
@@ -40,8 +40,8 @@ EXECUTE PROCEDURE check_valid_cnt();
 
 -- HoyoLab autocollect emoji mapping
 CREATE TABLE IF NOT EXISTS emojis (
-    name text PRIMARY KEY,
-    emoji text NOT NULL
+    name TEXT PRIMARY KEY,
+    emoji TEXT NOT NULL
 );
 
 -- Notify will DM the user
@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS emojis (
 -- None will not attempt checkin
 CREATE TYPE checkin_type AS ENUM ('none', 'checkin', 'notify');
 CREATE TABLE IF NOT EXISTS hoyolab_cookies_list (
-    idx bigint GENERATED ALWAYS AS IDENTITY,
-    id bigint NOT NULL,
-    cookie text NOT NULL,
+    idx BIGINT GENERATED ALWAYS AS IDENTITY,
+    id BIGINT NOT NULL,
+    cookie TEXT NOT NULL,
     genshin checkin_type NOT NULL DEFAULT 'none',
     star_rail checkin_type NOT NULL DEFAULT 'none',
     honkai checkin_type NOT NULL DEFAULT 'none',
@@ -59,13 +59,13 @@ CREATE TABLE IF NOT EXISTS hoyolab_cookies_list (
 );
 
 CREATE TABLE IF NOT EXISTS guess_info (
-    uid bigint PRIMARY KEY,
-    easy_max_streak int NOT NULL DEFAULT 0,
-    easy_streak int NOT NULL DEFAULT 0,
-    medium_max_streak int NOT NULL DEFAULT 0,
-    medium_streak int NOT NULL DEFAULT 0,
-    hard_max_streak int NOT NULL DEFAULT 0,
-    hard_streak int NOT NULL DEFAULT 0
+    uid BIGINT PRIMARY KEY,
+    easy_max_streak INT NOT NULL DEFAULT 0,
+    easy_streak INT NOT NULL DEFAULT 0,
+    medium_max_streak INT NOT NULL DEFAULT 0,
+    medium_streak INT NOT NULL DEFAULT 0,
+    hard_max_streak INT NOT NULL DEFAULT 0,
+    hard_streak INT NOT NULL DEFAULT 0
 );
 
 -- Trigger to automatically update max streak on update
@@ -93,16 +93,16 @@ EXECUTE PROCEDURE update_max_streak();
 
 -- Table to store guild welcome settings
 CREATE TABLE IF NOT EXISTS guild_new_member (
-    gid bigint PRIMARY KEY,
-    msg text,
-    roleid bigint,
-    channelid bigint
+    gid BIGINT PRIMARY KEY,
+    msg TEXT,
+    roleid BIGINT,
+    channelid BIGINT
 );
 
 -- Table to store temporary data for any command
 CREATE TABLE IF NOT EXISTS local_data (
-    cmd text NOT NULL,
-    id text NOT NULL,
+    cmd TEXT NOT NULL,
+    id TEXT NOT NULL,
     data jsonb NOT NULL,
     expiry timestamp with time zone,
     PRIMARY KEY (cmd, id)
@@ -110,27 +110,27 @@ CREATE TABLE IF NOT EXISTS local_data (
 CREATE INDEX ON local_data (id);
 
 CREATE TABLE IF NOT EXISTS char_mapping (
-    wid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    iid bigint NOT NULL,
-    fc boolean NOT NULL,
+    wid BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    iid BIGINT NOT NULL,
+    fc BOOLEAN NOT NULL,
     UNIQUE (iid, fc)
 );
 
 CREATE TABLE IF NOT EXISTS user_info (
-    uid bigint PRIMARY KEY,
-    brons int NOT NULL,
-    collected boolean NOT NULL DEFAULT TRUE,
-    whales boolean NOT NULL DEFAULT FALSE,
+    uid BIGINT PRIMARY KEY,
+    brons INT NOT NULL,
+    collected BOOLEAN NOT NULL DEFAULT TRUE,
+    whales BOOLEAN NOT NULL DEFAULT FALSE,
     CHECK (brons >= 0) -- Crucial for improved performance w/ transactions
 );
 
 CREATE TABLE IF NOT EXISTS waifus (
-    iid bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    name text not null,
+    iid BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    name TEXT not null,
     gender gend not null,
-    origin text not null,
-    img text[] not null,
-    nimg text[] not null,
+    origin TEXT not null,
+    img TEXT[] not null,
+    nimg TEXT[] not null,
     UNIQUE(name, gender, origin),
     CHECK (array_length(img, 1) > 0)
 );
@@ -161,13 +161,13 @@ CREATE INDEX ON chars (fc);
 -- The above is to be done inside the code.
 
 CREATE TABLE IF NOT EXISTS user_chars (
-    uid bigint NOT NULL REFERENCES user_info ON DELETE CASCADE,
-    wid bigint NOT NULL REFERENCES char_mapping ON DELETE CASCADE,
-    lvl int NOT NULL DEFAULT 1,
-    _img int NOT NULL DEFAULT 1,
-    _nimg int NOT NULL DEFAULT 1,
-    nsfw boolean NOT NULL DEFAULT FALSE,
-    idx bigint NOT NULL,
+    uid BIGINT NOT NULL REFERENCES user_info ON DELETE CASCADE,
+    wid BIGINT NOT NULL REFERENCES char_mapping ON DELETE CASCADE,
+    lvl INT NOT NULL DEFAULT 1,
+    _img INT NOT NULL DEFAULT 1,
+    _nimg INT NOT NULL DEFAULT 1,
+    nsfw BOOLEAN NOT NULL DEFAULT FALSE,
+    idx BIGINT NOT NULL,
     -- idx is not unique, there can be reordering
     -- wid is guaranteed unique, dupes become levels.
     PRIMARY KEY (uid, wid),
@@ -249,21 +249,21 @@ EXECUTE PROCEDURE delete_all_user_chars();
 
 -- Helper to get all chars of a user
 -- Is this overkill?
-CREATE OR REPLACE FUNCTION get_user_chars(uuid bigint)
+CREATE OR REPLACE FUNCTION get_user_chars(uuid BIGINT)
     RETURNS TABLE (
-        uid bigint,
-        wid bigint,
-        name text,
-        gender text,
-        origin text,
-        lvl int,
-        fc boolean,
-        _img int,
-        _nimg int,
-        img text,
-        nimg text,
-        nsfw boolean,
-        idx bigint
+        uid BIGINT,
+        wid BIGINT,
+        name TEXT,
+        gender TEXT,
+        origin TEXT,
+        lvl INT,
+        fc BOOLEAN,
+        _img INT,
+        _nimg INT,
+        img TEXT,
+        nimg TEXT,
+        nsfw BOOLEAN,
+        idx BIGINT
     )
 AS $$
 SELECT * FROM all_user_chars
@@ -272,21 +272,21 @@ ORDER BY idx
 $$ LANGUAGE SQL;
 
 -- Helper to get all high chars of a user
-CREATE OR REPLACE FUNCTION get_high_user_chars(uuid bigint)
+CREATE OR REPLACE FUNCTION get_high_user_chars(uuid BIGINT)
     RETURNS TABLE (
-        uid bigint,
-        wid bigint,
-        name text,
-        gender text,
-        origin text,
-        lvl int,
-        fc boolean,
-        _img int,
-        _nimg int,
-        img text,
-        nimg text,
-        nsfw boolean,
-        idx bigint
+        uid BIGINT,
+        wid BIGINT,
+        name TEXT,
+        gender TEXT,
+        origin TEXT,
+        lvl INT,
+        fc BOOLEAN,
+        _img INT,
+        _nimg INT,
+        img TEXT,
+        nimg TEXT,
+        nsfw BOOLEAN,
+        idx BIGINT
     )
 AS $$
 SELECT
@@ -316,11 +316,11 @@ $$ LANGUAGE SQL;
 
 -- Helper function to check if a waifu is upgradable
 -- Used to check if we can level up user's character when getting dupe
-CREATE OR REPLACE FUNCTION is_upgradable(wwid bigint)
-    RETURNS boolean
+CREATE OR REPLACE FUNCTION is_upgradable(wwid BIGINT)
+    RETURNS BOOLEAN
 AS $$
 DECLARE
-    upgradable boolean;
+    upgradable BOOLEAN;
 BEGIN
     SELECT fc INTO STRICT upgradable
     FROM chars WHERE wid = wwid;
@@ -330,25 +330,25 @@ $$ LANGUAGE plpgsql;
 
 -- Helper to add a character and return details of whether the character
 -- is a new character or a duplicate
-CREATE OR REPLACE FUNCTION add_character(uuid bigint, wwid bigint)
+CREATE OR REPLACE FUNCTION add_character(uuid BIGINT, wwid BIGINT)
 RETURNS TABLE (
-    uid bigint,
-    wid bigint,
-    name text,
+    uid BIGINT,
+    wid BIGINT,
+    name TEXT,
     gender gend,
-    origin text,
-    lvl int,
-    fc boolean,
-    _img int,
-    _nimg int,
-    img text,
-    nimg text,
-    nsfw boolean,
-    idx bigint,
-    new boolean -- Represents whether it is a new or upgraded
+    origin TEXT,
+    lvl INT,
+    fc BOOLEAN,
+    _img INT,
+    _nimg INT,
+    img TEXT,
+    nimg TEXT,
+    nsfw BOOLEAN,
+    idx BIGINT,
+    new BOOLEAN -- Represents whether it is a new or upgraded
 ) AS $$
 DECLARE
-    newly_inserted boolean;
+    newly_inserted BOOLEAN;
 BEGIN
     WITH inserted_char AS (
         INSERT INTO user_chars(uid, wid)
@@ -372,10 +372,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Helper that subtracts brons safely; throws exception on any unexpected changes
-CREATE OR REPLACE PROCEDURE sub_brons(uuid bigint, special boolean, amt int)
+CREATE OR REPLACE PROCEDURE sub_brons(uuid BIGINT, special BOOLEAN, amt INT)
 AS $$
 DECLARE
-    valid boolean;
+    valid BOOLEAN;
 BEGIN
     WITH brons_update AS (
         UPDATE user_info SET brons = brons - amt
@@ -399,7 +399,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Helper that removes gaps from one user's index efficiently
-CREATE OR REPLACE PROCEDURE repair_index(uuid bigint)
+CREATE OR REPLACE PROCEDURE repair_index(uuid BIGINT)
 AS $$
 BEGIN
     UPDATE user_chars A SET idx = B.index FROM (
@@ -415,7 +415,7 @@ $$ LANGUAGE plpgsql;
 -- Create triggers to update char_mapping on insert/delete
 CREATE OR REPLACE FUNCTION update_char_mapping() RETURNS trigger AS $$
 DECLARE
-    waifu_type boolean;
+    waifu_type BOOLEAN;
 BEGIN
     -- Check if the table is commons or waifus
     IF TG_TABLE_NAME = 'commons' THEN
