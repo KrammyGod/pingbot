@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
+exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.metrics = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
@@ -202,6 +202,22 @@ exports.add = {
                 return;
             setTimeout(() => msg.delete(), 1000);
         });
+    }
+};
+exports.metrics = {
+    name: 'metrics',
+    admin: true,
+    desc: 'Shows metrics from the CDN.',
+    async execute(message) {
+        await message.channel.sendTyping();
+        const { metrics } = await (0, cdn_1.getCDNMetrics)();
+        let content = 'Code | Count\n------|--------\n';
+        for (const metric of metrics) {
+            content += `  ${metric.statuscode}  |    ${metric.count}\n`;
+        }
+        if (!metrics.length)
+            content = 'No metrics found.';
+        await message.reply({ content });
     }
 };
 exports.upload = {

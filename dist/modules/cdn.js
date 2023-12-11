@@ -3,11 +3,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCDNId = exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = void 0;
+exports.getCDNId = exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = exports.getCDNMetrics = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const path_1 = __importDefault(require("path"));
 const headers = new Headers();
 headers.append('Authorization', _config_1.default.secret);
+async function getCDNMetrics() {
+    const res = await fetch(`${_config_1.default.origin}/api/metrics`, {
+        method: 'GET',
+        headers
+    }).then(res => res.json()).catch(e => console.error(e));
+    return res ?? { metrics: [] };
+}
+exports.getCDNMetrics = getCDNMetrics;
 async function uploadToCDN(body) {
     const { urls } = await fetch(`${_config_1.default.origin}/api/upload`, {
         method: 'POST',
