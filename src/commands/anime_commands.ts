@@ -1236,7 +1236,7 @@ async function switch_char_image(
                 .setImage(img);
             embeds.push(new EmbedBuilder(embed.data));
             buttons.push(new ButtonBuilder({
-                label: `Image #${start + i + 1}`,
+                label: `${start + i + 1}`,
                 style: ButtonStyle.Primary,
                 customId: `select_char/${start + i + 1}`
             }));
