@@ -26,7 +26,8 @@ module.exports = {
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEPLOY_PATH,
             'pre-setup'   : `mkdir -p ${process.env.DEPLOY_PATH}`,
-            'post-deploy' : 'npm ci --omit dev && pm2 start --env production --update-env'
+            'pre-deploy'  : 'npm ci --omit dev',
+            'post-deploy' : 'pm2 start --env production --update-env'
         },
         development : {
             'user'        : process.env.SSH_USER,
@@ -35,7 +36,8 @@ module.exports = {
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEV_DEPLOY_PATH,
             'pre-setup'   : `mkdir -p ${process.env.DEV_DEPLOY_PATH}`,
-            'post-deploy' : 'npm ci --omit dev && pm2 start --env development --update-env'
+            'pre-deploy'  : 'npm ci --omit dev',
+            'post-deploy' : 'pm2 start --env development --update-env'
         }
     }
 };
