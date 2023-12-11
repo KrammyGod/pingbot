@@ -2,6 +2,21 @@ import config from '@config';
 import path from 'path';
 const headers = new Headers();
 headers.append('Authorization', config.secret);
+
+type Metrics = {
+    metrics: {
+        statuscode: number,
+        count: string
+    }[]
+};
+export async function getCDNMetrics(): Promise<Metrics> {
+    const res = await fetch(`${config.origin}/api/metrics`, {
+        method: 'GET',
+        headers
+    }).then(res => res.json()).catch(e => console.error(e));
+    return res ?? { metrics: [] };
+}
+
 export async function uploadToCDN(body: FormData): Promise<string[]> {
     const { urls } = await fetch(`${config.origin}/api/upload`, {
         method: 'POST',

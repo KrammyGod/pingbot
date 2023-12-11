@@ -35,7 +35,7 @@
     "postdownload": "rimraf scripts/download_waifus_txt.js",
     "preupload": "tsc scripts/upload_waifus_txt.ts",
     "upload": "node scripts/upload_waifus_txt.js || exit 0",
-    "postupload": "rimraf scripts/upload_waifus_txt.js",
+    "postupload": "rimraf scripts/upload_waifus_txt.js && npm run download",
     "start": "node . --enable-source-maps"
   },
   "devDependencies": {
