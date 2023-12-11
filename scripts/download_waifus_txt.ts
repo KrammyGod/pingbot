@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import * as fs from 'fs';
+import * as rl from 'readline/promises';
 import { Pool, QueryResultRow } from 'pg';
 
 const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
@@ -25,8 +26,8 @@ type WaifuDetails = {
     name: string;
     gender: 'Female' | 'Male' | 'Unknown';
     origin: string;
-    img: string[];
-    nimg: string[];
+    img: string[] | string;
+    nimg: string[] | string;
 };
 class Waifu {
     iid: string;
@@ -50,15 +51,43 @@ class Waifu {
         this.name = row.name;
         this.gender = row.gender;
         this.origin = row.origin;
-        this.img = `[${row.img.map(imgReplacer).join(', ')}]`;
-        this.nimg = `[${row.nimg.map(imgReplacer).join(', ')}]`;
+        this.img = Array.isArray(row.img) ? `[${row.img.map(imgReplacer).join(', ')}]` : row.img;
+        this.nimg = Array.isArray(row.nimg) ? `[${row.nimg.map(imgReplacer).join(', ')}]` : row.nimg;
     }
+
+    equal(other: Waifu) {
+        return this.name === other.name && this.gender === other.gender &&
+            this.origin === other.origin && this.img === other.img &&
+            this.nimg === other.nimg;
+    }
+}
+
+function loadFromFile() {
+    // Header takes up 3 lines, footer takes up 1 line.
+    const toParse = fs.readFileSync(filePath, 'utf8').split('\n').slice(3, -2);
+    const backupWaifus: Waifu[] = [];
+    for (const line of toParse) {
+        // Remove first and last connector
+        const [iid, name, _gender, origin, img, nimg] = line.split('|').map(x => x.trim()).slice(1, -1);
+        const gender = _gender === 'Female' ? _gender : (_gender === 'Male' ? _gender : 'Unknown');
+        backupWaifus.push(new Waifu({ iid, name, gender, origin, img, nimg }));
+    }
+    return backupWaifus;
+}
+
+async function confirm(prompt: string) {
+    const confirm = rl.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    const confirmed = await confirm.question(prompt).then(ans => ans === 'y', () => false);
+    confirm.close();
+    return confirmed;
 }
 
 const connector = '+';
 const horizontalLine = '―';
 const verticalLine = '|';
-const writer = fs.createWriteStream(filePath);
 function center(str: string, size: number) {
     // Not asserted, but assuming size >= str.length
     const len = size - str.length;
@@ -69,6 +98,28 @@ function center(str: string, size: number) {
 if (require.main === module) {
     (async () => {
         const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);
+        let loadedWaifus: Waifu[];
+        try {
+            loadedWaifus = loadFromFile();
+        } catch (e) {
+            // File doesn't exist, ignore
+            loadedWaifus = [];
+        }
+        if (loadedWaifus.length) {
+            let confirmed = true;
+            for (const w of loadedWaifus) {
+                const found = waifus.find(waifu => waifu.iid === w.iid);
+                if (!found || !found.equal(w)) {
+                    confirmed = await confirm('Local differs from remote, continue? (y/n) ');
+                    break;
+                }
+            }
+            if (!confirmed) {
+                console.log('Aborting...');
+                return;
+            }
+        }
+        const writer = fs.createWriteStream(filePath);
         const headers = ['iid', 'name', 'gender', 'origin', 'img', 'nimg'];
         const maxIIDLength = Math.max(...waifus.map(w => w.iid.length)) + 2;
         const maxNameLength = Math.max(...waifus.map(w => w.name.length)) + 2;

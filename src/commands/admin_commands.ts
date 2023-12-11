@@ -4,7 +4,7 @@ import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import { PermissionError } from '@classes/exceptions';
-import { deleteFromCDN, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
+import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
     MessageMentions, PermissionsBitField
@@ -184,6 +184,23 @@ export const add: MessageCommand = {
             if (message.guild?.id === config.guild) return;
             setTimeout(() => msg.delete(), 1000);
         });
+    }
+};
+
+export const metrics: MessageCommand = {
+    name: 'metrics',
+    admin: true,
+    desc: 'Shows metrics from the CDN.',
+
+    async execute(message) {
+        await message.channel.sendTyping();
+        const { metrics } = await getCDNMetrics();
+        let content = 'Code | Count\n------|--------\n';
+        for (const metric of metrics) {
+            content += `  ${metric.statuscode}  |    ${metric.count}\n`;
+        }
+        if (!metrics.length) content = 'No metrics found.';
+        await message.reply({ content });
     }
 };
 
