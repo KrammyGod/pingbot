@@ -103,8 +103,8 @@ CREATE TABLE IF NOT EXISTS guild_new_member (
 CREATE TABLE IF NOT EXISTS local_data (
     cmd TEXT NOT NULL,
     id TEXT NOT NULL,
-    data jsonb NOT NULL,
-    expiry timestamp with time zone,
+    data JSONB NOT NULL,
+    expiry TIMESTAMP WITH TIME ZONE,
     PRIMARY KEY (cmd, id)
 );
 CREATE INDEX ON local_data (id);
