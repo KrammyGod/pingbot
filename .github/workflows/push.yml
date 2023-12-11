@@ -31,9 +31,10 @@ jobs:
         uses: actions/checkout@v4
 
       # Checkout dist branch simulatenously
-      - name: Checkout dev branch
+      - name: Checkout dist branch
         uses: actions/checkout@v4
         with:
+          repository: ${{ github.repository }}
           ref: dist
           path: .dist
 
