@@ -1119,7 +1119,7 @@ async function switch_char_image(client, interaction, char) {
                 .setImage(img);
             embeds.push(new discord_js_1.EmbedBuilder(embed.data));
             buttons.push(new discord_js_1.ButtonBuilder({
-                label: `Image #${start + i + 1}`,
+                label: `${start + i + 1}`,
                 style: discord_js_1.ButtonStyle.Primary,
                 customId: `select_char/${start + i + 1}`
             }));
