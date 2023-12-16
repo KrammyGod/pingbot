@@ -65,8 +65,9 @@ class Waifu {
     }
 }
 
-// Not const because we upload to test database first, and then confirm for production
-let pool = new Pool();
+const pool = new Pool({
+    host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
+});
 function getClient() {
     return pool.connect().then(client => {
         return client.query('BEGIN').then(() => client);
@@ -213,11 +214,5 @@ async function upload() {
 }
 
 if (require.main === module) {
-    upload().then(cont => {
-        if (!cont) return;
-        pool = new Pool({
-            host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
-        });
-        return upload();
-    });
+    upload();
 }
