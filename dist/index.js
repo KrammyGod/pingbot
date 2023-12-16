@@ -187,7 +187,7 @@ async function sendCollectorResults(body) {
         if (retEmoji && !account.error)
             await DB.addEmoji(account.award.name, retEmoji);
     }
-    console.log(`Completed check-in for ${body.name}!`);
+    console.log(`Completed check-in for ${body.name}!\n`);
 }
 // Currently we only use this port for auto collector,
 // so we don't have to worry about parsing other bodies.
