@@ -167,7 +167,7 @@ async function sendCollectorResults(body: SendMessage) {
         // Add it to the database if a new emoji was created.
         if (retEmoji && !account.error) await DB.addEmoji(account.award.name, retEmoji);
     }
-    console.log(`Completed check-in for ${body.name}!`);
+    console.log(`Completed check-in for ${body.name}!\n`);
 }
 
 // Currently we only use this port for auto collector,
