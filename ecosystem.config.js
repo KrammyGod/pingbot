@@ -4,7 +4,6 @@ module.exports = {
         name                  : 'bot',
         script                : 'dist/index.js',
         instances             : 1,
-        time                  : true,
         wait_ready            : true,
         listen_timeout        : 60_000, // Listen for 1 minute before marking failed
         kill_timeout          : 10_000, // Wait 10 seconds before force killing
