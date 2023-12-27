@@ -32,6 +32,7 @@ const reset_db_1 = __importDefault(require("../modules/reset_db"));
 const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
+const Purge = __importStar(require("../modules/purge_utils"));
 const exceptions_1 = require("../classes/exceptions");
 const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
@@ -65,7 +66,7 @@ exports.purge = {
         }
         if (message.channel.isDMBased()) {
             // DMs
-            const deleted = await Utils.purge_from_dm(message.channel, amount);
+            const deleted = await Purge.purge_from_dm(message.channel, amount);
             return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
                 .then(m => { setTimeout(() => m.delete(), 3000); });
         }
@@ -118,7 +119,7 @@ exports.purge = {
                     content: 'To purge all in threads, just simply delete the thread.'
                 }).then(() => { });
             }
-            const new_channel = await Utils.purge_clean_channel(message.channel).catch(() => {
+            const new_channel = await Purge.purge_clean_channel(message.channel).catch(() => {
                 message.edit({ content: "I can't purge here. Make sure I have permissions to modify the channel." });
                 throw new exceptions_1.PermissionError();
             });
@@ -129,7 +130,7 @@ exports.purge = {
         }
         // Use our handy helper to purge for us.
         // Also delete the message command itself in the purge, so amount + 1
-        const deleted = await Utils.purge_from_channel(message.channel, amount + 1);
+        const deleted = await Purge.purge_from_channel(message.channel, amount + 1);
         // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
             .then(m => { setTimeout(() => m.delete(), 3000); }).catch(() => { });
