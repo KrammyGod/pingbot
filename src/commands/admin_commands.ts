@@ -3,6 +3,7 @@ import reset from '@modules/reset_db';
 import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
+import * as Purge from '@modules/purge_utils';
 import { PermissionError } from '@classes/exceptions';
 import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
 import {
@@ -48,7 +49,7 @@ export const purge: MessageCommand & PurgePrivates = {
         }
         if (message.channel.isDMBased()) {
             // DMs
-            const deleted = await Utils.purge_from_dm(message.channel, amount);
+            const deleted = await Purge.purge_from_dm(message.channel, amount);
             return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
                 .then(m => { setTimeout(() => m.delete(), 3000); });
         } else if (!message.channel.permissionsFor(message.member!)
@@ -98,7 +99,7 @@ export const purge: MessageCommand & PurgePrivates = {
                     content: 'To purge all in threads, just simply delete the thread.'
                 }).then(() => { });
             }
-            const new_channel = await Utils.purge_clean_channel(message.channel).catch(() => {
+            const new_channel = await Purge.purge_clean_channel(message.channel).catch(() => {
                 message.edit({ content: "I can't purge here. Make sure I have permissions to modify the channel." });
                 throw new PermissionError();
             });
@@ -110,7 +111,7 @@ export const purge: MessageCommand & PurgePrivates = {
 
         // Use our handy helper to purge for us.
         // Also delete the message command itself in the purge, so amount + 1
-        const deleted = await Utils.purge_from_channel(message.channel, amount + 1);
+        const deleted = await Purge.purge_from_channel(message.channel, amount + 1);
 
         // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
