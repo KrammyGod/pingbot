@@ -1,4 +1,5 @@
 import * as Utils from '@modules/utils';
+import * as Purge from '@modules/purge_utils';
 import { SlashCommand } from '@classes/client';
 import { PermissionError } from '@classes/exceptions';
 import {
@@ -67,7 +68,7 @@ export const purge: SlashCommand & PurgePrivates = {
             if (isNaN(amount)) {
                 return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => { });
             }
-            const deleted = await Utils.purge_from_dm(interaction.channel, amount);
+            const deleted = await Purge.purge_from_dm(interaction.channel, amount);
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
                 .then(m => { setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000); });
         } else if (!interaction.channel!.permissionsFor(interaction.member!)
@@ -126,7 +127,7 @@ export const purge: SlashCommand & PurgePrivates = {
                     content: 'To purge all in threads, just simply delete the thread.'
                 }).then(() => { });
             }
-            const new_channel = await Utils.purge_clean_channel(interaction.channel!).catch(() => {
+            const new_channel = await Purge.purge_clean_channel(interaction.channel!).catch(() => {
                 interaction.editReply({
                     content: "I can't purge here. Make sure I have permissions to modify the channel."
                 });
@@ -145,7 +146,7 @@ export const purge: SlashCommand & PurgePrivates = {
 
         const user_filter = (m: DTypes.Message) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
-        const deleted = await Utils.purge_from_channel(interaction.channel!, amount, user_filter);
+        const deleted = await Purge.purge_from_channel(interaction.channel!, amount, user_filter);
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
