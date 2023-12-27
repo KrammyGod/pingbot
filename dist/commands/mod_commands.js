@@ -25,6 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.purge = exports.desc = exports.name = void 0;
 const Utils = __importStar(require("../modules/utils"));
+const Purge = __importStar(require("../modules/purge_utils"));
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 exports.name = 'Moderation';
@@ -76,7 +77,7 @@ exports.purge = {
             if (isNaN(amount)) {
                 return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => { });
             }
-            const deleted = await Utils.purge_from_dm(interaction.channel, amount);
+            const deleted = await Purge.purge_from_dm(interaction.channel, amount);
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
                 .then(m => { setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000); });
         }
@@ -136,7 +137,7 @@ exports.purge = {
                     content: 'To purge all in threads, just simply delete the thread.'
                 }).then(() => { });
             }
-            const new_channel = await Utils.purge_clean_channel(interaction.channel).catch(() => {
+            const new_channel = await Purge.purge_clean_channel(interaction.channel).catch(() => {
                 interaction.editReply({
                     content: "I can't purge here. Make sure I have permissions to modify the channel."
                 });
@@ -155,7 +156,7 @@ exports.purge = {
         }
         const user_filter = (m) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
-        const deleted = await Utils.purge_from_channel(interaction.channel, amount, user_filter);
+        const deleted = await Purge.purge_from_channel(interaction.channel, amount, user_filter);
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });

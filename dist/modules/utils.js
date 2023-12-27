@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.purge_from_dm = exports.purge_from_channel = exports.purge_clean_channel = exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
 const client_1 = require("../classes/client");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
@@ -140,7 +140,7 @@ function date_after_hours(hours) {
 exports.date_after_hours = date_after_hours;
 /**
  * If is a number, pass as miliseconds since epoch.
- * @param fmt @example
+ * @param fmt {@link DateFormats} @example
  * t: Hours:Minutes AM|PM
  * T: Hours:Minutes:Seconds AM|PM
  * d: Month/Day/Year
@@ -260,82 +260,4 @@ async function* fetch_history(channel, amount, filter = () => true) {
     }
 }
 exports.fetch_history = fetch_history;
-/**
- * Assumes that you have `Manage Channels` permission.
- * WILL THROW IF NOT!
- */
-async function purge_clean_channel(channel) {
-    const new_channel = await channel.clone({
-        position: channel.rawPosition
-    });
-    await channel.delete();
-    return new_channel;
-}
-exports.purge_clean_channel = purge_clean_channel;
-/**
- * Assumes that you have `Manage Messages` permission.
- * WILL THROW IF NOT!
- */
-async function purge_from_channel(channel, amount, filter = () => true) {
-    // Keep async to keep Promise<number> signature
-    const bulk_delete = async (messages) => {
-        // Discord bulk delete doesn't like single messages.
-        if (messages.length <= 1) {
-            return messages.at(0)?.delete().then(() => 1).catch(() => 0) ?? 0;
-        }
-        return channel.bulkDelete(messages).then(arr => arr.size);
-    };
-    // Inspired by discord.py's internal structure, delete messages one at a time
-    // Useful for DMs/messages older than 14 days.
-    const single_delete = async (messages) => {
-        let deleted = 0;
-        for (const msg of messages) {
-            // Ignore deleting errors
-            await msg.delete().catch(() => --deleted);
-            ++deleted;
-        }
-        return deleted;
-    };
-    let strategy = bulk_delete;
-    // This is the minimum date when messages can be bulk deleted
-    // It is exactly 14 days ago.
-    const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
-    let to_delete = [];
-    let deleted = 0;
-    for await (const msg of fetch_history(channel, amount, filter)) {
-        // Delete every 100 since Discord's bulk delete is limited to 100 at a time.
-        if (to_delete.length === 100) {
-            deleted += await strategy(to_delete);
-            to_delete = [];
-            // Wait 1 second every 100 deletes
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        // Older than 14 days
-        if (msg.createdTimestamp < min_date) {
-            // If we hit a message that is older than 14 days
-            // We need to first clear out all messages we have so far
-            if (to_delete.length) {
-                deleted += await strategy(to_delete);
-                to_delete = [];
-            }
-            strategy = single_delete;
-        }
-        to_delete.push(msg);
-    }
-    // Leftover remaining undeleted messages
-    if (to_delete.length) {
-        deleted += await strategy(to_delete);
-    }
-    return deleted;
-}
-exports.purge_from_channel = purge_from_channel;
-async function purge_from_dm(channel, amount, filter = m => m.author.id === channel.client.user.id) {
-    let deleted = 0;
-    for await (const msg of fetch_history(channel, amount, filter)) {
-        await msg.delete().catch(() => --deleted);
-        ++deleted;
-    }
-    return deleted;
-}
-exports.purge_from_dm = purge_from_dm;
 //# sourceMappingURL=utils.js.map
