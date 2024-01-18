@@ -41,11 +41,11 @@
   "devDependencies": {
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.10.6",
+    "@types/node": "^20.11.5",
     "@types/pg": "^8.10.9",
     "@types/pg-copy-streams": "^1.2.5",
-    "@typescript-eslint/eslint-plugin": "^6.17.0",
-    "@typescript-eslint/parser": "^6.17.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
     "eslint": "^8.56.0",
     "rimraf": "^5.0.5",
     "tsc-alias": "^1.8.8",
@@ -63,6 +63,6 @@
     "pg-copy-streams": "^6.0.6",
     "pixiv.ts": "github:KrammyGod/pixiv.ts",
     "play-dl": "^1.9.7",
-    "sodium-native": "^4.0.4"
+    "sodium-native": "^4.0.5"
   }
 }
