@@ -54,10 +54,10 @@
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
     "cheerio": "^1.0.0-rc.12",
-    "chrono-node": "^2.7.4",
+    "chrono-node": "^2.7.5",
     "cookie": "^0.6.0",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.3.2",
     "env-cmd": "^10.1.0",
     "pg": "^8.11.3",
     "pg-copy-streams": "^6.0.6",
