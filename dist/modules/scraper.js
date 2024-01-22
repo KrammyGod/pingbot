@@ -26,7 +26,7 @@ async function scrape(source) {
         // We attempt to extract the image # from the url
         // Image number is always after /artworks/id, and at the end
         // @ts-expect-error parseInt can handle undefined
-        let imageNumber = parseInt(source.match(/\/artworks\/\d{8,}\/(?<id>-?[0-9]+)$/)?.groups.id);
+        let imageNumber = parseInt(source.match(/\/artworks\/\d{7,}\/(?<id>-?[0-9]+)$/)?.groups.id);
         if (imageNumber > 0)
             --imageNumber; // Positive indexes start at 0
         const res = await pixiv.illust.get(source).catch(() => {
