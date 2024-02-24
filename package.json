@@ -41,12 +41,12 @@
   "devDependencies": {
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.11.5",
-    "@types/pg": "^8.10.9",
+    "@types/node": "^20.11.20",
+    "@types/pg": "^8.11.1",
     "@types/pg-copy-streams": "^1.2.5",
-    "@typescript-eslint/eslint-plugin": "^6.19.0",
-    "@typescript-eslint/parser": "^6.19.0",
-    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "eslint": "^8.57.0",
     "rimraf": "^5.0.5",
     "tsc-alias": "^1.8.8",
     "typescript": "^5.3.3"
@@ -57,12 +57,12 @@
     "chrono-node": "^2.7.5",
     "cookie": "^0.6.0",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.3.2",
+    "dotenv": "^16.4.5",
     "env-cmd": "^10.1.0",
     "pg": "^8.11.3",
     "pg-copy-streams": "^6.0.6",
     "pixiv.ts": "github:KrammyGod/pixiv.ts",
     "play-dl": "^1.9.7",
-    "sodium-native": "^4.0.5"
+    "sodium-native": "^4.0.10"
   }
 }
