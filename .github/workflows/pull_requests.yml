@@ -86,6 +86,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          ref: dev-dist
 
       - name: Install dependencies
         run: |
