@@ -51,9 +51,14 @@ class HoyoAccountInfo {
                 game_name = 'Unknown Game';
         }
         if (!gameInfo) return null;
+        let nickname = gameInfo.nickname;
+        // Entire nickname is empty, replace with the words empty
+        if (nickname.match(/^[\s\u{3164}]+$/u)) {
+            nickname = 'Nameless';
+        }
         return `**${game_name}:**\n` +
             `> [${gameInfo.region_name}] ` +
-            `**[${gameInfo.nickname}](${gameInfo.url})**\n` +
+            `**[${nickname}](${gameInfo.url})**\n` +
             `> **UID:** ${gameInfo.game_role_id}\n` +
             `> **Level:** ${gameInfo.level}\n`;
     }
