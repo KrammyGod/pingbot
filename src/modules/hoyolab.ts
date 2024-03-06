@@ -52,9 +52,21 @@ class HoyoAccountInfo {
         }
         if (!gameInfo) return null;
         let nickname = gameInfo.nickname;
-        // Entire nickname is empty, replace with the words empty
+        // Entire nickname is empty, replace with placeholder
         if (nickname.match(/^[\s\u{3164}]+$/u)) {
-            nickname = 'Nameless';
+            switch (game_id) {
+                case 1:
+                    nickname = 'Captain';
+                    break;
+                case 2:
+                    nickname = 'Traveler';
+                    break;
+                case 6:
+                    nickname = 'Nameless';
+                    break;
+                default:
+                    game_name = 'Empty';
+            }
         }
         return `**${game_name}:**\n` +
             `> [${gameInfo.region_name}] ` +
