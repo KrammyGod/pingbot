@@ -345,7 +345,7 @@ function getClient() {
 async function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
     const client = await getClient();
     try {
-        return client.query<R, I[]>(query, values).then(res => res.rows);
+        return client.query<R>(query, values).then(res => res.rows);
     } finally {
         client.release();
     }
@@ -362,7 +362,7 @@ async function multi_query<R extends QueryResultRow = object, I = unknown>(
         const res: R[][] = [];
         await client.query(`BEGIN TRANSACTION ISOLATION LEVEL ${level}`);
         for (const query of queries) {
-            res.push(await client.query<R, I[]>(query, values.shift()).then(res => res.rows));
+            res.push(await client.query<R>(query, values.shift()).then(res => res.rows));
         }
         await client.query('COMMIT');
         return res;
