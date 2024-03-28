@@ -77,7 +77,7 @@ async function get_results_category(client, interaction, choices) {
         ephemeral: true
     });
     // Return promise to let caller await it.
-    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60000 })
+    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60_000 })
         .then(i => {
         if (i.values[0] === '-1')
             return null;
@@ -166,7 +166,7 @@ async function get_results_cmd(client, interaction, search) {
         ephemeral: true
     });
     // Return promise to let caller await it.
-    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60000 })
+    const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60_000 })
         .then(i => {
         if (i.values[0] === '-1')
             return null;

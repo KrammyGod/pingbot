@@ -1019,7 +1019,7 @@ const restart = {
         const i = await message.awaitMessageComponent({
             filter: i => i.user.id === interaction.user.id,
             componentType: discord_js_1.ComponentType.Button,
-            time: 60000
+            time: 60_000
         }).catch(() => null);
         if (i && i.customId === 'restart/confirm') {
             await i.deferUpdate();
