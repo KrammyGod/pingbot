@@ -4,7 +4,7 @@ import * as rl from 'readline/promises';
 import { Pool, QueryResultRow } from 'pg';
 
 const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
-// The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
+// The shared file path between upload_waifus_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
 const imgReplacer = (i: string) => {
     if (i.startsWith('https://i.imgur')) return i;
@@ -17,7 +17,7 @@ const pool = new Pool({
     host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
 });
 function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
-    return pool.query<R, I[]>(query, values).then(res => res.rows);
+    return pool.query<R>(query, values).then(res => res.rows);
 }
 
 // Copied necessary stuff from database.ts
