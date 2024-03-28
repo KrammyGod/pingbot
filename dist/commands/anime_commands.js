@@ -2585,7 +2585,7 @@ exports.submit = {
             await interaction.showModal(modal);
             const res = await interaction.awaitModalSubmit({
                 filter: s => s.customId === modal.data.custom_id,
-                time: 15 * 60 * 1000 // Wait for 15 mins max
+                time: 15 * 60 * 1_000 // Wait for 15 mins max
             }).catch(() => { });
             if (!res)
                 return;
@@ -2640,7 +2640,7 @@ exports.submit = {
         let id = 0;
         message.createMessageComponentCollector({
             componentType: discord_js_1.ComponentType.Button,
-            time: 15 * 60 * 1000 // Cleanup after 15 mins bc expired
+            time: 15 * 60 * 1_000 // Cleanup after 15 mins bc expired
         }).on('collect', async (i) => {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
@@ -2666,7 +2666,7 @@ exports.submit = {
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 10 * 60 * 1000 // Wait for 10 mins max to ensure interaction doesn't expire
+                    time: 10 * 60 * 1_000 // Wait for 10 mins max to ensure interaction doesn't expire
                 }).catch(() => { });
                 if (!res)
                     return i.deleteReply(); // Timed out, took too long
@@ -2706,7 +2706,7 @@ exports.submit = {
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
-                    time: 10 * 60 * 1000 // Wait for 10 mins max
+                    time: 10 * 60 * 1_000 // Wait for 10 mins max
                 }).catch(() => { });
                 if (!res)
                     return i.deleteReply(); // Timed out, took too long

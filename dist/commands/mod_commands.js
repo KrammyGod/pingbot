@@ -105,7 +105,7 @@ exports.purge = {
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: discord_js_1.ComponentType.Button,
                 filter: i => i.user.id === interaction.user.id,
-                time: 60000
+                time: 60_000
             }).then(i => i.customId === 'purge/confirm').catch(() => false);
             if (!confirmed)
                 return interaction.deleteReply();

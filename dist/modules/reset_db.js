@@ -73,7 +73,7 @@ async function copy() {
     let s = '';
     LOGGER.log(`Retrieving from id ${i}`);
     // Add constant to prevent true infinite loop
-    while (chars <= 100000000) {
+    while (chars <= 100_000_000) {
         let res = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
             .then(res => res.json())
             .catch(() => { });
