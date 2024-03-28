@@ -51,7 +51,7 @@ async function query<R extends QueryResultRow = object, I = unknown>(query: stri
     const client = await pool.connect();
     let res: R[] = [];
     try {
-        res = await client.query<R, I[]>(query, values).then(res => res.rows);
+        res = await client.query<R>(query, values).then(res => res.rows);
     } finally {
         client.release();
     }

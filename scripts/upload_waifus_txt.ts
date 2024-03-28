@@ -85,7 +85,7 @@ function query<R extends QueryResultRow = QueryResultRow, I = unknown>(
     query: string,
     values?: I[]
 ) {
-    return client.query<R, I[]>(query, values).then(res => res.rows);
+    return client.query<R>(query, values).then(res => res.rows);
 }
 
 function loadFromFile() {
