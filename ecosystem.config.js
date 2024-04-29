@@ -1,8 +1,4 @@
-try {
-    require('dotenv/config');
-} catch (_) {
-    // Production environment does not have dotenv
-}
+require('dotenv/config');
 module.exports = {
     apps : [{
         name                  : 'bot',
