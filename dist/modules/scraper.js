@@ -54,7 +54,7 @@ async function scrape(source) {
             }
         }
     }
-    console.log(`${source}: Have ${images} after pixiv.`);
+    console.log(`${source}: Have ${JSON.stringify(images)} after pixiv.`);
     // This part is parsing danbooru images.
     console.log(`${source}: Trying danbooru...`);
     if (source.startsWith('https://danbooru.donmai.us/')) {
@@ -68,14 +68,20 @@ async function scrape(source) {
             images.push(raw_image);
         }
     }
-    console.log(`${source}: Have ${images} after danbooru.`);
+    console.log(`${source}: Have ${JSON.stringify(images)} after danbooru.`);
     if (!images.length) {
         console.log(`${source}: Trying twitter...`);
+        console.log(`${source}: GET ${_config_1.default.scraper}?url=${source}`);
         // Let a separate server handle the parsing of twitter images with playwright.
         const { imgs } = await fetch(`${_config_1.default.scraper}?url=${source}`)
-            .then(res => res.json(), () => ({ imgs: [] }));
+            .then(res => {
+            console.log(`${source}: Scraper returned ${res.status}.`);
+            return res.json();
+        }, () => {
+            return { imgs: [] };
+        });
         images.push(...imgs);
-        console.log(`${source}: Got ${images} from twitter.`);
+        console.log(`${source}: Response: ${JSON.stringify(images)}`);
     }
     // No images could be found, tell caller to try uploading source
     if (!images.length)
