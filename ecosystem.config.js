@@ -3,6 +3,7 @@ module.exports = {
     apps : [{
         name                  : 'bot',
         script                : 'dist/index.js',
+        node_args             : '--env-file .env',
         instances             : 1,
         wait_ready            : true,
         listen_timeout        : 60_000, // Listen for 1 minute before marking failed
@@ -27,7 +28,7 @@ module.exports = {
             'path'        : process.env.DEPLOY_PATH,
             'pre-setup'   : `mkdir -p ${process.env.DEPLOY_PATH}`,
             'pre-deploy'  : 'npm ci --omit dev',
-            'post-deploy' : 'pm2 start --env production --update-env'
+            'post-deploy' : 'pm2 start --env production'
         },
         development : {
             'user'        : process.env.SSH_USER,
@@ -37,7 +38,7 @@ module.exports = {
             'path'        : process.env.DEV_DEPLOY_PATH,
             'pre-setup'   : `mkdir -p ${process.env.DEV_DEPLOY_PATH}`,
             'pre-deploy'  : 'npm ci --omit dev',
-            'post-deploy' : 'pm2 start --env development --update-env'
+            'post-deploy' : 'pm2 start --env development'
         }
     }
 };

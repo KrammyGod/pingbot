@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-require("dotenv/config");
 exports.default = {
     ////// Must haves, for bot to work
     /**
