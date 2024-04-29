@@ -89,7 +89,7 @@ function webhook_permission(message) {
 // Replace emojis
 async function replace_emojis(message) {
     // No bots and DMs
-    if (!message.content || message.author.bot || !message.inGuild() || _config_1.default.env !== 'production')
+    if (!message.content || message.author.bot || !message.inGuild() || _config_1.default.env !== 'prod')
         return;
     const emojis = [...new Set(message.content.match(/:[A-Za-z0-9_-]+:(?![0-9]+>)/g))];
     let impersonate = false;
@@ -239,7 +239,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
 });
 // When new member joins, send message according to guild settings
 client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
-    if (_config_1.default.env !== 'production')
+    if (_config_1.default.env !== 'prod')
         return;
     const info = await DB.getGuild(member.guild.id).catch(() => { });
     if (!info)

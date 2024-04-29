@@ -16,10 +16,12 @@ module.exports = {
         source_map_support    : true,
         appendEnvToName       : true,
         env_production: {
-            NODE_ENV: 'production'
+            NODE_ENV: 'production',
+            BOT_ENV: 'prod'
         },
         env_development: {
-            NODE_ENV: 'development'
+            NODE_ENV: 'production',
+            BOT_ENV: 'beta'
         }
     }],
 
@@ -31,7 +33,7 @@ module.exports = {
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEPLOY_PATH,
             'pre-setup'   : `mkdir -p ${process.env.DEPLOY_PATH}`,
-            'pre-deploy'  : 'npm ci --omit=dev',
+            'pre-deploy'  : 'npm ci',
             'post-deploy' : 'pm2 start --env production'
         },
         development : {
@@ -41,7 +43,7 @@ module.exports = {
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEV_DEPLOY_PATH,
             'pre-setup'   : `mkdir -p ${process.env.DEV_DEPLOY_PATH}`,
-            'pre-deploy'  : 'npm ci --omit=dev',
+            'pre-deploy'  : 'npm ci',
             'post-deploy' : 'pm2 start --env development'
         }
     }
