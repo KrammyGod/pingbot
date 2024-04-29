@@ -12,6 +12,7 @@ export default async function scrape(source: string) {
     const images: string[] = [];
 
     // This part is parsing pixiv images.
+    console.log(`${source}: Trying pixiv...`);
     if (source.startsWith('https://www.pixiv.net/')) {
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
@@ -50,8 +51,10 @@ export default async function scrape(source: string) {
             }
         }
     }
+    console.log(`${source}: Have ${images} after pixiv.`);
 
     // This part is parsing danbooru images.
+    console.log(`${source}: Trying danbooru...`);
     if (source.startsWith('https://danbooru.donmai.us/')) {
         const $ = await fetch(source).then(res => res.text()).then(load);
         const sectionTag = $('section').find('.image-container');
@@ -63,12 +66,15 @@ export default async function scrape(source: string) {
             images.push(raw_image);
         }
     }
+    console.log(`${source}: Have ${images} after danbooru.`);
 
     if (!images.length) {
+        console.log(`${source}: Trying twitter...`);
         // Let a separate server handle the parsing of twitter images with playwright.
         const { imgs } = await fetch(`${config.scraper}?url=${source}`)
             .then(res => res.json(), () => ({ imgs: [] }));
         images.push(...imgs);
+        console.log(`${source}: Got ${images} from twitter.`);
     }
 
     // No images could be found, tell caller to try uploading source
