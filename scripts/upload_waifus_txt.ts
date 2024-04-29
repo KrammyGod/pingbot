@@ -2,7 +2,6 @@
  * This script is more computationally intensive in exchange for being less
  * intensive on the database (don't have to copy all waifus)
  */
-import 'dotenv/config';
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
 import { Pool, PoolClient, QueryResultRow } from 'pg';

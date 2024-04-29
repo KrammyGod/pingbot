@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 export default {
     ////// Must haves, for bot to work
     /**
@@ -81,5 +79,5 @@ export default {
     /**
      * The environment the bot is running in. Only used to determine whether to send a welcome message or not.
      */
-    env: process.env.NODE_ENV,
+    env: process.env.BOT_ENV,
 };
