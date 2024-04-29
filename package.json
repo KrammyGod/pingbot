@@ -41,15 +41,15 @@
   "devDependencies": {
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.12.7",
-    "@types/pg": "^8.11.5",
+    "@types/node": "^20.12.3",
+    "@types/pg": "^8.11.4",
     "@types/pg-copy-streams": "^1.2.5",
-    "@typescript-eslint/eslint-plugin": "^7.7.1",
-    "@typescript-eslint/parser": "^7.7.1",
+    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/parser": "^7.5.0",
     "eslint": "^8.57.0",
     "rimraf": "^5.0.5",
     "tsc-alias": "^1.8.8",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.3"
   },
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
