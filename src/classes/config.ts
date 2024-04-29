@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 export default {
     ////// Must haves, for bot to work
     /**
