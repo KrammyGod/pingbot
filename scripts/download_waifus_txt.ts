@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
 import { Pool, QueryResultRow } from 'pg';
