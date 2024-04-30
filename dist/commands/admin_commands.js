@@ -234,14 +234,12 @@ exports.upload = {
         }
         const res = [];
         await message.channel.sendTyping();
-        const all = await Promise.all(args.map(url => {
-            return (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url }));
-        }));
+        const all = await Promise.all(args.map(url => (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url }))));
         if (all.length) {
             const formdata = new FormData();
             for (const obj of all) {
-                for (const url of obj.images) {
-                    const { ext, blob } = await (0, cdn_1.getImage)(url);
+                const images = await Promise.all(obj.images.map(cdn_1.getImage));
+                for (const { ext, blob } of images) {
                     formdata.append('images', blob, `tmp.${ext}`);
                     formdata.append('sources', obj.source);
                 }

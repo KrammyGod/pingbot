@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const crypto_1 = __importDefault(require("crypto"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const pixiv_ts_1 = __importDefault(require("pixiv.ts"));
 const cheerio_1 = require("cheerio");
@@ -13,9 +14,12 @@ let pixiv;
  */
 async function scrape(source) {
     const images = [];
+    // Generate unique ID for logs
+    const id = crypto_1.default.randomInt(100000);
     // This part is parsing pixiv images.
-    console.log(`${source}: Trying pixiv...`);
+    console.log(`${id}: Got ${source}`);
     if (source.startsWith('https://www.pixiv.net/')) {
+        console.log(`${id}: I think it's a pixiv link. Trying pixiv...`);
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
             pixiv = await pixiv_ts_1.default.refreshLogin(_config_1.default.pixiv).catch(() => {
@@ -53,11 +57,11 @@ async function scrape(source) {
                 images.push(new_url);
             }
         }
+        console.log(`${id}: Have ${JSON.stringify(images)} after pixiv.`);
     }
-    console.log(`${source}: Have ${JSON.stringify(images)} after pixiv.`);
     // This part is parsing danbooru images.
-    console.log(`${source}: Trying danbooru...`);
     if (source.startsWith('https://danbooru.donmai.us/')) {
+        console.log(`${id}: I think it's a danbooru link. Trying danbooru...`);
         const $ = await fetch(source).then(res => res.text()).then(cheerio_1.load);
         const sectionTag = $('section').find('.image-container');
         // Backup in case there is no section/image source
@@ -67,25 +71,27 @@ async function scrape(source) {
         if (raw_image) {
             images.push(raw_image);
         }
+        console.log(`${id}: Have ${JSON.stringify(images)} after danbooru.`);
     }
-    console.log(`${source}: Have ${JSON.stringify(images)} after danbooru.`);
     if (!images.length) {
-        console.log(`${source}: Trying twitter...`);
-        console.log(`${source}: GET ${_config_1.default.scraper}?url=${source}`);
+        console.log(`${id}: Trying twitter...`);
+        console.log(`${id}: GET ${_config_1.default.scraper}?url=${source}`);
         // Let a separate server handle the parsing of twitter images with playwright.
         const { imgs } = await fetch(`${_config_1.default.scraper}?url=${source}`)
             .then(res => {
-            console.log(`${source}: Scraper returned ${res.status}.`);
+            console.log(`${id}: Scraper returned ${res.status}.`);
             return res.json();
         }, () => {
             return { imgs: [] };
         });
         images.push(...imgs);
-        console.log(`${source}: Response: ${JSON.stringify(images)}`);
+        console.log(`${id}: Response: ${JSON.stringify(images)}`);
     }
     // No images could be found, tell caller to try uploading source
-    if (!images.length)
+    if (!images.length) {
+        console.log(`${id}: Exhausted all known links. No images found.`);
         images.push(source);
+    }
     return { images, source };
 }
 exports.default = scrape;
