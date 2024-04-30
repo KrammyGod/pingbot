@@ -219,14 +219,14 @@ export const upload: MessageCommand = {
         }
         const res = [];
         await message.channel.sendTyping();
-        const all = await Promise.all(args.map(url => {
-            return scrape(url).catch(() => ({ images: [url], source: url }));
-        }));
+        const all = await Promise.all(args.map(url => 
+            scrape(url).catch(() => ({ images: [url], source: url }))
+        ));
         if (all.length) {
             const formdata = new FormData();
             for (const obj of all) {
-                for (const url of obj.images) {
-                    const { ext, blob } = await getImage(url);
+                const images = await Promise.all(obj.images.map(getImage));
+                for (const { ext, blob } of images) {
                     formdata.append('images', blob, `tmp.${ext}`);
                     formdata.append('sources', obj.source);
                 }
