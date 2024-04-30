@@ -12,7 +12,7 @@ async function getCDNMetrics() {
     const res = await fetch(`${_config_1.default.origin}/api/metrics`, {
         method: 'GET',
         headers
-    }).then(res => res.json()).catch(e => console.error(e));
+    }).then(res => res.json()).catch(e => console.error(`GET: ${e}`));
     return res ?? { metrics: [] };
 }
 exports.getCDNMetrics = getCDNMetrics;
@@ -25,10 +25,10 @@ async function uploadToCDN(body) {
         if (res.status === 200)
             return res.json();
         // Try to log error message
-        res.json().then(console.error, () => { });
+        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => { });
         return { urls: [] };
     }).catch(e => {
-        console.error(e);
+        console.error(`POST: ${e}`);
         return { urls: [] };
     });
     return urls;
@@ -42,7 +42,7 @@ async function updateCDN(filenames, newSources) {
         method: 'PUT',
         headers,
         body: JSON.stringify({ filenames, sources })
-    }).then(res => res.json()).catch(e => console.error(e));
+    }).then(res => res.json()).catch(e => console.error(`PUT: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error updating files';
 }
@@ -53,7 +53,7 @@ async function deleteFromCDN(filenames) {
         method: 'DELETE',
         headers,
         body: JSON.stringify({ filenames })
-    }).then(res => res.json()).catch(e => console.error(e));
+    }).then(res => res.json()).catch(e => console.error(`DELETE: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';
 }
