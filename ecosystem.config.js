@@ -7,7 +7,7 @@ module.exports = {
     apps : [{
         name                  : 'bot',
         script                : 'dist/index.js',
-        node_args             : '--env-file .env',
+        node_args             : '--env-file=.env',
         instances             : 1,
         wait_ready            : true,
         listen_timeout        : 60_000, // Listen for 1 minute before marking failed
