@@ -1,14 +1,9 @@
-try {
-    require('dotenv/config');
-} catch (_) {
-    // Production environment does not have dotenv
-}
 module.exports = {
     apps : [{
         name                  : 'bot',
         script                : 'dist/index.js',
-        node_args             : '--env-file .env',
-        instances             : 1,
+        node_args             : '--env-file=.env',
+        exec_mode             : 'fork',
         wait_ready            : true,
         listen_timeout        : 60_000, // Listen for 1 minute before marking failed
         kill_timeout          : 10_000, // Wait 10 seconds before force killing
