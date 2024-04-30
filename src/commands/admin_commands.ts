@@ -219,11 +219,9 @@ export const upload: MessageCommand = {
         }
         const res = [];
         await message.channel.sendTyping();
-        const all: { images: string[], source: string }[] = [];
-        for (const url of args) {
-            // Use our helper to get the image data.
-            all.push(await scrape(url).catch(() => ({ images: [url], source: url })));
-        }
+        const all = await Promise.all(args.map(url => {
+            return scrape(url).catch(() => ({ images: [url], source: url }));
+        }));
         if (all.length) {
             const formdata = new FormData();
             for (const obj of all) {
