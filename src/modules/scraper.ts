@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import config from '@config';
 import Pixiv from 'pixiv.ts';
 import { load } from 'cheerio';
@@ -11,9 +12,13 @@ let pixiv: Pixiv;
 export default async function scrape(source: string) {
     const images: string[] = [];
 
+    // Generate unique ID for logs
+    const id = crypto.randomInt(100000);
+
     // This part is parsing pixiv images.
-    console.log(`${source}: Trying pixiv...`);
+    console.log(`${id}: Got ${source}`);
     if (source.startsWith('https://www.pixiv.net/')) {
+        console.log(`${id}: I think it's a pixiv link. Trying pixiv...`);
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
             pixiv = await Pixiv.refreshLogin(config.pixiv).catch(() => {
@@ -50,12 +55,12 @@ export default async function scrape(source: string) {
                 images.push(new_url);
             }
         }
+        console.log(`${id}: Have ${JSON.stringify(images)} after pixiv.`);
     }
-    console.log(`${source}: Have ${JSON.stringify(images)} after pixiv.`);
 
     // This part is parsing danbooru images.
-    console.log(`${source}: Trying danbooru...`);
     if (source.startsWith('https://danbooru.donmai.us/')) {
+        console.log(`${id}: I think it's a danbooru link. Trying danbooru...`);
         const $ = await fetch(source).then(res => res.text()).then(load);
         const sectionTag = $('section').find('.image-container');
         // Backup in case there is no section/image source
@@ -65,26 +70,29 @@ export default async function scrape(source: string) {
         if (raw_image) {
             images.push(raw_image);
         }
+        console.log(`${id}: Have ${JSON.stringify(images)} after danbooru.`);
     }
-    console.log(`${source}: Have ${JSON.stringify(images)} after danbooru.`);
 
     if (!images.length) {
-        console.log(`${source}: Trying twitter...`);
-        console.log(`${source}: GET ${config.scraper}?url=${source}`);
+        console.log(`${id}: Trying twitter...`);
+        console.log(`${id}: GET ${config.scraper}?url=${source}`);
         // Let a separate server handle the parsing of twitter images with playwright.
         const { imgs } = await fetch(`${config.scraper}?url=${source}`)
             .then(res => {
-                console.log(`${source}: Scraper returned ${res.status}.`);
+                console.log(`${id}: Scraper returned ${res.status}.`);
                 return res.json();
             }, () => { 
                 return { imgs: [] };
             });
         images.push(...imgs);
-        console.log(`${source}: Response: ${JSON.stringify(images)}`);
+        console.log(`${id}: Response: ${JSON.stringify(images)}`);
     }
 
     // No images could be found, tell caller to try uploading source
-    if (!images.length) images.push(source);
+    if (!images.length) {
+        console.log(`${id}: Exhausted all known links. No images found.`);
+        images.push(source);
+    }
 
     return { images, source };
 }

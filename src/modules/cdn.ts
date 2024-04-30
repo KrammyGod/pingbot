@@ -13,7 +13,7 @@ export async function getCDNMetrics(): Promise<Metrics> {
     const res = await fetch(`${config.origin}/api/metrics`, {
         method: 'GET',
         headers
-    }).then(res => res.json()).catch(e => console.error(e));
+    }).then(res => res.json()).catch(e => console.error(`GET: ${e}`));
     return res ?? { metrics: [] };
 }
 
@@ -25,10 +25,10 @@ export async function uploadToCDN(body: FormData): Promise<string[]> {
     }).then(res => {
         if (res.status === 200) return res.json();
         // Try to log error message
-        res.json().then(console.error, () => { });
+        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => { });
         return { urls: [] };
     }).catch(e => {
-        console.error(e);
+        console.error(`POST: ${e}`);
         return { urls: [] };
     });
     return urls;
@@ -42,7 +42,7 @@ export async function updateCDN(filenames: string[], newSources: string[]) {
         method: 'PUT',
         headers,
         body: JSON.stringify({ filenames, sources })
-    }).then(res => res.json()).catch(e => console.error(e));
+    }).then(res => res.json()).catch(e => console.error(`PUT: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error updating files';
 }
@@ -53,13 +53,12 @@ export async function deleteFromCDN(filenames: string[]): Promise<string> {
         method: 'DELETE',
         headers,
         body: JSON.stringify({ filenames })
-    }).then(res => res.json()).catch(e => console.error(e));
+    }).then(res => res.json()).catch(e => console.error(`DELETE: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';
 }
 
-type Image = { ext: string, blob: Blob };
-export async function getImage(url: string): Promise<Image> {
+export async function getImage(url: string) {
     let opts = undefined;
     if (url.startsWith('https://i.pximg.net/')) {
         // To avoid 403
