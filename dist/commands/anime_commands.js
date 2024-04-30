@@ -2388,13 +2388,11 @@ exports.submit = {
         }
         else if (action === 'upload') {
             await interaction.update({ components: [] });
-            // All image uploads go here.
-            const imgs = [];
-            for (const url of [...img, ...nimg]) {
+            // Upload images asynchonously
+            const imgs = await Promise.all([...img, ...nimg].map(async (url) => {
                 // Do not reupload CDN images.
                 if (url.startsWith(_config_1.default.cdn)) {
-                    imgs.push(url);
-                    continue;
+                    return url;
                 }
                 // Use our helper to get the image data.
                 const { images, source } = await (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url }));
@@ -2409,12 +2407,12 @@ exports.submit = {
                 // Upload to our CDN and get url back.
                 const [uploaded_url] = await (0, cdn_1.uploadToCDN)(formdata);
                 if (uploaded_url) {
-                    imgs.push(uploaded_url);
+                    return uploaded_url;
                 }
                 else {
-                    imgs.push(url);
+                    return url;
                 }
-            }
+            }));
             submission.data.img = imgs.splice(0, img.length);
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
