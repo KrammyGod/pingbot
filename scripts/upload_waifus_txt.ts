@@ -107,7 +107,7 @@ function findDiff(old: Waifu, updated: Waifu) {
     if (old.name !== updated.name) {
         diff += `\x1b[96mName:\x1b[0m \x1b[31m${old.name}\x1b[0m -> \x1b[92m${updated.name}\x1b[0m\n`;
     } else {
-        diff += `\x1b[96mOld name: ${old.name}\x1b[0m\n`;
+        diff += `\x1b[96mName: ${old.name}\x1b[0m\n`;
     }
     if (old.gender !== updated.gender) {
         diff += `\x1b[96mGender:\x1b[0m \x1b[31m${old.gender}\x1b[0m -> \x1b[92m${updated.gender}\x1b[0m\n`;

@@ -34,7 +34,9 @@ class Waifu {
     gender: 'Female' | 'Male' | 'Unknown';
     origin: string;
     img: string;
+    _img: string | string[];
     nimg: string;
+    _nimg: string | string[];
 
     static fromRows(rows: unknown[]) {
         const rets: Waifu[] = [];
@@ -52,6 +54,9 @@ class Waifu {
         this.origin = row.origin;
         this.img = Array.isArray(row.img) ? `[${row.img.map(imgReplacer).join(', ')}]` : row.img;
         this.nimg = Array.isArray(row.nimg) ? `[${row.nimg.map(imgReplacer).join(', ')}]` : row.nimg;
+        // Raw values are useful for calculations
+        this._img = row.img;
+        this._nimg = row.nimg;
     }
 
     equal(other: Waifu) {
@@ -97,6 +102,21 @@ function center(str: string, size: number) {
 if (require.main === module) {
     (async () => {
         const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);
+
+        /* Used for imgur uploading purposes */
+        // console.log([...waifus].sort((a, b) => {
+        //     const ac = (a._img as string[]).filter(img => {
+        //         if (img.startsWith('https://i.imgur')) return true;
+        //         return false;
+        //     }).length;
+        //     const bc = (b._img as string[]).filter(img => {
+        //         if (img.startsWith('https://i.imgur')) return true;
+        //         return false;
+        //     }).length;
+        //     return bc - ac;
+        // }).slice(0, 10).map(w => `${w.name} - ${w._img.length}`).join('\n'));
+        // return pool.end();
+
         let loadedWaifus: Waifu[];
         try {
             loadedWaifus = loadFromFile();
