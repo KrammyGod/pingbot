@@ -170,16 +170,7 @@ async function upload() {
             }
         }
         // Deleting nimgs
-        if (old.nimg.length > updated.nimg.length) {
-            const res = await query(
-                client,
-                'UPDATE user_chars SET _nimg = $1 WHERE _nimg > $1 AND wid = $2 RETURNING *',
-                [updated.nimg.length, old.wid]
-            );
-            if (res.length) {
-                console.log(imgDiff(res, 'lewd image changed'));
-            }
-        } else if (old.nimg.length !== 0 && updated.nimg.length === 0) {
+        if (old.nimg.length !== 0 && updated.nimg.length === 0) {
             // All nimg deleted, remove nsfw from everyone
             const res = await query(
                 client,
@@ -191,6 +182,15 @@ async function upload() {
             );
             if (res.length) {
                 console.log(imgDiff(res, 'lewd image reset'));
+            }
+        } else if (old.nimg.length > updated.nimg.length) {
+            const res = await query(
+                client,
+                'UPDATE user_chars SET _nimg = $1 WHERE _nimg > $1 AND wid = $2 RETURNING *',
+                [updated.nimg.length, old.wid]
+            );
+            if (res.length) {
+                console.log(imgDiff(res, 'lewd image changed'));
             }
         }
     }
@@ -213,5 +213,9 @@ async function upload() {
 }
 
 if (require.main === module) {
-    upload();
+    upload().then(confirmed => {
+        if (!confirmed) {
+            process.exit(1);
+        }
+    });
 }

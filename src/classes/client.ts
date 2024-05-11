@@ -66,7 +66,7 @@ export interface MessageCommand {
 
 // Basics that every slash command must have
 interface Command {
-    data: DTypes.SlashCommandBuilder | DTypes.SlashCommandSubcommandBuilder | DTypes.SlashCommandSubcommandGroupBuilder;
+    data: DTypes.SharedNameAndDescription;
     desc: string; // Long description for help command
     execute: (i: DTypes.ChatInputCommandInteraction, client: CustomClient) => Promise<void>;
     buttonReact?: (i: DTypes.ButtonInteraction, client: CustomClient) => Promise<void>;
@@ -81,7 +81,7 @@ export interface SlashSubcommandGroup extends Command {
     subcommands: Map<string, SlashSubcommand>;
 }
 export interface SlashCommand extends Command {
-    data: DTypes.SlashCommandBuilder;
+    data: DTypes.SlashCommandOptionsOnlyBuilder | DTypes.SlashCommandSubcommandsOnlyBuilder;
     subcommands?: Map<string, SlashSubcommandGroup | SlashSubcommand>;
 }
 
