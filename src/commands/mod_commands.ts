@@ -1,10 +1,12 @@
+import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
-import { SlashCommand } from '@classes/client';
+import { CachedSlashCommand, SlashCommand } from '@classes/client';
 import { PermissionError } from '@classes/exceptions';
 import {
-    ActionRowBuilder, ButtonBuilder, ButtonStyle,
-    PermissionsBitField, ComponentType, SlashCommandBuilder, GuildMember
+    ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
+    PermissionsBitField, ComponentType, SlashCommandBuilder, Colors,
+    escapeCodeBlock, codeBlock, escapeEscape, escapeInlineCode
 } from 'discord.js';
 import type DTypes from 'discord.js';
 
@@ -26,7 +28,8 @@ export const purge: SlashCommand & PurgePrivates = {
             options
                 .setName('user')
                 .setDescription('User to filter messages (only delete from this user).'))
-        .setDescription('Purge messages from a channel.'),
+        .setDescription('Purge messages from a channel.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
 
     desc: 'Want an easy way to purge any amount of message? You came to the right command!\n\n' +
           'Usage: `/purge amount: <amount> user: [user]`\n\n' +
@@ -61,9 +64,7 @@ export const purge: SlashCommand & PurgePrivates = {
         }
         const user = interaction.options.getUser('user');
 
-        // Silent error if member is an API guild member; almost never
-        if (!(interaction.member instanceof GuildMember)) return;
-        if (interaction.channel!.isDMBased()) {
+        if (interaction.channel!.isDMBased() && !interaction.inGuild()) {
             // DMs
             if (isNaN(amount)) {
                 return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => { });
@@ -71,13 +72,15 @@ export const purge: SlashCommand & PurgePrivates = {
             const deleted = await Purge.purge_from_dm(interaction.channel, amount);
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
                 .then(m => { setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000); });
-        } else if (!interaction.channel!.permissionsFor(interaction.member!)
+        } else if (!interaction.inCachedGuild()) {
+            return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
+        } else if (!interaction.channel!.permissionsFor(interaction.member)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: 'You do not have permission to purge.\n' +
                     'You need the `Manage Messages` permission.'
             }).then(() => { });
-        } else if (!interaction.channel!.permissionsFor(interaction.guild!.members.me!)
+        } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: "I don't have permission to purge.\n" +
@@ -92,7 +95,7 @@ export const purge: SlashCommand & PurgePrivates = {
                     `you want to delete ${isNaN(amount) ? 'all' : amount} messages?`,
                 components: [this.buttons]
             });
-        
+
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: ComponentType.Button,
                 filter: i => i.user.id === interaction.user.id,
@@ -104,8 +107,6 @@ export const purge: SlashCommand & PurgePrivates = {
 
         // Purge all
         if (isNaN(amount)) {
-            // Can't purge channel in DMs
-            if (interaction.channel!.isDMBased() || !(interaction.member instanceof GuildMember)) return;
             // Extra permissions for purge all
             if (!interaction.channel!.permissionsFor(interaction.member)
                 .has(PermissionsBitField.Flags.ManageChannels)) {
@@ -113,7 +114,7 @@ export const purge: SlashCommand & PurgePrivates = {
                     content: 'You do not have permission to purge all.\n' +
                         'You need the `Manage Channels` permission.'
                 }).then(() => { });
-            } else if (!interaction.channel!.permissionsFor(interaction.guild!.members.me!)
+            } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
                 .has(PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: "I don't have permission to purge all.\n" +
@@ -135,7 +136,7 @@ export const purge: SlashCommand & PurgePrivates = {
             });
             return new_channel.send({ content: `${interaction.user} Purged all messages.` })
                 .then(msg => { setTimeout(() => msg.delete(), 3000); }).catch(() => { });
-        } else if (!interaction.channel!.permissionsFor(interaction.guild!.members.me!)
+        } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
             .has(PermissionsBitField.Flags.ReadMessageHistory)) {
             // Read message history required to purge specific messages
             return interaction.editReply({
@@ -150,5 +151,90 @@ export const purge: SlashCommand & PurgePrivates = {
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
+    }
+};
+
+type GuildPrivates = {
+    buildEmbed: (guild: Awaited<ReturnType<typeof DB.getGuild>>) => DTypes.EmbedBuilder;
+};
+type GuildCache = Awaited<ReturnType<typeof DB.getGuild>> & { mid: string };
+export const guild: CachedSlashCommand<GuildCache> & GuildPrivates = {
+    data: new SlashCommandBuilder()
+        .setName('guild')
+        .setDescription('Edits bot specific guild settings.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild)
+        .setDMPermission(false),
+
+    desc: 'Starts a dialogue to edit some guild settings.\n\n' +
+          '__**<<RESTRICTED FOR USERS WITH MANAGE GUILD PERMISSIONS ONLY>>**__\n\n' +
+          '__Replacement Options For Welcome Message:__\n' +
+          '${USER} - Mentions the newly joined member.\n' +
+          '${SERVER} - Replaces with the name of the server.\n' +
+          '${MEMBERCOUNT} - Replaces with the number of current members in the server.\n\n' +
+          'Usage: `/guild`',
+
+    cache: new DB.Cache('guild'),
+
+    buildEmbed(guild) {
+        const embed = new EmbedBuilder({
+            title: 'Guild Settings',
+            color: Colors.Blue
+        });
+        let description = 'Use the menu below to select a setting to edit.\n\n**Current Settings:**\n\n';
+        description += '__New Member Settings:__\nSending ';
+        if (guild.welcome_msg) {
+            description += codeBlock(escapeCodeBlock(escapeInlineCode(escapeEscape(guild.welcome_msg))));
+        } else {
+            description += 'nothing';
+        }
+        description += ' in ';
+        if (guild.welcome_channelid) {
+            description += `<#${guild.welcome_channelid}>`;
+        } else {
+            description += 'nowhere';
+        }
+        description += ' with ';
+        if (guild.welcome_roleid) {
+            description += `the role <@&${guild.welcome_roleid}>\n`;
+        } else {
+            description += 'no role.\n';
+        }
+        description += `\n__Emoji Replacement:__ **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
+
+        embed.setDescription(description);
+        return embed;
+    },
+
+    async execute(interaction) {
+        const message = await interaction.reply({ content: 'Loading...' }).then(i => i.fetch());
+        if (!interaction.inCachedGuild()) {
+            return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
+        }
+        
+        if (!interaction.channel!.permissionsFor(interaction.member)
+            .has(PermissionsBitField.Flags.ManageGuild)) {
+            return interaction.editReply({
+                content: 'You do not have permission to edit guild settings.\n' +
+                    'You need the `Manage Guild` permission.'
+            }).then(() => { });
+        }
+        
+        // Check to make sure that dialog does not currently exist for the guild
+        // Only allow one user to access the dialog at a time
+        let guild = await this.cache.get(interaction.guildId);
+        // If it does exist, then we need to exit other dialog:
+        if (guild) {
+            const deleted = await this.cache.delete(interaction.guildId);
+            if (deleted.length !== 1) {
+                console.log(`/guild: Warning! Deleted ${deleted.length} entries for guild ${interaction.guildId}.`);
+            }
+        } else {
+            // If none in cache, fetch current settings as cache
+            guild = { ...await DB.getGuild(interaction.guildId), mid: message.id };
+        }
+
+        await this.cache.set(interaction.guildId, guild);
+        const embed = this.buildEmbed(guild);
+        await interaction.editReply({ content: '', embeds: [embed] });
     }
 };

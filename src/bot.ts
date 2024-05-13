@@ -219,13 +219,13 @@ client.on(Events.InteractionCreate, interaction => {
 // When new member joins, send message according to guild settings
 client.on(Events.GuildMemberAdd, async member => {
     if (config.env !== 'prod') return;
-    const info = await DB.getGuild(member.guild.id).catch(() => { });
-    if (!info) return;
-    const channel = await member.guild.channels.fetch(info.channelid ?? '');
+    const guild = await DB.getGuild(member.guild.id).catch(() => { });
+    if (!guild) return;
+    const channel = await member.guild.channels.fetch(guild.welcome_channelid ?? '');
     if (!channel?.isTextBased()) return;
-    const role = await member.guild.roles.fetch(info.roleid ?? '');
-    if (channel && info.msg) {
-        let msg = info.msg;
+    const role = await member.guild.roles.fetch(guild.welcome_roleid ?? '');
+    if (channel && guild.welcome_msg) {
+        let msg = guild.welcome_msg;
         for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
             msg = msg.replaceAll(template, value);
         }

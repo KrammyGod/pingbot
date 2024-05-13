@@ -1198,17 +1198,7 @@ async function get_char_as_embed(
     return retval;
 }
 
-type FnMap = {
-    [key: string]: (
-        client: CustomClient,
-        interaction: DTypes.AnySelectMenuInteraction,
-        char: DB.Character
-    ) => Promise<{
-        embeds: DTypes.EmbedBuilder[],
-        ephemeral: boolean
-    } | undefined>;
-};
-const fnMappings: FnMap = {
+const fnMappings = {
     'toggle_char': switch_char_image,
     'ntoggle_char': toggle_char_nsfw,
     'delete_char': delete_char
@@ -1467,7 +1457,7 @@ const listHelpers = {
         const char = high ?
             await DB.fetchUserHighCharacter(interaction.user.id, wid) :
             await DB.fetchUserCharacter(interaction.user.id, wid);
-        const callFn = fnMappings[fn];
+        const callFn = fnMappings[fn as keyof typeof fnMappings];
         if (callFn) {
             const res = await callFn(client, interaction, char!);
             if (res) {
