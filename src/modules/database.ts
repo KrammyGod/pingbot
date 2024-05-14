@@ -1103,7 +1103,7 @@ const EMPTY_GUILD_SETTINGS: GuildSettings = {
     welcome_msg: null,
     welcome_roleid: null,
     welcome_channelid: null,
-    emoji_replacement: false
+    emoji_replacement: true
 };
 // Will return an empty GuildSettings object if not found
 // This allows modification easily even if it does not exist.

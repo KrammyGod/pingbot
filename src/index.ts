@@ -181,6 +181,7 @@ http.createServer((req, res) => {
             try {
                 return JSON.parse(str);
             } catch (err) {
+                err;
                 return;
             }
         }

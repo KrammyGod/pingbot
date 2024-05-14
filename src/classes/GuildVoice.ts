@@ -191,7 +191,8 @@ export default class GuildVoice {
                     entersState(connection, VoiceConnectionStatus.Connecting, 5000)
                 ]);
                 // Seems to be reconecting to a new channel - ignore disconnect.
-            } catch (error) {
+            } catch (err) {
+                err;
                 // Seems to be a real disconnect which SHOULDN'T be recovered from
                 this.destroy();
             }
