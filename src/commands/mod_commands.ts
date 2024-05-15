@@ -7,9 +7,7 @@ import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
     PermissionsBitField, ComponentType, SlashCommandBuilder, Colors,
     escapeCodeBlock, codeBlock, escapeEscape, escapeInlineCode,
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    ChannelSelectMenuBuilder,
+    StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder,
     RoleSelectMenuBuilder
 } from 'discord.js';
 import type DTypes from 'discord.js';
@@ -164,15 +162,240 @@ type GuildComponentTypes = {
     emoji_menu: null;
 };
 type GuildType = Awaited<ReturnType<typeof DB.getGuild>>;
+type GuildCacheType = GuildType & { mid: string };
+type GuildMenus = {
+    buildEmbeds: (guild: GuildType) => DTypes.EmbedBuilder[];
+    buildComponents: (userID: string, guild: GuildType) => ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[];
+    buttonReact: (
+        guild: GuildCacheType,
+        menu: keyof GuildComponentTypes,
+        actions: string
+    ) => keyof GuildComponentTypes;
+    menuReact: (
+        guild: GuildCacheType,
+        menu: keyof GuildComponentTypes,
+        actions: string[]
+    ) => keyof GuildComponentTypes;
+    textInput: (
+        guild: GuildCacheType,
+        menu: keyof GuildComponentTypes,
+        values: DTypes.ModalSubmitFields
+    ) => keyof GuildComponentTypes;
+};
+const main_menu: GuildMenus = {
+    buildEmbeds(guild) {
+        let description = 'Use the menu below to select a setting to edit.\n\n**Current Settings:**\n\n';
+        description += '__New Member Settings:__\nSending ';
+        if (guild.welcome_msg) {
+            description += codeBlock(escapeCodeBlock(escapeInlineCode(escapeEscape(guild.welcome_msg))));
+        } else {
+            description += 'nothing';
+        }
+        description += ' in ';
+        if (guild.welcome_channelid) {
+            description += `<#${guild.welcome_channelid}>`;
+        } else {
+            description += 'nowhere';
+        }
+        description += ' with ';
+        if (guild.welcome_roleid) {
+            description += `the role <@&${guild.welcome_roleid}>\n`;
+        } else {
+            description += 'no role.\n';
+        }
+        description += `\n__Emoji Replacement:__ **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
+        return [new EmbedBuilder({
+            title: 'Guild Settings',
+            color: Colors.Blue,
+            description
+        })];
+    },
+    buildComponents(userID, guild) {
+        return [
+            new ActionRowBuilder<StringSelectMenuBuilder>()
+                .addComponents(
+                    new StringSelectMenuBuilder()
+                        .addOptions(
+                            new StringSelectMenuOptionBuilder()
+                                .setLabel('Edit welcome message for new members')
+                                .setValue('welcome_menu'),
+                            new StringSelectMenuOptionBuilder()
+                                .setLabel('Emoji Replacement')
+                                .setValue('emoji_menu')
+                        )
+                        .setPlaceholder('Select a setting to edit...')
+                        .setCustomId(`guild/${userID}/main_menu`)
+                        .setMaxValues(1)
+                )
+        ];
+    },
+    buttonReact(guild, menu, action) {
+        throw new Error('/guild: main_menu does not have button reactions!');
+    },
+    menuReact(guild, menu, actions) {
+        return actions[0] as keyof GuildComponentTypes;
+    },
+    textInput(guild, menu, values) {
+        throw new Error('/guild: main_menu does not have text inputs!');
+    }
+};
+const welcome_menu: GuildMenus = {
+    buildEmbeds(guild) {
+        let description = 'Use the buttons below to edit the welcome settings.\n\n**Current Settings:**\n\n';
+        description += '__Welcome Channel:__\n';
+        if (guild.welcome_channelid) {
+            description += `<#${guild.welcome_channelid}>\n`;
+        } else {
+            description += '*No channel found.*\n';
+        }
+        description += '\n__Welcome Message:__\n';
+        if (guild.welcome_msg) {
+            description += codeBlock(escapeCodeBlock(escapeInlineCode(escapeEscape(guild.welcome_msg))));
+        } else {
+            description += '*No message found.*\n';
+        }
+        description += '\n__Role Given:__\n';
+        if (guild.welcome_roleid) {
+            description += `<@&${guild.welcome_roleid}>\n`;
+        } else {
+            description += '*No role found.*\n';
+        }
+        return [new EmbedBuilder({
+            title: 'Welcome Settings',
+            color: Colors.Blue,
+            description
+        })];
+    },
+    buildComponents(userID, guild) {
+        return [
+            new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setEmoji('📝')
+                        .setCustomId(`guild/${userID}/welcome_menu/editmsg`)
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setEmoji('🔙')
+                        .setCustomId(`guild/${userID}/welcome_menu/back`)
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setEmoji('❓')
+                        .setCustomId(`guild/${userID}/welcome_menu/help`)
+                        .setStyle(ButtonStyle.Secondary)
+                ),
+            new ActionRowBuilder<ChannelSelectMenuBuilder>()
+                .addComponents(
+                    new ChannelSelectMenuBuilder()
+                        .setCustomId(`guild/${userID}/welcome_menu/channel`)
+                        .setPlaceholder('Select a channel...')
+                        .setDefaultChannels(guild.welcome_channelid ? [guild.welcome_channelid] : [])
+                        .setMinValues(0)
+                        .setMaxValues(1)
+                ),
+            new ActionRowBuilder<RoleSelectMenuBuilder>()
+                .addComponents(
+                    new RoleSelectMenuBuilder()
+                        .setCustomId(`guild/${userID}/welcome_menu/role`)
+                        .setPlaceholder('Select a role...')
+                        .setDefaultRoles(guild.welcome_roleid ? [guild.welcome_roleid] : [])
+                        .setMinValues(0)
+                        .setMaxValues(1)
+                )
+        ];
+    },
+    buttonReact(guild, menu, action) {
+        switch (action) {
+            case 'editmsg':
+                break;
+            case 'back':
+                menu = 'main_menu';
+                break;
+            case 'help':
+                break;
+            default:
+                throw new Error(`/guild: welcome_menu buttonReact invalid action: ${action}`);
+        }
+        return menu;
+    },
+    menuReact(guild, menu, actions) {
+        const menuType = actions.pop();
+        switch (menuType) {
+            case 'channel':
+                
+                break;
+            case 'role':
+                break;
+            default:
+                throw new Error(`/guild: welcome_menu menuReact invalid action: ${menuType}`);
+        };
+        return menu;
+    },
+    textInput(guild, menu, values) {
+        
+        return menu;
+    }
+};
+const emoji_menu: GuildMenus = {
+    buildEmbeds(guild) {
+        let description = '';
+        return [new EmbedBuilder({
+            title: 'Emoji Replacement Settings',
+            color: Colors.Blue,
+            description
+        })];
+    },
+    buildComponents(userID, guild) {
+        return [
+            new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setEmoji('🟢')
+                        .setCustomId(`guild/${userID}/emoji_menu/enable`)
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setEmoji('🔴')
+                        .setCustomId(`guild/${userID}/emoji_menu/disable`)
+                        .setStyle(ButtonStyle.Danger),
+                    new ButtonBuilder()
+                        .setEmoji('🔙')
+                        .setCustomId(`guild/${userID}/emoji_menu/back`)
+                        .setStyle(ButtonStyle.Primary)
+                )
+        ]
+    },
+    buttonReact(guild, menu, action) {
+        switch (action) {
+            case 'enable':
+                guild.emoji_replacement = true;
+                break;
+            case 'disable':
+                guild.emoji_replacement = false;
+                break;
+            case 'back':
+                menu = 'main_menu';
+                break;
+            default:
+                throw new Error(`/guild: emoji_menu buttonReact invalid action: ${action}`);
+        }
+        return menu;
+    },
+    menuReact(guild, menu, actions) {
+        throw new Error('/guild: emoji_menu does not have menu reactions!');
+    },
+    textInput(guild, menu, values) {
+        throw new Error('/guild: emoji_menu does not have text inputs!')
+    }
+};
+
 type GuildPrivates = {
     buildComponents: (
         userID: string,
         guild: GuildType,
         menu: keyof GuildComponentTypes
     ) => ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[];
-    buildEmbed: (guild: GuildType, menu: keyof GuildComponentTypes) => DTypes.EmbedBuilder;
+    buildEmbeds: (guild: GuildType, menu: keyof GuildComponentTypes) => DTypes.EmbedBuilder[];
 };
-export const guild: CachedSlashCommand<GuildType & { mid: string }> & GuildPrivates = {
+export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
     data: new SlashCommandBuilder()
         .setName('guild')
         .setDescription('Edits bot specific guild settings.')
@@ -190,111 +413,25 @@ export const guild: CachedSlashCommand<GuildType & { mid: string }> & GuildPriva
     cache: new DB.Cache('guild'),
 
     buildComponents(userID, guild, menu) {
-        const components: ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[] = [];
         switch(menu) {
             case 'main_menu':
-                components.push(new ActionRowBuilder<StringSelectMenuBuilder>()
-                    .addComponents(
-                        new StringSelectMenuBuilder()
-                            .addOptions(
-                                new StringSelectMenuOptionBuilder()
-                                    .setLabel('Edit welcome message for new members')
-                                    .setValue('welcome'),
-                                new StringSelectMenuOptionBuilder()
-                                    .setLabel('Emoji Replacement')
-                                    .setValue('emoji')
-                            )
-                            .setPlaceholder('Select a setting to edit...')
-                            .setCustomId(`guild/${userID}/main_menu`)
-                            .setMaxValues(1)
-                    ));
-                break;
+                return main_menu.buildComponents(userID, guild);
             case 'welcome_menu':
-                components.push(
-                    new ActionRowBuilder<ButtonBuilder>()
-                        .addComponents(
-                            new ButtonBuilder()
-                                .setEmoji('📝')
-                                .setCustomId(`guild/${userID}/welcome_menu/editmsg`)
-                                .setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder()
-                                .setEmoji('🔙')
-                                .setCustomId(`guild/${userID}/welcome_menu/back`)
-                                .setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder()
-                                .setEmoji('❓')
-                                .setCustomId(`guild/${userID}/welcome_menu/help`)
-                                .setStyle(ButtonStyle.Secondary)
-                        ),
-                    new ActionRowBuilder<ChannelSelectMenuBuilder>()
-                        .addComponents(
-                            new ChannelSelectMenuBuilder()
-                                .setCustomId(`guild/${userID}/welcome_menu/channel`)
-                                .setPlaceholder('Select a channel...')
-                                .setDefaultChannels(guild.welcome_channelid ? [guild.welcome_channelid] : [])
-                                .setMinValues(0)
-                                .setMaxValues(1)
-                        ),
-                    new ActionRowBuilder<RoleSelectMenuBuilder>()
-                        .addComponents(
-                            new RoleSelectMenuBuilder()
-                                .setCustomId(`guild/${userID}/welcome_menu/role`)
-                                .setPlaceholder('Select a role...')
-                                .setDefaultRoles(guild.welcome_roleid ? [guild.welcome_roleid] : [])
-                                .setMinValues(0)
-                                .setMaxValues(1)
-                        )
-                );
-                break;
+                return welcome_menu.buildComponents(userID, guild);
             case 'emoji_menu':
-                components.push(new ActionRowBuilder<ButtonBuilder>()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setEmoji('🟢')
-                            .setCustomId(`guild/${userID}/emoji_menu/enable`)
-                            .setStyle(ButtonStyle.Success),
-                        new ButtonBuilder()
-                            .setEmoji('🔴')
-                            .setCustomId(`guild/${userID}/emoji_menu/disable`)
-                            .setStyle(ButtonStyle.Danger)
-                    ));
-                break;
+                return emoji_menu.buildComponents(userID, guild);
         }
-        return components;
     },
 
-    buildEmbed(guild, menu) {
-        const embed = new EmbedBuilder({
-            title: 'Guild Settings',
-            color: Colors.Blue
-        });
-        let description = '';
+    buildEmbeds(guild, menu) {
         switch (menu) {
             case 'main_menu':
-                description += 'Use the menu below to select a setting to edit.\n\n**Current Settings:**\n\n';
-                description += '__New Member Settings:__\nSending ';
-                if (guild.welcome_msg) {
-                    description += codeBlock(escapeCodeBlock(escapeInlineCode(escapeEscape(guild.welcome_msg))));
-                } else {
-                    description += 'nothing';
-                }
-                description += ' in ';
-                if (guild.welcome_channelid) {
-                    description += `<#${guild.welcome_channelid}>`;
-                } else {
-                    description += 'nowhere';
-                }
-                description += ' with ';
-                if (guild.welcome_roleid) {
-                    description += `the role <@&${guild.welcome_roleid}>\n`;
-                } else {
-                    description += 'no role.\n';
-                }
-                description += `\n__Emoji Replacement:__ **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
+                return main_menu.buildEmbeds(guild);
+            case 'welcome_menu':
+                return welcome_menu.buildEmbeds(guild);
+            case 'emoji_menu':
+                return emoji_menu.buildEmbeds(guild);
         }
-
-        embed.setDescription(description);
-        return embed;
     },
 
     async buttonReact(interaction) {
@@ -308,36 +445,115 @@ export const guild: CachedSlashCommand<GuildType & { mid: string }> & GuildPriva
         if (!guild) return; // This can happen if a button react comes late, just ignore.
         else if (guild.mid !== interaction.message.id) {
             // Expired guild dialog, try to delete message.
-            await interaction.deleteReply();
-            return;
+            return interaction.deleteReply();
         }
         switch (menu) {
+            case 'main_menu':
+                menu = main_menu.buttonReact(guild, menu, action);
+                break;
             case 'welcome_menu':
-                switch (action) {
-                    case 'editmsg':
-                        break;
-                    case 'back':
-                        menu = 'main_menu';
-                        break;
-                    case 'help':
-                        break;
-                }
+                menu = welcome_menu.buttonReact(guild, menu, action);
                 break;
             case 'emoji_menu':
-                switch (action) {
-                    case 'enable':
-                        guild.emoji_replacement = true;
-                        break;
-                    case 'disable':
-                        guild.emoji_replacement = false;
-                        break;
-                }
+                menu = emoji_menu.buttonReact(guild, menu, action);
                 break;
+            default:
+                throw new Error(`/guild: buttonReact invalid menu: ${menu}`);
         }
-        await DB.setGuild(guild);
-        const embed = this.buildEmbed(guild, menu);
+        // Up to my responsibility to ensure only necessary keys exist
+        // guild is of type GuildType, which has extra keys, but database setGuild
+        // only accepts those keys, typescript doesnt error, but it should.
+        await DB.setGuild({
+            gid: guild.gid,
+            welcome_msg: guild.welcome_msg,
+            welcome_channelid: guild.welcome_channelid,
+            welcome_roleid: guild.welcome_roleid,
+            emoji_replacement: guild.emoji_replacement
+        });
+        await this.cache.set(interaction.guildId, guild);
+        const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
-        await interaction.editReply({ embeds: [embed], components });
+        await interaction.editReply({ embeds, components });
+    },
+
+    async menuReact(interaction) {
+        await interaction.deferUpdate();
+        const [m, type] = interaction.customId.split('/').splice(2, 2);
+        let menu = m as keyof GuildComponentTypes;
+        if (!interaction.inCachedGuild()) {
+            return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
+        }
+        const guild = await this.cache.get(interaction.guildId);
+        if (!guild) return; // This can happen if a menu react comes late, just ignore.
+        else if (guild.mid !== interaction.message.id) {
+            // Expired guild dialog, try to delete message.
+            return interaction.deleteReply();
+        }
+        switch (menu) {
+            case 'main_menu':
+                menu = main_menu.menuReact(guild, menu, interaction.values);
+                break;
+            case 'welcome_menu':
+                menu = welcome_menu.menuReact(guild, menu, [...interaction.values, type]);
+                break;
+            case 'emoji_menu':
+                menu = emoji_menu.menuReact(guild, menu, interaction.values);
+                break;
+            default:
+                throw new Error(`/guild: menuReact invalid menu: ${menu}`);
+        }
+        // Up to my responsibility to ensure only necessary keys exist
+        // guild is of type GuildType, which has extra keys, but database setGuild
+        // only accepts those keys, typescript doesnt error, but it should.
+        await DB.setGuild({
+            gid: guild.gid,
+            welcome_msg: guild.welcome_msg,
+            welcome_channelid: guild.welcome_channelid,
+            welcome_roleid: guild.welcome_roleid,
+            emoji_replacement: guild.emoji_replacement
+        });
+        await this.cache.set(interaction.guildId, guild);
+        const embeds = this.buildEmbeds(guild, menu);
+        const components = this.buildComponents(interaction.user.id, guild, menu);
+        await interaction.editReply({ embeds, components });
+    },
+
+    async textInput(interaction) {
+        await interaction.deferUpdate();
+        const [m, type] = interaction.customId.split('/').splice(2, 2);
+        let menu = m as keyof GuildComponentTypes;
+        if (!interaction.inCachedGuild()) {
+            return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
+        }
+        const guild = await this.cache.get(interaction.guildId);
+        if (!guild) return; // This can happen if a button react comes late, just ignore.
+        switch (menu) {
+            case 'main_menu':
+                menu = main_menu.textInput(guild, menu, interaction.fields);
+                break;
+            case 'welcome_menu':
+                menu = welcome_menu.textInput(guild, menu, interaction.fields);
+                break;
+            case 'emoji_menu':
+                menu = emoji_menu.textInput(guild, menu, interaction.fields);
+                break;
+            default:
+                throw new Error(`/guild: textInput invalid menu: ${menu}`);
+        }
+        // Up to my responsibility to ensure only necessary keys exist
+        // guild is of type GuildType, which has extra keys, but database setGuild
+        // only accepts those keys, typescript doesnt error, but it should.
+        await DB.setGuild({
+            gid: guild.gid,
+            welcome_msg: guild.welcome_msg,
+            welcome_channelid: guild.welcome_channelid,
+            welcome_roleid: guild.welcome_roleid,
+            emoji_replacement: guild.emoji_replacement
+        });
+        await this.cache.set(interaction.guildId, guild);
+        const embeds = this.buildEmbeds(guild, menu);
+        const components = this.buildComponents(interaction.user.id, guild, menu);
+        await interaction.editReply({ embeds, components });
     },
 
     async execute(interaction) {
@@ -370,8 +586,8 @@ export const guild: CachedSlashCommand<GuildType & { mid: string }> & GuildPriva
 
         guild.mid = message.id;
         await this.cache.set(interaction.guildId, guild);
-        const embed = this.buildEmbed(guild, 'main_menu');
+        const embeds = this.buildEmbeds(guild, 'main_menu');
         const components = this.buildComponents(interaction.user.id, guild, 'main_menu');
-        await interaction.editReply({ content: null, embeds: [embed], components });
+        await interaction.editReply({ content: null, embeds, components });
     }
 };
