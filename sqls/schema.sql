@@ -92,11 +92,12 @@ FOR EACH ROW
 EXECUTE PROCEDURE update_max_streak();
 
 -- Table to store guild welcome settings
-CREATE TABLE IF NOT EXISTS guild_new_member (
+CREATE TABLE IF NOT EXISTS guild_settings (
     gid BIGINT PRIMARY KEY,
-    msg TEXT,
-    roleid BIGINT,
-    channelid BIGINT
+    welcome_msg TEXT,
+    welcome_roleid BIGINT,
+    welcome_channelid BIGINT,
+    emoji_replacement BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- Table to store temporary data for any command
