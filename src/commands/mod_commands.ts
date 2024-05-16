@@ -8,7 +8,7 @@ import {
     PermissionsBitField, ComponentType, SlashCommandBuilder, Colors,
     escapeCodeBlock, codeBlock, escapeEscape, escapeInlineCode,
     StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder,
-    RoleSelectMenuBuilder
+    RoleSelectMenuBuilder, TextInputBuilder, ModalBuilder, TextInputStyle
 } from 'discord.js';
 import type DTypes from 'discord.js';
 
@@ -165,22 +165,31 @@ type GuildType = Awaited<ReturnType<typeof DB.getGuild>>;
 type GuildCacheType = GuildType & { mid: string };
 type GuildMenus = {
     buildEmbeds: (guild: GuildType) => DTypes.EmbedBuilder[];
-    buildComponents: (userID: string, guild: GuildType) => ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[];
+    buildComponents: (
+        userID: string,
+        guild: GuildType
+    ) => ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[];
+    // All reactions have interaction as last parameter
+    // because only some reactions require the interaction
+    // for information or editing.
     buttonReact: (
         guild: GuildCacheType,
         menu: keyof GuildComponentTypes,
-        actions: string
-    ) => keyof GuildComponentTypes;
+        actions: string,
+        interaction: DTypes.ButtonInteraction<'cached'>
+    ) => Promise<keyof GuildComponentTypes> | keyof GuildComponentTypes;
     menuReact: (
         guild: GuildCacheType,
         menu: keyof GuildComponentTypes,
-        actions: string[]
-    ) => keyof GuildComponentTypes;
+        actions: string[],
+        interaction: DTypes.AnySelectMenuInteraction<'cached'>
+    ) => Promise<keyof GuildComponentTypes> | keyof GuildComponentTypes;
     textInput: (
         guild: GuildCacheType,
         menu: keyof GuildComponentTypes,
-        values: DTypes.ModalSubmitFields
-    ) => keyof GuildComponentTypes;
+        fields: DTypes.ModalSubmitFields,
+        interaction: DTypes.ModalSubmitInteraction<'cached'>
+    ) => Promise<keyof GuildComponentTypes> | keyof GuildComponentTypes;
 };
 const main_menu: GuildMenus = {
     buildEmbeds(guild) {
@@ -211,23 +220,22 @@ const main_menu: GuildMenus = {
         })];
     },
     buildComponents(userID, guild) {
-        return [
-            new ActionRowBuilder<StringSelectMenuBuilder>()
-                .addComponents(
-                    new StringSelectMenuBuilder()
-                        .addOptions(
-                            new StringSelectMenuOptionBuilder()
-                                .setLabel('Edit welcome message for new members')
-                                .setValue('welcome_menu'),
-                            new StringSelectMenuOptionBuilder()
-                                .setLabel('Emoji Replacement')
-                                .setValue('emoji_menu')
-                        )
-                        .setPlaceholder('Select a setting to edit...')
-                        .setCustomId(`guild/${userID}/main_menu`)
-                        .setMaxValues(1)
-                )
-        ];
+        return [new ActionRowBuilder<StringSelectMenuBuilder>()
+            .addComponents(
+                new StringSelectMenuBuilder()
+                    .addOptions(
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel('Edit welcome message for new members')
+                            .setValue('welcome_menu'),
+                        new StringSelectMenuOptionBuilder()
+                            .setLabel('Emoji Replacement')
+                            .setValue('emoji_menu')
+                    )
+                    .setPlaceholder('Select a setting to edit...')
+                    .setCustomId(`guild/${userID}/main_menu`)
+                    .setMinValues(1)
+                    .setMaxValues(1)
+            )];
     },
     buttonReact(guild, menu, action) {
         throw new Error('/guild: main_menu does not have button reactions!');
@@ -235,7 +243,7 @@ const main_menu: GuildMenus = {
     menuReact(guild, menu, actions) {
         return actions[0] as keyof GuildComponentTypes;
     },
-    textInput(guild, menu, values) {
+    textInput(guild, menu, fields) {
         throw new Error('/guild: main_menu does not have text inputs!');
     }
 };
@@ -263,7 +271,8 @@ const welcome_menu: GuildMenus = {
         return [new EmbedBuilder({
             title: 'Welcome Settings',
             color: Colors.Blue,
-            description
+            description,
+            footer: { text: 'Note: Click ❓ to see dynamic welcome message options.' }
         })];
     },
     buildComponents(userID, guild) {
@@ -303,65 +312,151 @@ const welcome_menu: GuildMenus = {
                 )
         ];
     },
-    buttonReact(guild, menu, action) {
+    async buttonReact(guild, menu, action, interaction) {
         switch (action) {
             case 'editmsg':
+                const input = new ModalBuilder({
+                    title: 'Change Welcome Message',
+                    custom_id: 'guild/0/welcome_menu/msg',
+                    components: [new ActionRowBuilder<TextInputBuilder>({
+                        components: [new TextInputBuilder({
+                            label: 'Enter your welcome message:',
+                            custom_id: 'guild/welcome_menu/msg',
+                            placeholder: 'Leave me blank to remove!',
+                            style: TextInputStyle.Paragraph,
+                            value: guild?.welcome_msg ?? '',
+                            max_length: 2000,
+                            required: false
+                        })]
+                    })]
+                });
+                await interaction.showModal(input);
                 break;
             case 'back':
                 menu = 'main_menu';
                 break;
             case 'help':
+                await interaction.editReply({ content: null });
+                await interaction.followUp({
+                    content: '📝 Edit the welcome message\n🔙 Return to main menu\n' +
+                        '__Replacement Options For Welcome Message:__\n' +
+                        '> ${USER} - Mentions the newly joined member.\n' +
+                        '> ${SERVER} - Replaces with the name of the server.\n' +
+                        '> ${MEMBERCOUNT} - Replaces with the number of current members in the server.',
+                    ephemeral: true
+                });
                 break;
             default:
                 throw new Error(`/guild: welcome_menu buttonReact invalid action: ${action}`);
         }
         return menu;
     },
-    menuReact(guild, menu, actions) {
+    async menuReact(guild, menu, actions, interaction) {
         const menuType = actions.pop();
         switch (menuType) {
             case 'channel':
-                
+                const chn = interaction.guild.channels.resolve(actions.at(0) ?? '')
+                if (chn) {
+                    if (!chn.isTextBased()) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: 'Channel must be a text channel.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    } if (!chn.permissionsFor(interaction.member).has(PermissionsBitField.Flags.SendMessages)) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: `You do not have permission to send messages in ${chn}.`,
+                            ephemeral: true
+                        });
+                        return menu;
+                    } else if (!chn.permissionsFor(interaction.guild.members.me!).has(PermissionsBitField.Flags.SendMessages)) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: `I do not have permission to send messages in ${chn}.`,
+                            ephemeral: true
+                        });
+                        return menu;
+                    }
+                }
+                guild.welcome_channelid = chn ? chn.id : chn;
                 break;
             case 'role':
+                const role = interaction.guild.roles.resolve(actions.at(0) ?? '');
+                if (role) {
+                    if (role.managed) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: 'Cannot assign a bot role.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    }
+                    const roleManager = interaction.guild.roles;
+                    const me = interaction.guild.members.me!.roles.highest;
+                    const them = interaction.member.roles.highest;
+                    if (roleManager.comparePositions(me, role) <= 0) {
+                        await interaction.followUp({
+                            content: `I am unable to add ${role} due to my role ` +
+                                'being lower than it.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    } else if (interaction.guild.ownerId !== interaction.user.id &&
+                            roleManager.comparePositions(them, role) <= 0) {
+                        // Owner's role is always higher than the role they are adding.
+                        await interaction.followUp({
+                            content: `You are unable to add ${role} due to your highest role ` +
+                                'being lower than it.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    }
+                }
+                guild.welcome_roleid = role ? role.id : role;
                 break;
             default:
                 throw new Error(`/guild: welcome_menu menuReact invalid action: ${menuType}`);
         };
         return menu;
     },
-    textInput(guild, menu, values) {
-        
+    textInput(guild, menu, fields) {
+        const msg = fields.getTextInputValue('guild/welcome_menu/msg')
+        guild.welcome_msg = msg;
         return menu;
     }
 };
 const emoji_menu: GuildMenus = {
     buildEmbeds(guild) {
-        let description = '';
+        let description = '**Current Setting:**\n\n__Emoji Replacement:__';
+        description += ` **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
         return [new EmbedBuilder({
             title: 'Emoji Replacement Settings',
             color: Colors.Blue,
-            description
+            description,
+            footer: {
+                text: 'Toggling this option will enable/disable server-wide emoji replacement.\n' +
+                    'To toggle for individual channels, disable webhook permissions for the bot.'
+            }
         })];
     },
     buildComponents(userID, guild) {
-        return [
-            new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setEmoji('🟢')
-                        .setCustomId(`guild/${userID}/emoji_menu/enable`)
-                        .setStyle(ButtonStyle.Success),
-                    new ButtonBuilder()
-                        .setEmoji('🔴')
-                        .setCustomId(`guild/${userID}/emoji_menu/disable`)
-                        .setStyle(ButtonStyle.Danger),
-                    new ButtonBuilder()
-                        .setEmoji('🔙')
-                        .setCustomId(`guild/${userID}/emoji_menu/back`)
-                        .setStyle(ButtonStyle.Primary)
-                )
-        ]
+        return [new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setEmoji('🟢')
+                    .setCustomId(`guild/${userID}/emoji_menu/enable`)
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setEmoji('🔴')
+                    .setCustomId(`guild/${userID}/emoji_menu/disable`)
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setEmoji('🔙')
+                    .setCustomId(`guild/${userID}/emoji_menu/back`)
+                    .setStyle(ButtonStyle.Primary)
+            )];
     },
     buttonReact(guild, menu, action) {
         switch (action) {
@@ -382,7 +477,7 @@ const emoji_menu: GuildMenus = {
     menuReact(guild, menu, actions) {
         throw new Error('/guild: emoji_menu does not have menu reactions!');
     },
-    textInput(guild, menu, values) {
+    textInput(guild, menu, fields) {
         throw new Error('/guild: emoji_menu does not have text inputs!')
     }
 };
@@ -435,8 +530,11 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
     },
 
     async buttonReact(interaction) {
-        await interaction.deferUpdate();
         const [m, action] = interaction.customId.split('/').splice(2, 2);
+        // A custom list of IDs that show modals, so we can't defer
+        if (!(m === 'welcome_menu' && action === 'editmsg')) {
+            await interaction.deferUpdate();
+        }
         let menu = m as keyof GuildComponentTypes;
         if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
@@ -449,17 +547,18 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
         }
         switch (menu) {
             case 'main_menu':
-                menu = main_menu.buttonReact(guild, menu, action);
+                menu = await main_menu.buttonReact(guild, menu, action, interaction);
                 break;
             case 'welcome_menu':
-                menu = welcome_menu.buttonReact(guild, menu, action);
+                menu = await welcome_menu.buttonReact(guild, menu, action, interaction);
                 break;
             case 'emoji_menu':
-                menu = emoji_menu.buttonReact(guild, menu, action);
+                menu = await emoji_menu.buttonReact(guild, menu, action, interaction);
                 break;
             default:
                 throw new Error(`/guild: buttonReact invalid menu: ${menu}`);
         }
+        await this.cache.set(interaction.guildId, guild);
         // Up to my responsibility to ensure only necessary keys exist
         // guild is of type GuildType, which has extra keys, but database setGuild
         // only accepts those keys, typescript doesnt error, but it should.
@@ -470,7 +569,6 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
             welcome_roleid: guild.welcome_roleid,
             emoji_replacement: guild.emoji_replacement
         });
-        await this.cache.set(interaction.guildId, guild);
         const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
         await interaction.editReply({ embeds, components });
@@ -491,17 +589,18 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
         }
         switch (menu) {
             case 'main_menu':
-                menu = main_menu.menuReact(guild, menu, interaction.values);
+                menu = await main_menu.menuReact(guild, menu, interaction.values, interaction);
                 break;
             case 'welcome_menu':
-                menu = welcome_menu.menuReact(guild, menu, [...interaction.values, type]);
+                menu = await welcome_menu.menuReact(guild, menu, [...interaction.values, type], interaction);
                 break;
             case 'emoji_menu':
-                menu = emoji_menu.menuReact(guild, menu, interaction.values);
+                menu = await emoji_menu.menuReact(guild, menu, interaction.values, interaction);
                 break;
             default:
                 throw new Error(`/guild: menuReact invalid menu: ${menu}`);
         }
+        await this.cache.set(interaction.guildId, guild);
         // Up to my responsibility to ensure only necessary keys exist
         // guild is of type GuildType, which has extra keys, but database setGuild
         // only accepts those keys, typescript doesnt error, but it should.
@@ -512,7 +611,6 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
             welcome_roleid: guild.welcome_roleid,
             emoji_replacement: guild.emoji_replacement
         });
-        await this.cache.set(interaction.guildId, guild);
         const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
         await interaction.editReply({ embeds, components });
@@ -529,17 +627,18 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
         if (!guild) return; // This can happen if a button react comes late, just ignore.
         switch (menu) {
             case 'main_menu':
-                menu = main_menu.textInput(guild, menu, interaction.fields);
+                menu = await main_menu.textInput(guild, menu, interaction.fields, interaction);
                 break;
             case 'welcome_menu':
-                menu = welcome_menu.textInput(guild, menu, interaction.fields);
+                menu = await welcome_menu.textInput(guild, menu, interaction.fields, interaction);
                 break;
             case 'emoji_menu':
-                menu = emoji_menu.textInput(guild, menu, interaction.fields);
+                menu = await emoji_menu.textInput(guild, menu, interaction.fields, interaction);
                 break;
             default:
                 throw new Error(`/guild: textInput invalid menu: ${menu}`);
         }
+        await this.cache.set(interaction.guildId, guild);
         // Up to my responsibility to ensure only necessary keys exist
         // guild is of type GuildType, which has extra keys, but database setGuild
         // only accepts those keys, typescript doesnt error, but it should.
@@ -550,7 +649,6 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
             welcome_roleid: guild.welcome_roleid,
             emoji_replacement: guild.emoji_replacement
         });
-        await this.cache.set(interaction.guildId, guild);
         const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
         await interaction.editReply({ embeds, components });

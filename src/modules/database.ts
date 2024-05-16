@@ -1180,7 +1180,9 @@ export class Cache<T extends object> {
     constructor(private cmd: string) { }
     get(id?: string) {
         return query<{ data: T }>(
-            'SELECT data FROM local_data WHERE cmd = $1 AND id = $2',
+            `SELECT data FROM local_data
+                WHERE cmd = $1 AND id = $2 AND
+                    (CURRENT_DATE < expiry OR expiry IS NULL)`,
             [this.cmd, id]
         ).then(res => res.at(0)?.data);
     }
