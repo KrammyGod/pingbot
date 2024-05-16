@@ -68,6 +68,9 @@ function webhook_permission(message: DTypes.Message) {
 async function replace_emojis(message: DTypes.Message) {
     // No bots and DMs
     if (!message.content || message.author.bot || !message.inGuild() || config.env !== 'prod') return;
+    const guild = await DB.getGuild(message.guild.id).catch(() => null);
+    // Guild unsubscribed from emoji replacement
+    if (guild && !guild.emoji_replacement) return;
     const emojis = [...new Set(message.content.match(/:[A-Za-z0-9_-]+:(?![0-9]+>)/g))];
     let impersonate = false;
     let msg = message.content;
@@ -219,20 +222,20 @@ client.on(Events.InteractionCreate, interaction => {
 // When new member joins, send message according to guild settings
 client.on(Events.GuildMemberAdd, async member => {
     if (config.env !== 'prod') return;
-    const info = await DB.getGuild(member.guild.id).catch(() => { });
-    if (!info) return;
-    const channel = await member.guild.channels.fetch(info.channelid ?? '');
+    const guild = await DB.getGuild(member.guild.id).catch(() => { });
+    if (!guild) return;
+    const role = await member.guild.roles.fetch(guild.welcome_roleid ?? '');
+    if (role) {
+        await member.roles.add(role).catch(() => { });
+    }
+    const channel = await member.guild.channels.fetch(guild.welcome_channelid ?? '');
     if (!channel?.isTextBased()) return;
-    const role = await member.guild.roles.fetch(info.roleid ?? '');
-    if (channel && info.msg) {
-        let msg = info.msg;
+    if (guild.welcome_msg) {
+        let msg = guild.welcome_msg;
         for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
             msg = msg.replaceAll(template, value);
         }
         await channel.send({ content: msg }).catch(() => { });
-    }
-    if (role) {
-        await member.roles.add(role).catch(() => { });
     }
 });
 
