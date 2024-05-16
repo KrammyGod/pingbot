@@ -315,25 +315,25 @@ const welcome_menu: GuildMenus = {
     async buttonReact(guild, menu, action, interaction) {
         switch (action) {
             case 'editmsg':
-                { 
-                    const input = new ModalBuilder({
-                        title: 'Change Welcome Message',
-                        custom_id: 'guild/0/welcome_menu/msg',
-                        components: [new ActionRowBuilder<TextInputBuilder>({
-                            components: [new TextInputBuilder({
-                                label: 'Enter your welcome message:',
-                                custom_id: 'guild/welcome_menu/msg',
-                                placeholder: 'Leave me blank to remove!',
-                                style: TextInputStyle.Paragraph,
-                                value: guild?.welcome_msg ?? '',
-                                max_length: 2000,
-                                required: false
-                            })]
+            { 
+                const input = new ModalBuilder({
+                    title: 'Change Welcome Message',
+                    custom_id: 'guild/0/welcome_menu/msg',
+                    components: [new ActionRowBuilder<TextInputBuilder>({
+                        components: [new TextInputBuilder({
+                            label: 'Enter your welcome message:',
+                            custom_id: 'guild/welcome_menu/msg',
+                            placeholder: 'Leave me blank to remove!',
+                            style: TextInputStyle.Paragraph,
+                            value: guild?.welcome_msg ?? '',
+                            max_length: 2000,
+                            required: false
                         })]
-                    });
-                    await interaction.showModal(input);
-                    break;
-                }
+                    })]
+                });
+                await interaction.showModal(input);
+                break;
+            }
             case 'back':
                 menu = 'main_menu';
                 break;
@@ -357,78 +357,80 @@ const welcome_menu: GuildMenus = {
         const menuType = actions.pop();
         switch (menuType) {
             case 'channel':
-                {
-                    const chn = interaction.guild.channels.resolve(actions.at(0) ?? '')
-                    if (chn) {
-                        if (!chn.isTextBased()) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: 'Channel must be a text channel.',
-                                ephemeral: true
-                            });
-                            return menu;
-                        } if (!chn.permissionsFor(interaction.member).has(PermissionsBitField.Flags.SendMessages)) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: `You do not have permission to send messages in ${chn}.`,
-                                ephemeral: true
-                            });
-                            return menu;
-                        } else if (!chn.permissionsFor(interaction.guild.members.me!).has(PermissionsBitField.Flags.SendMessages)) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: `I do not have permission to send messages in ${chn}.`,
-                                ephemeral: true
-                            });
-                            return menu;
-                        }
+            {
+                const chn = interaction.guild.channels.resolve(actions.at(0) ?? '');
+                if (chn) {
+                    if (!chn.isTextBased()) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: 'Channel must be a text channel.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    } if (!chn.permissionsFor(interaction.member).has(PermissionsBitField.Flags.SendMessages)) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: `You do not have permission to send messages in ${chn}.`,
+                            ephemeral: true
+                        });
+                        return menu;
+                    } else if (!chn.permissionsFor(interaction.guild.members.me!).has(
+                        PermissionsBitField.Flags.SendMessages
+                    )) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: `I do not have permission to send messages in ${chn}.`,
+                            ephemeral: true
+                        });
+                        return menu;
                     }
-                    guild.welcome_channelid = chn ? chn.id : chn;
-                    break;
                 }
+                guild.welcome_channelid = chn ? chn.id : chn;
+                break;
+            }
             case 'role':
-                {
-                    const role = interaction.guild.roles.resolve(actions.at(0) ?? '');
-                    if (role) {
-                        if (role.managed) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: 'Cannot assign a bot role.',
-                                ephemeral: true
-                            });
-                            return menu;
-                        }
-                        const roleManager = interaction.guild.roles;
-                        const me = interaction.guild.members.me!.roles.highest;
-                        const them = interaction.member.roles.highest;
-                        if (roleManager.comparePositions(me, role) <= 0) {
-                            await interaction.followUp({
-                                content: `I am unable to add ${role} due to my role ` +
-                                    'being lower than it.',
-                                ephemeral: true
-                            });
-                            return menu;
-                        } else if (interaction.guild.ownerId !== interaction.user.id &&
-                                roleManager.comparePositions(them, role) <= 0) {
-                            // Owner's role is always higher than the role they are adding.
-                            await interaction.followUp({
-                                content: `You are unable to add ${role} due to your highest role ` +
-                                    'being lower than it.',
-                                ephemeral: true
-                            });
-                            return menu;
-                        }
+            {
+                const role = interaction.guild.roles.resolve(actions.at(0) ?? '');
+                if (role) {
+                    if (role.managed) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: 'Cannot assign a bot role.',
+                            ephemeral: true
+                        });
+                        return menu;
                     }
-                    guild.welcome_roleid = role ? role.id : role;
-                    break;
+                    const roleManager = interaction.guild.roles;
+                    const me = interaction.guild.members.me!.roles.highest;
+                    const them = interaction.member.roles.highest;
+                    if (roleManager.comparePositions(me, role) <= 0) {
+                        await interaction.followUp({
+                            content: `I am unable to add ${role} due to my role ` +
+                                    'being lower than it.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    } else if (interaction.guild.ownerId !== interaction.user.id &&
+                                roleManager.comparePositions(them, role) <= 0) {
+                        // Owner's role is always higher than the role they are adding.
+                        await interaction.followUp({
+                            content: `You are unable to add ${role} due to your highest role ` +
+                                    'being lower than it.',
+                            ephemeral: true
+                        });
+                        return menu;
+                    }
                 }
+                guild.welcome_roleid = role ? role.id : role;
+                break;
+            }
             default:
                 throw new Error(`/guild: welcome_menu menuReact invalid action: ${menuType}`);
         };
         return menu;
     },
     textInput(guild, menu, fields) {
-        const msg = fields.getTextInputValue('guild/welcome_menu/msg')
+        const msg = fields.getTextInputValue('guild/welcome_menu/msg');
         guild.welcome_msg = msg;
         return menu;
     }
@@ -484,7 +486,7 @@ const emoji_menu: GuildMenus = {
         throw new Error('/guild: emoji_menu does not have menu reactions!');
     },
     textInput() {
-        throw new Error('/guild: emoji_menu does not have text inputs!')
+        throw new Error('/guild: emoji_menu does not have text inputs!');
     }
 };
 
