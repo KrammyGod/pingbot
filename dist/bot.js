@@ -248,11 +248,15 @@ client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
     const guild = await DB.getGuild(member.guild.id).catch(() => null);
     if (!guild || DB.isGuildEmpty(guild))
         return;
-    const role = await member.guild.roles.fetch(guild.welcome_roleid ?? '');
-    if (role) {
-        await member.roles.add(role).catch(() => { });
+    if (guild.welcome_roleid) {
+        const role = await member.guild.roles.fetch(guild.welcome_roleid);
+        if (role) {
+            await member.roles.add(role).catch(() => { });
+        }
     }
-    const channel = member.guild.channels.resolve(guild.welcome_channelid ?? '');
+    if (!guild.welcome_channelid)
+        return;
+    const channel = await member.guild.channels.fetch(guild.welcome_channelid);
     if (!channel?.isTextBased())
         return;
     if (guild.welcome_msg) {
