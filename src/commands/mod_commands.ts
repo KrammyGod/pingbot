@@ -559,16 +559,7 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
                 throw new Error(`/guild: buttonReact invalid menu: ${menu}`);
         }
         await this.cache.set(interaction.guildId, guild);
-        // Up to my responsibility to ensure only necessary keys exist
-        // guild is of type GuildType, which has extra keys, but database setGuild
-        // only accepts those keys, typescript doesnt error, but it should.
-        await DB.setGuild({
-            gid: guild.gid,
-            welcome_msg: guild.welcome_msg,
-            welcome_channelid: guild.welcome_channelid,
-            welcome_roleid: guild.welcome_roleid,
-            emoji_replacement: guild.emoji_replacement
-        });
+        await DB.setGuild(guild);
         const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
         await interaction.editReply({ embeds, components });
@@ -601,16 +592,7 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
                 throw new Error(`/guild: menuReact invalid menu: ${menu}`);
         }
         await this.cache.set(interaction.guildId, guild);
-        // Up to my responsibility to ensure only necessary keys exist
-        // guild is of type GuildType, which has extra keys, but database setGuild
-        // only accepts those keys, typescript doesnt error, but it should.
-        await DB.setGuild({
-            gid: guild.gid,
-            welcome_msg: guild.welcome_msg,
-            welcome_channelid: guild.welcome_channelid,
-            welcome_roleid: guild.welcome_roleid,
-            emoji_replacement: guild.emoji_replacement
-        });
+        await DB.setGuild(guild);
         const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
         await interaction.editReply({ embeds, components });
@@ -639,16 +621,7 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
                 throw new Error(`/guild: textInput invalid menu: ${menu}`);
         }
         await this.cache.set(interaction.guildId, guild);
-        // Up to my responsibility to ensure only necessary keys exist
-        // guild is of type GuildType, which has extra keys, but database setGuild
-        // only accepts those keys, typescript doesnt error, but it should.
-        await DB.setGuild({
-            gid: guild.gid,
-            welcome_msg: guild.welcome_msg,
-            welcome_channelid: guild.welcome_channelid,
-            welcome_roleid: guild.welcome_roleid,
-            emoji_replacement: guild.emoji_replacement
-        });
+        await DB.setGuild(guild);
         const embeds = this.buildEmbeds(guild, menu);
         const components = this.buildComponents(interaction.user.id, guild, menu);
         await interaction.editReply({ embeds, components });

@@ -1115,11 +1115,14 @@ export function getGuild(gid: string) {
 }
 // Set any to null to remove instead of undefined.
 export function setGuild(settings: GuildSettings) {
-    const params: (typeof settings[keyof GuildSettings])[] = [settings.gid];
+    const params: (typeof EMPTY_GUILD_SETTINGS[keyof GuildSettings])[] = [settings.gid];
     let cols: string = 'gid';
     let values: string = '$1';
     let colUpdates: string = 'gid = EXCLUDED.gid';
-    for (const key in settings) {
+    // Use empty guild settings as keys to iterate
+    // The reason is because settings itself, may inherit from GuildSettings
+    // so it might have extra keys that we don't want to add to the query.
+    for (const key in EMPTY_GUILD_SETTINGS) {
         // We already added gid to the paramaters; it is required.
         if (key === 'gid') continue;
         const setting: keyof GuildSettings = key as keyof GuildSettings;
