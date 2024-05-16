@@ -1105,6 +1105,14 @@ const EMPTY_GUILD_SETTINGS: GuildSettings = {
     welcome_channelid: null,
     emoji_replacement: true
 };
+export function isGuildEmpty(guild: GuildSettings) {
+    return guild.gid === '' &&
+        guild.welcome_msg === null &&
+        guild.welcome_roleid === null &&
+        guild.welcome_channelid === null &&
+        guild.emoji_replacement === true;
+
+}
 // Will return an empty GuildSettings object if not found
 // This allows modification easily even if it does not exist.
 export function getGuild(gid: string) {

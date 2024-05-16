@@ -223,12 +223,12 @@ client.on(Events.InteractionCreate, interaction => {
 client.on(Events.GuildMemberAdd, async member => {
     if (config.env !== 'prod') return;
     const guild = await DB.getGuild(member.guild.id).catch(() => null);
-    if (!guild || guild.gid === '') return;
+    if (!guild || DB.isGuildEmpty(guild)) return;
     const role = await member.guild.roles.fetch(guild.welcome_roleid ?? '');
     if (role) {
         await member.roles.add(role).catch(() => { });
     }
-    const channel = await member.guild.channels.fetch(guild.welcome_channelid ?? '');
+    const channel = member.guild.channels.resolve(guild.welcome_channelid ?? '');
     if (!channel?.isTextBased()) return;
     if (guild.welcome_msg) {
         let msg = guild.welcome_msg;
