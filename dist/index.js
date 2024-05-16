@@ -201,6 +201,7 @@ http_1.default.createServer((req, res) => {
                 return JSON.parse(str);
             }
             catch (err) {
+                err;
                 return;
             }
         }

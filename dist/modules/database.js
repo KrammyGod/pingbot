@@ -890,43 +890,40 @@ function swapUserCharacters(char1, char2) {
     ]).then(() => { });
 }
 exports.swapUserCharacters = swapUserCharacters;
+const EMPTY_GUILD_SETTINGS = {
+    gid: '',
+    welcome_msg: null,
+    welcome_roleid: null,
+    welcome_channelid: null,
+    emoji_replacement: true
+};
+// Will return an empty GuildSettings object if not found
+// This allows modification easily even if it does not exist.
 function getGuild(gid) {
-    return query('SELECT * FROM guild_new_member WHERE gid = $1', [gid]).then(res => res.at(0));
+    return query('SELECT * FROM guild_settings WHERE gid = $1', [gid]).then(res => res.at(0) ?? { ...EMPTY_GUILD_SETTINGS, gid });
 }
 exports.getGuild = getGuild;
-function setGuild({ gid, msg, roleid, channelid }) {
-    // Set any to null to remove instead of undefined.
-    if (channelid === undefined && msg === undefined &&
-        roleid === undefined)
-        throw new Error('Set Guild no settings');
-    const params = [gid];
-    let p = '';
-    let cols = '';
-    let colUpdates = '';
-    if (msg !== undefined) {
-        params.push(msg);
-        p += ', $2';
-        cols += ', msg';
-        colUpdates += 'msg = EXCLUDED.msg';
+// Set any to null to remove instead of undefined.
+function setGuild(settings) {
+    const params = [settings.gid];
+    let cols = 'gid';
+    let values = '$1';
+    let colUpdates = 'gid = EXCLUDED.gid';
+    // Use empty guild settings as keys to iterate
+    // The reason is because settings itself, may inherit from GuildSettings
+    // so it might have extra keys that we don't want to add to the query.
+    for (const key in EMPTY_GUILD_SETTINGS) {
+        // We already added gid to the paramaters; it is required.
+        if (key === 'gid')
+            continue;
+        const setting = key;
+        params.push(settings[setting]);
+        cols += `, ${setting}`;
+        values += `, $${params.length}`;
+        colUpdates += `, ${setting} = EXCLUDED.${setting}`;
     }
-    if (roleid !== undefined) {
-        params.push(roleid);
-        p += `, $${params.length}`;
-        cols += ', roleid';
-        if (colUpdates !== '')
-            colUpdates += ', ';
-        colUpdates += 'roleid = EXCLUDED.roleid';
-    }
-    if (channelid !== undefined) {
-        params.push(channelid);
-        p += `, $${params.length}`;
-        cols += ', channelid';
-        if (colUpdates !== '')
-            colUpdates += ', ';
-        colUpdates += 'channelid = EXCLUDED.channelid';
-    }
-    return query(`INSERT INTO guild_new_member(gid${cols})
-            VALUES($1${p}) ON CONFLICT (gid)
+    return query(`INSERT INTO guild_settings(${cols})
+            VALUES(${values}) ON CONFLICT (gid)
         DO UPDATE SET ${colUpdates}`, params).then(() => { });
 }
 exports.setGuild = setGuild;
@@ -959,13 +956,18 @@ class Cache {
         this.cmd = cmd;
     }
     get(id) {
-        return query('SELECT data FROM local_data WHERE cmd = $1 AND id = $2', [this.cmd, id]).then(res => res.at(0)?.data);
+        return query(`SELECT data FROM local_data
+                WHERE cmd = $1 AND id = $2 AND
+                    (CURRENT_DATE < expiry OR expiry IS NULL)`, [this.cmd, id]).then(res => res.at(0)?.data);
     }
-    set(id, data, expiry) {
+    set(id, data, expiry = null) {
         return query(`INSERT INTO local_data(cmd, id, data, expiry) VALUES ($1, $2, $3, $4)
             ON CONFLICT (cmd, id) DO UPDATE SET
                 data = EXCLUDED.data,
-                expiry = COALESCE(EXCLUDED.expiry, local_data.expiry)`, [this.cmd, id, data, expiry]).then(() => { });
+                expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`, [this.cmd, id, data, expiry]).then(() => { });
+    }
+    delete(id = null) {
+        return query('DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *', [this.cmd, id]);
     }
 }
 exports.Cache = Cache;

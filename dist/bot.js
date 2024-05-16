@@ -91,6 +91,10 @@ async function replace_emojis(message) {
     // No bots and DMs
     if (!message.content || message.author.bot || !message.inGuild() || _config_1.default.env !== 'prod')
         return;
+    const guild = await DB.getGuild(message.guild.id).catch(() => null);
+    // Guild unsubscribed from emoji replacement
+    if (guild && !guild.emoji_replacement)
+        return;
     const emojis = [...new Set(message.content.match(/:[A-Za-z0-9_-]+:(?![0-9]+>)/g))];
     let impersonate = false;
     let msg = message.content;
@@ -241,22 +245,22 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
 client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
     if (_config_1.default.env !== 'prod')
         return;
-    const info = await DB.getGuild(member.guild.id).catch(() => { });
-    if (!info)
+    const guild = await DB.getGuild(member.guild.id).catch(() => { });
+    if (!guild)
         return;
-    const channel = await member.guild.channels.fetch(info.channelid ?? '');
+    const role = await member.guild.roles.fetch(guild.welcome_roleid ?? '');
+    if (role) {
+        await member.roles.add(role).catch(() => { });
+    }
+    const channel = await member.guild.channels.fetch(guild.welcome_channelid ?? '');
     if (!channel?.isTextBased())
         return;
-    const role = await member.guild.roles.fetch(info.roleid ?? '');
-    if (channel && info.msg) {
-        let msg = info.msg;
+    if (guild.welcome_msg) {
+        let msg = guild.welcome_msg;
         for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
             msg = msg.replaceAll(template, value);
         }
         await channel.send({ content: msg }).catch(() => { });
-    }
-    if (role) {
-        await member.roles.add(role).catch(() => { });
     }
 });
 // Following functions are for voice channel management

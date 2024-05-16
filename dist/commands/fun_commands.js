@@ -539,7 +539,7 @@ exports.poll = {
             if (new Date >= new Date(pollInfo.expires)) {
                 pollInfo.title = `(ENDED) ${pollInfo.title}`;
                 desc += `**This poll has ended on ${Utils.timestamp(new Date())}**\n\n`;
-                await DB.deleteLocalData(id); // Remove from cache
+                await this.cache.delete(id); // Remove from cache
             }
             else {
                 desc += `**This poll expires on ${Utils.timestamp(new Date(pollInfo.expires))}**\n\n`;
@@ -664,7 +664,7 @@ exports.poll = {
                         message = await channel.send({ embeds, components });
                     }
                     // Also delete from cache and remove editing capability.
-                    await DB.deleteLocalData(interaction.message.id);
+                    await this.cache.delete(interaction.message.id);
                     await interaction.deleteReply().catch(() => {
                         // If we can't delete the reply, we can't delete the original message either.
                         // So we just edit it to remove the buttons.
@@ -678,7 +678,7 @@ exports.poll = {
                         ephemeral: true
                     });
                 }
-                await DB.deleteLocalData(pollInfo.mid); // Remove old poll from cache
+                await this.cache.delete(pollInfo.mid); // Remove old poll from cache
                 pollInfo.mid = message.id;
                 await this.cache.set(message.id, pollInfo);
             };
