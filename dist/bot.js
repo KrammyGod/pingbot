@@ -245,8 +245,8 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
 client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
     if (_config_1.default.env !== 'prod')
         return;
-    const guild = await DB.getGuild(member.guild.id).catch(() => { });
-    if (!guild)
+    const guild = await DB.getGuild(member.guild.id).catch(() => null);
+    if (!guild || guild.gid === '')
         return;
     const role = await member.guild.roles.fetch(guild.welcome_roleid ?? '');
     if (role) {

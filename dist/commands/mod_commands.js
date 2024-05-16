@@ -608,6 +608,7 @@ exports.guild = {
         else {
             // If none in cache, fetch current settings as cache
             guild = { ...await DB.getGuild(interaction.guildId), mid: '' };
+            guild.gid = interaction.guildId;
         }
         guild.mid = message.id;
         await this.cache.set(interaction.guildId, guild);
