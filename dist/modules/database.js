@@ -27,7 +27,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
-exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = void 0;
+exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.isGuildEmpty = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = void 0;
 const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
@@ -897,6 +897,14 @@ const EMPTY_GUILD_SETTINGS = {
     welcome_channelid: null,
     emoji_replacement: true
 };
+function isGuildEmpty(guild) {
+    return guild.gid === '' &&
+        guild.welcome_msg === null &&
+        guild.welcome_roleid === null &&
+        guild.welcome_channelid === null &&
+        guild.emoji_replacement === true;
+}
+exports.isGuildEmpty = isGuildEmpty;
 // Will return an empty GuildSettings object if not found
 // This allows modification easily even if it does not exist.
 function getGuild(gid) {
