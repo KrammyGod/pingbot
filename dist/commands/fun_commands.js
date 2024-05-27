@@ -451,9 +451,7 @@ exports.hoyolab = {
             return this.delete(client, interaction, id);
         }
         // Reached here means it is some sort of toggle.
-        const type = action[0];
-        const game = action[1];
-        await this.toggleNotify(interaction, type, game, id);
+        await this.toggleNotify(interaction, action[0], action[1], id);
         const retval = await this.getAccount(interaction, id);
         await interaction.editReply(retval);
     },

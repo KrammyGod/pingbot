@@ -353,7 +353,7 @@ function getUserCount() {
 }
 exports.getUserCount = getUserCount;
 function getBrons(userID) {
-    return query('SELECT brons FROM user_info WHERE uid = $1', [userID]).then(ret => ret[0]?.brons);
+    return query('SELECT brons FROM user_info WHERE uid = $1', [userID]).then(ret => ret.at(0)?.brons);
 }
 exports.getBrons = getBrons;
 function addBrons(userID, amount) {
@@ -372,9 +372,9 @@ function getAndSetDaily(userID) {
             WHERE user_info.collected = FALSE
             RETURNING collected`
     ], [[userID], [userID, firstSignUp, dailyAmt]]).then(res => {
-        const collect_success = res[1][0]?.collected ?? false;
+        const collect_success = res[1].at(0)?.collected ?? false;
         // User would exist if res[0][0] exists
-        if (res[0][0])
+        if (res[0].at(0))
             return { collect_success, amt: dailyAmt };
         return { collect_success, amt: firstSignUp };
     });
