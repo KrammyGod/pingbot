@@ -188,7 +188,7 @@ exports.wait_for_button = wait_for_button;
  */
 async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}` }) {
     if (choices.length <= 1)
-        return choices[0];
+        return choices.at(0);
     // Take first 10 results
     choices = choices.splice(0, 10);
     const res_title = title_fmt(choices.length);

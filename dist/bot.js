@@ -172,7 +172,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         }).then(() => { });
     }
     // Process interaction.
-    const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/')[0];
+    const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
     // Unknown interaction
     if (!commandName)
         return;
