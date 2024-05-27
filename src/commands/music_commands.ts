@@ -426,7 +426,7 @@ const play: SlashSubcommand & PlayPrivates = {
                 source: { youtube: 'video' },
                 limit: 1,
                 unblurNSFWThumbnails: isNsfw
-            }).then(res => res[0]).catch(() => undefined);
+            }).then(res => res.at(0)).catch(() => undefined);
             const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!this.validate_song(song, member)) {
                 return this.on_partial_error(interaction, song);
@@ -856,7 +856,7 @@ const prev: SlashSubcommand = {
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply) return interaction.editReply(reply).then(() => { });
         // Using lower-level access, however more efficient.
-        const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs[0]?.id);
+        const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs.at(0)?.id);
         if (currIdx === 0) return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => { });
 
         // Hack we do, pretend we just started playing so it doesn't skip the new song we added.

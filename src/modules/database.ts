@@ -414,7 +414,7 @@ export function getBrons(userID: string) {
     return query<{ brons: number }>(
         'SELECT brons FROM user_info WHERE uid = $1',
         [userID]
-    ).then(ret => ret[0]?.brons);
+    ).then(ret => ret.at(0)?.brons);
 }
 export function addBrons(userID: string, amount: number) {
     return query<{ uid: string }>(
@@ -437,9 +437,9 @@ export function getAndSetDaily(userID: string) {
         ],
         [[userID], [userID, firstSignUp, dailyAmt]]
     ).then(res => {
-        const collect_success = res[1][0]?.collected ?? false;
+        const collect_success = res[1].at(0)?.collected ?? false;
         // User would exist if res[0][0] exists
-        if (res[0][0]) return { collect_success, amt: dailyAmt };
+        if (res[0].at(0)) return { collect_success, amt: dailyAmt };
         return { collect_success, amt: firstSignUp };
     });
 }

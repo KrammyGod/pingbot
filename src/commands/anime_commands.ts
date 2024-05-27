@@ -92,7 +92,7 @@ async function search_character(
         const res = high ?
             await DB.fetchUserHighCharactersList(userID, idx).catch(() => undefined) :
             await DB.fetchUserCharactersList(userID, idx).catch(() => undefined);
-        return res?.[0];
+        return res?.at(0);
     }
     // Search waifu by name
     const res = high ?
@@ -860,7 +860,7 @@ export const profile: SlashCommand = {
             embed.addFields([{ name: '__Favourite *and Top* waifu:__', value: field }]);
         } else {
             // I'm not even going to document this because this was written 3 years ago...
-            const favourite: DB.Character | undefined = await DB.fetchUserCharactersList(user.id, 1).then(c => c[0]);
+            const favourite = await DB.fetchUserCharactersList(user.id, 1).then(c => c.at(0));
             const highest = await DB.fetchUserHighestCharacter(user.id);
             if (highest && favourite) {
                 await favourite.loadWaifu();
