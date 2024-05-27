@@ -278,7 +278,7 @@ export async function get_results<T>(
         sel_fmt?: (arg: T) => string
     }
 ) {
-    if (choices.length <= 1) return choices[0] as T | undefined;
+    if (choices.length <= 1) return choices.at(0);
 
     // Take first 10 results
     choices = choices.splice(0, 10);
