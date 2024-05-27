@@ -151,7 +151,7 @@ client.on(Events.InteractionCreate, interaction => {
     }
 
     // Process interaction.
-    const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/')[0];
+    const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
     // Unknown interaction
     if (!commandName) return;
     let command: InteractionCommand | undefined = undefined;

@@ -86,7 +86,7 @@ export class Song {
             const thumb2dims = thumb2.width * thumb2.height;
             return thumb2dims - thumb1dims;
         });
-        return thumbnails[0]?.url ?? null;
+        return thumbnails.at(0)?.url ?? null;
     }
 }
 
@@ -226,7 +226,7 @@ export default class GuildVoice {
             this.songs.shift();
         }
         // Empty playlist
-        if (!this.songs[0]) this.reset();
+        if (!this.songs.length) this.reset();
     }
 
     getCurrentSong() { return this.songs.at(0); }
@@ -241,7 +241,7 @@ export default class GuildVoice {
                 source: { youtube: 'video' },
                 limit: 1,
                 unblurNSFWThumbnails: true // We wouldn't have added if it wasn't NSFW allowed
-            }).then(res => res[0]).catch(() => undefined);
+            }).then(res => res.at(0)).catch(() => undefined);
             if (info) {
                 song.playUrl = info.url; // Different url to actually stream the song
                 song.duration = info.durationInSec;
@@ -280,7 +280,7 @@ export default class GuildVoice {
     removeSong(idx: number) {
         // -1 Represents bad index, 0 means trying to remove current song from queue
         if (idx >= this.fullQueue.length) return -1;
-        const currIdx = this.fullQueue.findIndex(song => song.id === this.songs[0]?.id);
+        const currIdx = this.fullQueue.findIndex(song => song.id === this.songs.at(0)?.id);
         if (idx === currIdx) return 0;
         const songIdx = this.songs.findIndex(s => s.id === this.fullQueue[idx].id);
         if (songIdx !== -1) this.songs.splice(songIdx, 1);

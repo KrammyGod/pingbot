@@ -66,7 +66,7 @@ export async function getImage(url: string) {
     }
     return fetch(url, opts).then(res => {
         // Try to extract extension from content-type
-        let ext = res.headers.get('Content-Type')?.split('/')[1] ?? path.extname(url).slice(1);
+        let ext = res.headers.get('Content-Type')?.split('/').at(1) ?? path.extname(url).slice(1);
         if (ext === 'jpeg') ext = 'jpg';
         return res.blob().then(blob => ({ ext, blob }));
     }).catch(() => ({ ext: '', blob: new Blob([]) }));
