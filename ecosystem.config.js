@@ -22,6 +22,7 @@ module.exports = {
         production : {
             'user'        : process.env.SSH_USER,
             'host'        : process.env.SSH_HOST,
+            'port'        : process.env.SSH_PORT,
             'ref'         : 'origin/dist',
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEPLOY_PATH,
@@ -32,6 +33,7 @@ module.exports = {
         development : {
             'user'        : process.env.SSH_USER,
             'host'        : process.env.SSH_HOST,
+            'port'        : process.env.SSH_PORT,
             'ref'         : 'origin/dev-dist',
             'repo'        : 'git@github.com:KrammyGod/pingbot.git',
             'path'        : process.env.DEV_DEPLOY_PATH,
