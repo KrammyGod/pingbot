@@ -270,10 +270,10 @@ class Character {
                     name: `${this.getWFC(channel)} **${this.name} ${this.getGender()} ` +
                         `(Lvl ${this.displayLvl}${this.getUStatus(' ')})**`,
                     value: `__From:__ ${this.origin}\n[Source](${getSource(img)})\n[Raw Image](${img})`,
-                    inline: true
+                    inline: true,
                 },
             ],
-            color: this.fc ? Colors.Gold : Colors.LightGrey
+            color: this.fc ? Colors.Gold : Colors.LightGrey,
         }).setImage(img);
     }
 }
@@ -290,7 +290,7 @@ export function getSource(img: string) {
 
 /* DATABASE SETUP */
 const pool = new Pool({
-    connectionTimeoutMillis: 2000
+    connectionTimeoutMillis: 2000,
 });
 
 /* DATABASE CONSTANTS */
@@ -433,7 +433,7 @@ export function getAndSetDaily(userID: string) {
             ON CONFLICT (uid) DO UPDATE
             SET brons = user_info.brons + $3, collected = TRUE
             WHERE user_info.collected = FALSE
-            RETURNING collected`
+            RETURNING collected`,
         ],
         [[userID], [userID, firstSignUp, dailyAmt]]
     ).then(res => {
@@ -493,7 +493,7 @@ export function getLeaderboards(start: number) {
         uid: row.uid,
         brons: row.brons,
         waifus: parseInt(row.waifus),
-        idx: parseInt(row.idx)
+        idx: parseInt(row.idx),
     })));
 }
 export function getUserStarLBStats(userID: string) {
@@ -503,7 +503,7 @@ export function getUserStarLBStats(userID: string) {
     ).then(res => res.at(0) ? ({
         brons: res[0].brons,
         stars: parseInt(res[0].stars),
-        idx: parseInt(res[0].idx)
+        idx: parseInt(res[0].idx),
     }) : undefined);
 }
 export function getStarLeaderboards(start: number) {
@@ -514,7 +514,7 @@ export function getStarLeaderboards(start: number) {
         uid: row.uid,
         brons: row.brons,
         stars: parseInt(row.stars),
-        idx: parseInt(row.idx)
+        idx: parseInt(row.idx),
     })));
 }
 /* END GETTERS/SETTERS FOR DATABASE */
@@ -544,7 +544,7 @@ export function insertWaifu(waifu: PartialWaifu) {
                 img = waifus.img || EXCLUDED.img,
                 nimg = waifus.nimg || EXCLUDED.nimg
             RETURNING *`,
-            'REFRESH MATERIALIZED VIEW chars'
+            'REFRESH MATERIALIZED VIEW chars',
         ],
         [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]
     ).then(res => new Waifu(res[0][0]));
@@ -909,7 +909,7 @@ export async function generateAndAddCharacter(userID: string, amtTaken: { amt: n
             'CALL sub_brons($1, $2, $3)',
             `SELECT * FROM add_character($1,
                 (${generateCharacterQuery(GuaranteeLevel.COMMON)})
-            )`
+            )`,
         ],
         [[userID, false, amt], [userID]]
     ).then(res => {
@@ -982,7 +982,7 @@ function setUserCharacterImage(userID: string, wid: string, img: number) {
                 SELECT wid FROM chars WHERE
                 $3 <= array_length(img, 1)
             ) RETURNING _img`,
-            'SELECT img FROM all_user_chars WHERE uid = $1 AND wid = $2'
+            'SELECT img FROM all_user_chars WHERE uid = $1 AND wid = $2',
         ],
         [[userID, wid, img], [userID, wid]]
     ).then(res => ({ _img: res[0][0]._img, img: res[1][0].img }));
@@ -997,7 +997,7 @@ function setUserCharacterNImage(userID: string, wid: string, nimg: number) {
                 SELECT wid FROM chars WHERE
                 $3 <= COALESCE(array_length(nimg, 1), 0)
             ) RETURNING _nimg`,
-            'SELECT _nimg, nimg FROM all_user_chars WHERE uid = $1 AND wid = $2'
+            'SELECT _nimg, nimg FROM all_user_chars WHERE uid = $1 AND wid = $2',
         ],
         [[userID, wid, nimg], [userID, wid]]
     ).then(res => ({ _nimg: res[0][0]._nimg, nimg: res[1][0].nimg }));
@@ -1015,7 +1015,7 @@ function setUserCharacterNsfw(userID: string, wid: string, nsfw: boolean) {
             `UPDATE user_chars SET _nimg = 1
             WHERE nsfw = TRUE AND _nimg = 0`,
             `SELECT _nimg, nimg, nsfw FROM all_user_chars
-            WHERE uid = $1 AND wid = $2`
+            WHERE uid = $1 AND wid = $2`,
         ],
         [[userID, wid, nsfw], [], [userID, wid]]
     ).then(res => [res[0][0], res[2][0]] as [
@@ -1038,7 +1038,7 @@ export async function deleteUserCharacter(char: Character) {
             WHERE uid = $1 AND wid = $2 AND idx = $3
             RETURNING *`,
             `UPDATE user_chars SET idx = idx - 1
-            WHERE uid = $1 AND idx >= $2`
+            WHERE uid = $1 AND idx >= $2`,
         ],
         [[char.uid, char.wid, idx], [char.uid, idx]]
     ).then(res => res[0].length);
@@ -1063,7 +1063,7 @@ export function moveUserCharacter(char: Character, pos: number) {
             WHERE uid = $1 AND wid = $2 AND idx = $3 AND
                 $3 IN (SELECT idx FROM user_chars WHERE uid = $1)
             RETURNING *`,
-            'CALL repair_index($1)'
+            'CALL repair_index($1)',
         ],
         [[], [char.uid, char.wid, char.idx, pos], [char.uid]]
     ).then(ret => ret[1].length === 1);
@@ -1082,7 +1082,7 @@ export function swapUserCharacters(char1: Character, char2: Character) {
         [
             [],
             [char1.uid, char1.wid, char1.idx, char2.idx],
-            [char2.uid, char2.wid, char2.idx, char1.idx]
+            [char2.uid, char2.wid, char2.idx, char1.idx],
         ]
     ).then(() => { });
 }
@@ -1103,7 +1103,7 @@ const EMPTY_GUILD_SETTINGS: GuildSettings = {
     welcome_msg: null,
     welcome_roleid: null,
     welcome_channelid: null,
-    emoji_replacement: true
+    emoji_replacement: true,
 };
 export function isGuildEmpty(guild: GuildSettings) {
     return guild.gid === '' &&
@@ -1174,7 +1174,7 @@ export function addOneToGuessStreak(userID: string, level: Levels) {
         if (!res) throw new Error(`Guess streak ${level} not found`);
         return {
             streak: res[0][`${level}_streak`],
-            max: res[0][`${level}_max_streak`]
+            max: res[0][`${level}_max_streak`],
         };
     });
 }

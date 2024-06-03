@@ -12,7 +12,7 @@ type Metrics = {
 export async function getCDNMetrics(): Promise<Metrics> {
     const res = await fetch(`${config.origin}/api/metrics`, {
         method: 'GET',
-        headers
+        headers,
     }).then(res => res.json()).catch(e => console.error(`GET: ${e}`));
     return res ?? { metrics: [] };
 }
@@ -21,7 +21,7 @@ export async function uploadToCDN(body: FormData): Promise<string[]> {
     const { urls } = await fetch(`${config.origin}/api/upload`, {
         method: 'POST',
         headers,
-        body
+        body,
     }).then(res => {
         if (res.status === 200) return res.json();
         // Try to log error message
@@ -41,7 +41,7 @@ export async function updateCDN(filenames: string[], newSources: string[]) {
     const res = await fetch(`${config.origin}/api/update`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ filenames, sources })
+        body: JSON.stringify({ filenames, sources }),
     }).then(res => res.json()).catch(e => console.error(`PUT: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error updating files';
@@ -52,7 +52,7 @@ export async function deleteFromCDN(filenames: string[]): Promise<string> {
     const res = await fetch(`${config.origin}/api/delete`, {
         method: 'DELETE',
         headers,
-        body: JSON.stringify({ filenames })
+        body: JSON.stringify({ filenames }),
     }).then(res => res.json()).catch(e => console.error(`DELETE: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';

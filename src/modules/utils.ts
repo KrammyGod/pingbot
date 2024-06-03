@@ -3,7 +3,7 @@ import { TimedOutError } from '@classes/exceptions';
 import {
     ActionRowBuilder, ApplicationCommandOptionType, Colors,
     CommandInteraction, ComponentType, EmbedBuilder, Routes,
-    StringSelectMenuBuilder
+    StringSelectMenuBuilder,
 } from 'discord.js';
 import type DTypes from 'discord.js';
 
@@ -248,7 +248,7 @@ export function delete_ephemeral_message(i: DTypes.RepliableInteraction, msg: DT
 export function wait_for_button(message: DTypes.Message, confirm_id: string) {
     return message.awaitMessageComponent({
         componentType: ComponentType.Button,
-        time: 10 * 60 * 1000 // 10 minutes before interaction expires
+        time: 10 * 60 * 1000, // 10 minutes before interaction expires
     }).then(i => i.customId === confirm_id, () => false);
 }
 
@@ -271,7 +271,7 @@ export async function get_results<T>(
     {
         title_fmt = idx => `Found ${idx} items:`,
         desc_fmt = choice => `${choice}`,
-        sel_fmt = choice => `${choice}`
+        sel_fmt = choice => `${choice}`,
     }: {
         title_fmt?: (arg: number) => string,
         desc_fmt?: (arg: T) => string,
@@ -289,10 +289,10 @@ export async function get_results<T>(
     // Create embed
     const embed = new EmbedBuilder({
         title: 'Search Results',
-        color: Colors.Yellow
+        color: Colors.Yellow,
     }).setAuthor({
         name: `@${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL(),
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
@@ -306,12 +306,12 @@ export async function get_results<T>(
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu)],
-        ephemeral: true
+        ephemeral: true,
     });
 
     const res = await message.awaitMessageComponent({
         componentType: ComponentType.StringSelect,
-        time: 10 * 60 * 1000 // 10 minutes before interaction token expires.
+        time: 10 * 60 * 1000, // 10 minutes before interaction token expires.
     }).then(i => {
         if (i.values[0] === '-1') return null;
         return choices[parseInt(i.values[0])];
@@ -336,7 +336,7 @@ export async function* fetch_history(
         // Always fetch max amount to be efficient
         const messages = await channel.messages.fetch({
             limit: 100,
-            before: prev
+            before: prev,
         });
         if (!messages.size) break;
         // By using prev, we can ensure we are always new, non-deleted messages

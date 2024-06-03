@@ -7,7 +7,7 @@ import type DTypes from 'discord.js';
  */
 export async function purge_clean_channel(channel: Exclude<DTypes.GuildTextBasedChannel, DTypes.ThreadChannel>) {
     const new_channel = await channel.clone({
-        position: channel.rawPosition
+        position: channel.rawPosition,
     });
     await channel.delete();
     return new_channel;

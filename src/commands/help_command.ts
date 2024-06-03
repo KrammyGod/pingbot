@@ -2,7 +2,7 @@ import * as Utils from '@modules/utils';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, Colors,
     ComponentType, EmbedBuilder, ModalBuilder, SlashCommandBuilder,
-    StringSelectMenuBuilder, TextInputBuilder, TextInputStyle
+    StringSelectMenuBuilder, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
 import { isMessageCommand, isSlashCommand, isSlashSubcommandGroup } from '@classes/client';
 import DTypes from 'discord.js';
@@ -42,17 +42,17 @@ async function get_results_category(
     // Create embed
     const embed = new EmbedBuilder({
         title: 'Search Results',
-        color: Colors.Yellow
+        color: Colors.Yellow,
     }).setAuthor({
         name: `@${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL(),
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
         desc += `${idx + 1}. **${choice.name}**\n`;
         menu.addOptions({
             label: `${idx + 1}. ${choice.name}`,
-            value: `${idx}`
+            value: `${idx}`,
         });
     }
     embed.setDescription(`__${res_title}__\n${desc}`);
@@ -61,7 +61,7 @@ async function get_results_category(
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu)],
-        ephemeral: true
+        ephemeral: true,
     });
 
     // Return promise to let caller await it.
@@ -86,7 +86,7 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
             choices.push({
                 name: cmd.name,
                 desc: cmd.desc,
-                is_slash: false
+                is_slash: false,
             });
         } else if (isSlashCommand(cmd)) {
             if (cmd.subcommands) {
@@ -96,14 +96,14 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
                                 desc: subsubcmd.desc,
-                                is_slash: true
+                                is_slash: true,
                             });
                         }
                     } else {
                         choices.push({
                             name: `${cmd.data.name} ${subcmd.data.name}`,
                             desc: subcmd.desc,
-                            is_slash: true
+                            is_slash: true,
                         });
                     }
                 }
@@ -111,7 +111,7 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
                 choices.push({
                     name: cmd.data.name,
                     desc: cmd.desc,
-                    is_slash: true
+                    is_slash: true,
                 });
             }
         }
@@ -130,10 +130,10 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
     // Create embed
     const embed = new EmbedBuilder({
         title: 'Search Results',
-        color: Colors.Yellow
+        color: Colors.Yellow,
     }).setAuthor({
         name: `@${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL(),
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
@@ -144,7 +144,7 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
         }
         menu.addOptions({
             label: `${idx + 1}. ${isSlashCommand(choice) ? choice.data.name : choice.name}`,
-            value: `${idx}`
+            value: `${idx}`,
         });
     }
     embed.setDescription(`__${res_title}__\n${desc}`);
@@ -153,7 +153,7 @@ async function get_results_cmd(client: CustomClient, interaction: DTypes.Repliab
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu)],
-        ephemeral: true
+        ephemeral: true,
     });
 
     // Return promise to let caller await it.
@@ -178,9 +178,9 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
     const max_pages = client.cogs.length;
     const embed = new EmbedBuilder({
         title: '__All Commands:__',
-        color: Colors.Aqua
+        color: Colors.Aqua,
     }).setFooter({
-        text: 'Send me a direct message to create a ticket anytime!'
+        text: 'Send me a direct message to create a ticket anytime!',
     });
     // This represents any followup messages that should be sent
     const followUp: {
@@ -188,26 +188,26 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
         ephemeral: true
     } = {
         embeds: [],
-        ephemeral: true
+        ephemeral: true,
     };
 
     if (max_pages === 0) {
         embed.setDescription(`Page 0/${max_pages}`).setFields({
             name: '**No Commands found. :(**',
-            value: "Why don't you contact the support server?"
+            value: "Why don't you contact the support server?",
         });
         return { embeds: [embed] };
     } else if (page < 1) {
         const error_embed = new EmbedBuilder({
             color: Colors.Red,
-            title: 'Please enter a positive number.'
+            title: 'Please enter a positive number.',
         });
         followUp.embeds.push(error_embed);
         page = 1;
     } else if (page > max_pages) {
         const error_embed = new EmbedBuilder({
             color: Colors.Red,
-            title: `Too high. Max page: ${max_pages}`
+            title: `Too high. Max page: ${max_pages}`,
         });
         followUp.embeds.push(error_embed);
         page = max_pages;
@@ -225,13 +225,13 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
                     for (const subsubcommand of subcommand.subcommands.values()) {
                         commands.push({
                             name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
-                            description: subsubcommand.data.description
+                            description: subsubcommand.data.description,
                         });
                     }
                 } else {
                     commands.push({
                         name: `${command.data.name} ${subcommand.data.name}`,
-                        description: subcommand.data.description
+                        description: subcommand.data.description,
                     });
                 }
             }
@@ -257,7 +257,7 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
         embed.addFields({
             name: `__**${cog.name}:**__\n**${cog.desc}**`,
             value: field,
-            inline: true
+            inline: true,
         });
     } else {
         embed.setDescription(
@@ -306,7 +306,7 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
     }
     const retval: HelperRetVal = {
         embeds: [embed],
-        components: [row, row2]
+        components: [row, row2],
     };
     if (followUp.embeds.length > 0) {
         retval.followUp = followUp;
@@ -321,11 +321,11 @@ async function get_cmd_page(client: CustomClient, authorID: string, command: Ful
         `\`${client.prefix}${command.name}\``;
     const embed = new EmbedBuilder({
         title: `__Command ${cmd_tag}__`,
-        color: Colors.Aqua
+        color: Colors.Aqua,
     }).setFooter({
         text:
             'Options surrounded with <> are required, and [] are optional.\n' +
-            'Send me a direct message to create a ticket anytime!'
+            'Send me a direct message to create a ticket anytime!',
     });
 
     // Replace all `/command` with new shiny command mention.
@@ -388,11 +388,11 @@ export const help: SlashCommand = {
                                         placeholder: 'Enter the name/page number to jump to...',
                                         style: TextInputStyle.Short,
                                         maxLength: 100,
-                                        required: true
-                                    })
-                                ]
-                            })
-                        ]
+                                        required: true,
+                                    }),
+                                ],
+                            }),
+                        ],
                     }) :
                     new ModalBuilder({
                         title: 'Search Command',
@@ -406,11 +406,11 @@ export const help: SlashCommand = {
                                         placeholder: 'Enter name of command...',
                                         style: TextInputStyle.Short,
                                         maxLength: 100,
-                                        required: true
-                                    })
-                                ]
-                            })
-                        ]
+                                        required: true,
+                                    }),
+                                ],
+                            }),
+                        ],
                     });
                 return interaction.showModal(input);
             } else if (page === 'help') {
@@ -420,7 +420,7 @@ export const help: SlashCommand = {
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 } else if (cmdName === 'cog') {
                     return interaction.reply({
@@ -432,7 +432,7 @@ export const help: SlashCommand = {
                             '❓: This help message\n' +
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 } else {
                     throw new Error(`Command type: ${cmdName} not found.`);
@@ -465,7 +465,7 @@ export const help: SlashCommand = {
                 if (!category) {
                     const error_embed = new EmbedBuilder({
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
-                        color: Colors.Red
+                        color: Colors.Red,
                     });
                     return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
                 }
@@ -487,7 +487,7 @@ export const help: SlashCommand = {
             if (!command) {
                 const error_embed = new EmbedBuilder({
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
-                    color: Colors.Red
+                    color: Colors.Red,
                 });
                 return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
             }
@@ -503,12 +503,12 @@ export const help: SlashCommand = {
         const categoryName = interaction.options.getString('category');
         const embed = new EmbedBuilder({
             title: 'Performing intensive calculations...',
-            color: Colors.Yellow
+            color: Colors.Yellow,
         });
         // Admin invokes are not ephemeral.
         await interaction.reply({
             embeds: [embed],
-            ephemeral: interaction.user.id !== client.admin.id
+            ephemeral: interaction.user.id !== client.admin.id,
         });
         let res: HelperRetVal;
         if (commandName) {
@@ -518,7 +518,7 @@ export const help: SlashCommand = {
             } else if (!command) {
                 const error_embed = new EmbedBuilder({
                     title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
-                    color: Colors.Red
+                    color: Colors.Red,
                 });
                 return interaction.editReply({ embeds: [error_embed] }).then(() => { });
             }
@@ -536,7 +536,7 @@ export const help: SlashCommand = {
             } else if (!category) {
                 const error_embed = new EmbedBuilder({
                     title: `No category with name \`${categoryName.replaceAll('`', '\\`')}\` found.`,
-                    color: Colors.Red
+                    color: Colors.Red,
                 });
                 res = await get_cog_page(client, interaction.user.id, 1);
                 interaction.followUp({ embeds: [error_embed], ephemeral: true });
@@ -548,5 +548,5 @@ export const help: SlashCommand = {
         }
         const { embeds, components } = res;
         await interaction.editReply({ embeds, components });
-    }
+    },
 };

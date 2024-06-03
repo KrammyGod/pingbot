@@ -9,7 +9,7 @@ import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions'
 import { CustomClient, GuildVoices, InteractionCommand, isContextCommand, isSlashCommand } from '@classes/client';
 import {
     ActivityType, Collection, Events, IntentsBitField,
-    Partials, PermissionsBitField
+    Partials, PermissionsBitField,
 } from 'discord.js';
 import type DTypes from 'discord.js';
 
@@ -17,14 +17,14 @@ function WELCOMEMESSAGEMAPPING(member: DTypes.GuildMember) {
     return {
         '${USER}': member.toString(),
         '${SERVER}': member.guild.name,
-        '${MEMBERCOUNT}': member.guild.memberCount.toString()
+        '${MEMBERCOUNT}': member.guild.memberCount.toString(),
     };
 }
 
 const ACTIVITY: DTypes.ActivitiesOptions = {
     name: 'a date with Krammy',
     type: ActivityType.Streaming,
-    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
 };
 const TOKEN = config.token;
 const INTENTS = [
@@ -36,12 +36,12 @@ const INTENTS = [
     IntentsBitField.Flags.GuildMessages,
     IntentsBitField.Flags.DirectMessages,
     IntentsBitField.Flags.DirectMessageTyping,
-    IntentsBitField.Flags.MessageContent
+    IntentsBitField.Flags.MessageContent,
 ];
 const client = new CustomClient({
     intents: INTENTS,
     presence: { activities: [ACTIVITY] },
-    partials: [Partials.Channel]
+    partials: [Partials.Channel],
 });
 
 // Helper to get a free webhook
@@ -53,7 +53,7 @@ async function get_webhook(channel: DTypes.TextBasedChannel, reason = 'General u
     }
     return channel.createWebhook({
         name: client.user.username,
-        reason: reason
+        reason: reason,
     }).catch(() => { });
 }
 
@@ -91,7 +91,7 @@ async function replace_emojis(message: DTypes.Message) {
         return wb.send({
             username: message.author.username,
             avatarURL: message.author.displayAvatarURL(),
-            content: msg
+            content: msg,
         }).then(() => { setTimeout(() => message.delete().catch(() => { }), 200); }).catch(() => { });
     }
 }
@@ -146,7 +146,7 @@ client.on(Events.InteractionCreate, interaction => {
     if (!client.is_ready) {
         return interaction.reply({
             content: 'I am loading... Please try again later.',
-            ephemeral: true
+            ephemeral: true,
         }).then(() => { });
     }
 
@@ -265,7 +265,7 @@ async function update_voice(oldState: DTypes.VoiceState, newState: DTypes.VoiceS
         if (!guildVoice.getCurrentSong() || guildVoice.paused) {
             guildVoice.destroy();
             return guildVoice.textChannel.send({
-                content: `No one wants to listen to me in ${oldState.channel} so I'm leaving... 😭`
+                content: `No one wants to listen to me in ${oldState.channel} so I'm leaving... 😭`,
             });
         }
     } else if (oldState.id === guildVoice.host.id) { //?????
@@ -422,7 +422,7 @@ function handle_interaction_errors(interaction: DTypes.RepliableInteraction, com
         // If the interaction has already been replied, still need to tell user got error
         .catch(() => interaction.followUp({
             content: ctnt,
-            ephemeral: true
+            ephemeral: true,
         }).catch(() => { })); // If interaction webhook is invalid.
 }
 function handle_message_errors(message: DTypes.Message, commandName: string, err: Error) {
@@ -435,12 +435,12 @@ async function loading() {
     client.admin = await client.users.fetch(config.admin);
     // Ensure log channel is setup before we start the database.
     client.log_channel = await client.channels.fetch(config.log, {
-        allowUnknownGuild: true
+        allowUnknownGuild: true,
     }) as DTypes.TextBasedChannel;
     await DB.start().then(bad_load => {
         if (bad_load) {
             client.log_channel.send({
-                content: `${client.admin} Error in database. Anime commands won't work!`
+                content: `${client.admin} Error in database. Anime commands won't work!`,
             });
         }
     });

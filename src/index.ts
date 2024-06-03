@@ -9,7 +9,7 @@ const manager = new ShardingManager('./dist/bot.js', {
     token: config.token,
     respawn: false,
     silent: true,
-    execArgv: ['--enable-source-maps']
+    execArgv: ['--enable-source-maps'],
 });
 
 // Load user cache for each shard once every shard is ready
@@ -83,7 +83,7 @@ async function sendCollectorResults(body: SendMessage) {
     if (body.err) {
         await manager.shards.get(0)?.eval(async (client, { err, name }) => {
             await (client as CustomClient).log_channel.send({
-                content: `${(client as CustomClient).admin} ${name} failed! Help!`
+                content: `${(client as CustomClient).admin} ${name} failed! Help!`,
             });
             while (err.length) {
                 (client as CustomClient).log_channel.send({ content: err.shift() });
@@ -96,7 +96,7 @@ async function sendCollectorResults(body: SendMessage) {
         const embed = new EmbedBuilder({
             title: `${body.name} Dailies`,
             description: `Collected on: ${account.error ? 'unknown' : account.today}`,
-            color: Colors.Gold
+            color: Colors.Gold,
         });
 
         // Grab the award emoji:
@@ -118,7 +118,7 @@ async function sendCollectorResults(body: SendMessage) {
                         attachment: acc.award.icon,
                         name: acc.award.name,
                         roles: [role],
-                        reason: `New emoji for ${name} auto collect.`
+                        reason: `New emoji for ${name} auto collect.`,
                     });
                 }).then(emoji => emoji.toString(), () => acc.award.name);
                 // If it is in discord's emoji string format
@@ -148,7 +148,7 @@ async function sendCollectorResults(body: SendMessage) {
             const user = await client.users.fetch(acc.uid).catch(() => acc.uid);
             embed.author = {
                 name: typeof user === 'string' ? user : user.tag,
-                icon_url: typeof user === 'string' ? '' : user.displayAvatarURL()
+                icon_url: typeof user === 'string' ? '' : user.displayAvatarURL(),
             };
             if (typeof user !== 'string') {
                 await user.createDM(true).catch(() => { });
@@ -181,7 +181,6 @@ http.createServer((req, res) => {
             try {
                 return JSON.parse(str);
             } catch (err) {
-                err;
                 return;
             }
         }

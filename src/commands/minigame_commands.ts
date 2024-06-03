@@ -110,7 +110,7 @@ function on_cd(name: string, cd: Cooldown) {
     // Send an error message.
     const embed = new EmbedBuilder({
         title: `${name} is ${next_ready}`,
-        color: Colors.Red
+        color: Colors.Red,
     });
     return { embeds: [embed] };
 }
@@ -195,7 +195,7 @@ const guess_number: SlashSubcommand & NumberPrivates = {
                     'You guessed wrong and you are poor. How dare you guess.\n' +
                     `You are now on cooldown. More available ${cd.next_ready()}`,
                 description: `(Pssst try ${daily_cmd})`,
-                color: Colors.Red
+                color: Colors.Red,
             });
             return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
@@ -204,7 +204,7 @@ const guess_number: SlashSubcommand & NumberPrivates = {
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
         await interaction.editReply({ embeds: [embed], files: [`files/${num}.png`] });
-    }
+    },
 };
 
 // Guess Character here
@@ -224,7 +224,7 @@ export const guess: SlashCommand = {
         await interaction.deferReply();
         const cmd = this.subcommands!.get(interaction.options.getSubcommand())!;
         return cmd.execute(interaction, client);
-    }
+    },
 };
 
 const coin_docs =
@@ -292,7 +292,7 @@ const flip_heads: SlashSubcommand = {
         'Example: `/flip heads bet: 100`',
 
     // Unneded function; defined for typing
-    async execute() { }
+    async execute() { },
 };
 
 const flip_tails: SlashSubcommand = {
@@ -314,7 +314,7 @@ const flip_tails: SlashSubcommand = {
         'Example: `/flip tails bet: 100`',
 
     // Unneded function; defined for typing
-    async execute() { }
+    async execute() { },
 };
 
 type FlipPrivates = {
@@ -352,11 +352,11 @@ export const flip: SlashCommand & FlipPrivates = {
                     'You guessed wrong and you are poor. How dare you guess.\n' +
                     `You are now on cooldown. More available ${cd.next_ready()}`,
                 description: `(Pssst try ${daily_cmd})`,
-                color: Colors.Red
+                color: Colors.Red,
             });
             return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setDescription(cd.tries_left());
         await interaction.editReply({ embeds: [embed], files });   
-    }
+    },
 };

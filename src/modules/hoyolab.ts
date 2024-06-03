@@ -76,7 +76,7 @@ class HoyoAccountInfo {
     }
 
     loadAllGames({
-        honkaiStatus, genshinStatus, starrailStatus
+        honkaiStatus, genshinStatus, starrailStatus,
     }: {
         honkaiStatus?: string,
         genshinStatus?: string,
@@ -134,7 +134,7 @@ if (require.main === module) {
     import('readline').then(readline => {
         const rl = readline.createInterface({
             input: process.stdin,
-            output: process.stdout
+            output: process.stdout,
         });
         // Challenge: don't use async/await
         rl.question('Enter cookie or blank to stop: ', function getData(ans: string) {

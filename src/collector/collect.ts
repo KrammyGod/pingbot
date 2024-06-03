@@ -18,7 +18,7 @@ const LOGGER = {
         const lines = typeof msg === 'string' ? msg : inspect(msg, {
             colors: true,
             depth: null,
-            compact: false
+            compact: false,
         });
         for (const line of lines.split('\n')) {
             console.log('\x1b[96m%s\x1b[0m%s', `LOG [${LOGGER.today}]: `, line);
@@ -29,7 +29,7 @@ const LOGGER = {
         const lines = typeof msg === 'string' ? msg : inspect(msg, {
             colors: true,
             depth: null,
-            compact: false
+            compact: false,
         });
         for (const line of lines.split('\n')) {
             console.log('\x1b[31m%s\x1b[0m%s', `ERR [${LOGGER.today}]: `, line);
@@ -40,7 +40,7 @@ const LOGGER = {
             '\x1b[95m%s\x1b[0m',
             `END [${LOGGER.today}]: END ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC\n`
         );
-    }
+    },
 };
 
 const ret = [''];
@@ -70,7 +70,7 @@ const CONFIG = {
     signURL: process.env.signURL!,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
         'Chrome/114.0.0.0 Safari/537.36',
-    origin: 'https://act.hoyolab.com'
+    origin: 'https://act.hoyolab.com',
 };
 type RewardAPIResponse = {
     readonly retcode: number;
@@ -172,7 +172,7 @@ class Sign {
             'Referer': `${CONFIG.origin}/`,
             'x-rpc-app_version': '2.34.1',
             'x-rpc-client_type': '4',
-            'Cookie': this.cookie
+            'Cookie': this.cookie,
         };
     }
     async getAwards() {
@@ -217,7 +217,7 @@ class Sign {
             return fetch(CONFIG.signURL, {
                 method: 'POST',
                 headers: { ...this.header, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'act_id': CONFIG.actID })
+                body: JSON.stringify({ 'act_id': CONFIG.actID }),
             }).then(res => res.json()).then((data: SignAPIResponse) => {
                 const risk_code = data.data?.gt_result?.risk_code;
                 if (risk_code && risk_code !== 0) {
@@ -242,7 +242,7 @@ class Sign {
             award: rewards.awards[info.total_sign_day],
             today: info.today,
             total_sign_day,
-            check_in_result: '✅'
+            check_in_result: '✅',
         };
         // Skip sign in if any of these are true.
         if (info.is_sign) {
@@ -257,7 +257,7 @@ class Sign {
         const res = await fetch(CONFIG.signURL, {
             method: 'POST',
             headers: { ...this.header, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 'act_id': CONFIG.actID })
+            body: JSON.stringify({ 'act_id': CONFIG.actID }),
         }).then(res => res.json() as Promise<SignAPIResponse>);
 
         // Checking for last minute failures/anti-bot
@@ -291,7 +291,7 @@ async function collect() {
     ).then(res => res.rows);
     const message: SendMessage = {
         accounts: [],
-        name: process.env.displayName!
+        name: process.env.displayName!,
     };
     for (const account of accounts) {
         const aid = getUID(account.cookie);
@@ -316,7 +316,7 @@ async function collect() {
     return fetch(`http://localhost:${config.port}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message)
+        body: JSON.stringify(message),
     });
 }
 
