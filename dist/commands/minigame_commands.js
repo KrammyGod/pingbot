@@ -122,7 +122,7 @@ function on_cd(name, cd) {
     // Send an error message.
     const embed = new discord_js_1.EmbedBuilder({
         title: `${name} is ${next_ready}`,
-        color: discord_js_1.Colors.Red
+        color: discord_js_1.Colors.Red,
     });
     return { embeds: [embed] };
 }
@@ -198,7 +198,7 @@ const guess_number = {
                 title: 'You guessed wrong and you are poor. How dare you guess.\n' +
                     `You are now on cooldown. More available ${cd.next_ready()}`,
                 description: `(Pssst try ${daily_cmd})`,
-                color: discord_js_1.Colors.Red
+                color: discord_js_1.Colors.Red,
             });
             return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
@@ -207,7 +207,7 @@ const guess_number = {
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
         await interaction.editReply({ embeds: [embed], files: [`files/${num}.png`] });
-    }
+    },
 };
 // Guess Character here
 exports.guess = {
@@ -222,7 +222,7 @@ exports.guess = {
         await interaction.deferReply();
         const cmd = this.subcommands.get(interaction.options.getSubcommand());
         return cmd.execute(interaction, client);
-    }
+    },
 };
 const coin_docs = `Flip a coin and guess a side! You have a 2/3 chance of winning (unbalanced coin).
 
@@ -273,7 +273,7 @@ const flip_heads = {
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip heads bet: 100`',
     // Unneded function; defined for typing
-    async execute() { }
+    async execute() { },
 };
 const flip_tails = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -291,7 +291,7 @@ const flip_tails = {
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip tails bet: 100`',
     // Unneded function; defined for typing
-    async execute() { }
+    async execute() { },
 };
 exports.flip = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -322,12 +322,12 @@ exports.flip = {
                 title: 'You guessed wrong and you are poor. How dare you guess.\n' +
                     `You are now on cooldown. More available ${cd.next_ready()}`,
                 description: `(Pssst try ${daily_cmd})`,
-                color: discord_js_1.Colors.Red
+                color: discord_js_1.Colors.Red,
             });
             return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setDescription(cd.tries_left());
         await interaction.editReply({ embeds: [embed], files });
-    }
+    },
 };
 //# sourceMappingURL=minigame_commands.js.map

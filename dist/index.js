@@ -34,7 +34,7 @@ const manager = new discord_js_1.ShardingManager('./dist/bot.js', {
     token: _config_1.default.token,
     respawn: false,
     silent: true,
-    execArgv: ['--enable-source-maps']
+    execArgv: ['--enable-source-maps'],
 });
 // Load user cache for each shard once every shard is ready
 async function setupCache() {
@@ -105,7 +105,7 @@ async function sendCollectorResults(body) {
     if (body.err) {
         await manager.shards.get(0)?.eval(async (client, { err, name }) => {
             await client.log_channel.send({
-                content: `${client.admin} ${name} failed! Help!`
+                content: `${client.admin} ${name} failed! Help!`,
             });
             while (err.length) {
                 client.log_channel.send({ content: err.shift() });
@@ -118,7 +118,7 @@ async function sendCollectorResults(body) {
         const embed = new discord_js_1.EmbedBuilder({
             title: `${body.name} Dailies`,
             description: `Collected on: ${account.error ? 'unknown' : account.today}`,
-            color: discord_js_1.Colors.Gold
+            color: discord_js_1.Colors.Gold,
         });
         // Grab the award emoji:
         let rewardEmoji = undefined;
@@ -139,7 +139,7 @@ async function sendCollectorResults(body) {
                         attachment: acc.award.icon,
                         name: acc.award.name,
                         roles: [role],
-                        reason: `New emoji for ${name} auto collect.`
+                        reason: `New emoji for ${name} auto collect.`,
                     });
                 }).then(emoji => emoji.toString(), () => acc.award.name);
                 // If it is in discord's emoji string format
@@ -168,7 +168,7 @@ async function sendCollectorResults(body) {
             const user = await client.users.fetch(acc.uid).catch(() => acc.uid);
             embed.author = {
                 name: typeof user === 'string' ? user : user.tag,
-                icon_url: typeof user === 'string' ? '' : user.displayAvatarURL()
+                icon_url: typeof user === 'string' ? '' : user.displayAvatarURL(),
             };
             if (typeof user !== 'string') {
                 await user.createDM(true).catch(() => { });
@@ -201,7 +201,6 @@ http_1.default.createServer((req, res) => {
                 return JSON.parse(str);
             }
             catch (err) {
-                err;
                 return;
             }
         }

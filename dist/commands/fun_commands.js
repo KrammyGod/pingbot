@@ -59,7 +59,7 @@ const images = [
     'https://i.imgur.com/KoGmcOh.jpg',
     'https://i.imgur.com/D44fbJu.jpg',
     'https://i.imgur.com/Ldr5DBI.jpg',
-    'https://i.imgur.com/q0jk1HQ.jpg'
+    'https://i.imgur.com/q0jk1HQ.jpg',
 ];
 exports.count = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -79,9 +79,9 @@ exports.count = {
         const image = images[Math.floor(Math.random() * images.length)];
         await interaction.editReply({
             content: `Hey there, its been ${amt} times already...\nTake this....`,
-            embeds: [new discord_js_1.EmbedBuilder().setImage(image).setColor('Random')]
+            embeds: [new discord_js_1.EmbedBuilder().setImage(image).setColor('Random')],
         });
-    }
+    },
 };
 const invite_docs = `Get the invite link for the bot. 
 __Permissions required:__
@@ -116,13 +116,13 @@ exports.invite = {
         const permissions = '1512670883152';
         const url = client.generateInvite({
             permissions: permissions,
-            scopes: [discord_js_1.OAuth2Scopes.Bot, discord_js_1.OAuth2Scopes.ApplicationsCommands]
+            scopes: [discord_js_1.OAuth2Scopes.Bot, discord_js_1.OAuth2Scopes.ApplicationsCommands],
         });
         await interaction.editReply({
             content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
-                'Please do not forget to use `/help command: invite` to verify permissions required!'
+                'Please do not forget to use `/help command: invite` to verify permissions required!',
         });
-    }
+    },
 };
 exports.support = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -142,9 +142,9 @@ exports.support = {
         // Constant non-expiring invite
         const link = invite_link ?? `https://discord.gg/${invite_code}`;
         await interaction.editReply({
-            content: `Hey there, here's the [invite link](${link}) for the support server!\n`
+            content: `Hey there, here's the [invite link](${link}) for the support server!\n`,
         });
-    }
+    },
 };
 exports.getid = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -173,7 +173,7 @@ exports.getid = {
         const res = await Utils.get_results(interaction, users, {
             title_fmt: n => `Found ${n} users:`,
             desc_fmt: u => `${u.name}`,
-            sel_fmt: u => `**${u.name}**`
+            sel_fmt: u => `**${u.name}**`,
         });
         if (res === null) {
             return interaction.deleteReply();
@@ -184,7 +184,7 @@ exports.getid = {
         else {
             await interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
         }
-    }
+    },
 };
 const all_collector_docs = `Edit your entries in the autocollect system.
 Essentially, the bot will automatically collect hoyolab dailies for you!
@@ -197,16 +197,16 @@ Only use this if you trust me...\n\n`;
 const all_collector_buttons = [
     new discord_js_1.ButtonBuilder({
         emoji: '🔔',
-        style: discord_js_1.ButtonStyle.Primary
+        style: discord_js_1.ButtonStyle.Primary,
     }),
     new discord_js_1.ButtonBuilder({
         emoji: '🔕',
-        style: discord_js_1.ButtonStyle.Secondary
+        style: discord_js_1.ButtonStyle.Secondary,
     }),
     new discord_js_1.ButtonBuilder({
         emoji: '✖️',
-        style: discord_js_1.ButtonStyle.Danger
-    })
+        style: discord_js_1.ButtonStyle.Danger,
+    }),
 ];
 function get_collector_buttons(cmd_name, hoyo, idx) {
     const rows = [];
@@ -244,10 +244,10 @@ exports.hoyolab = {
                         customId: 'cookie',
                         placeholder: 'Enter your hoyolab cookie here.',
                         style: discord_js_1.TextInputStyle.Short,
-                        required: true
-                    })]
-            })
-        ]
+                        required: true,
+                    })],
+            }),
+        ],
     }),
     async delete(client, interaction, id) {
         const buttons = [
@@ -255,24 +255,24 @@ exports.hoyolab = {
                 label: 'Yes!',
                 emoji: '🚮',
                 customId: 'hconfirm',
-                style: discord_js_1.ButtonStyle.Danger
+                style: discord_js_1.ButtonStyle.Danger,
             }),
             new discord_js_1.ButtonBuilder({
                 label: 'No',
                 customId: 'hcancel',
-                style: discord_js_1.ButtonStyle.Secondary
-            })
+                style: discord_js_1.ButtonStyle.Secondary,
+            }),
         ];
         const message = await interaction.followUp({
             content: '# Are you sure you want to delete this account?',
             components: [new discord_js_1.ActionRowBuilder({
-                    components: buttons
+                    components: buttons,
                 })],
-            ephemeral: true
+            ephemeral: true,
         });
         const confirmed = await message.awaitMessageComponent({
             componentType: discord_js_1.ComponentType.Button,
-            time: 10 * 60 * 1000 // 10 mins before interaction expires
+            time: 10 * 60 * 1000, // 10 mins before interaction expires
         }).then(async (i) => {
             if (i.customId === 'hcancel')
                 return;
@@ -286,14 +286,14 @@ exports.hoyolab = {
             return interaction.followUp({
                 content: 'Failed to delete cookie, the embed is out of date!\n' +
                     'Please make sure to only use this command once!',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         const retval = await this.getAccount(interaction, 1);
         await interaction.editReply(retval);
         return interaction.followUp({
             content: 'Successfully deleted cookie!',
-            ephemeral: true
+            ephemeral: true,
         }).then(() => { });
     },
     async getAccount(interaction, pageOrIdx) {
@@ -315,38 +315,38 @@ exports.hoyolab = {
         }
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Hoyolab Autocollect Details',
-            color: discord_js_1.Colors.Gold
+            color: discord_js_1.Colors.Gold,
         });
         const components = [
             new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder({
                 label: 'Add New',
                 emoji: '➕',
                 customId: 'hoyolab/0/add',
-                style: discord_js_1.ButtonStyle.Primary
+                style: discord_js_1.ButtonStyle.Primary,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Delete',
                 emoji: '✖️',
                 customId: `hoyolab/0/delete/${account?.idx}`,
-                style: discord_js_1.ButtonStyle.Danger
+                style: discord_js_1.ButtonStyle.Danger,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Help',
                 emoji: '❓',
                 style: discord_js_1.ButtonStyle.Link,
-                url: 'https://gist.github.com/KrammyGod/bca6eb7d424064517d779a5e449d4586'
+                url: 'https://gist.github.com/KrammyGod/bca6eb7d424064517d779a5e449d4586',
             })),
             new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder({
                 label: 'Previous',
                 emoji: '⬅️',
                 style: discord_js_1.ButtonStyle.Primary,
                 customId: `hoyolab/0/${(account?.page ?? 0) - 1}`,
-                disabled: !account || account?.page === 1
+                disabled: !account || account?.page === 1,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Next',
                 emoji: '➡️',
                 style: discord_js_1.ButtonStyle.Primary,
                 customId: `hoyolab/0/${(account?.page ?? 0) + 1}`,
-                disabled: !account || account?.page === max_pages
-            }))
+                disabled: !account || account?.page === max_pages,
+            })),
         ];
         if (!account) {
             embed.setDescription('No accounts found! Add one by clicking the add button!');
@@ -372,7 +372,7 @@ exports.hoyolab = {
         const { retval, games } = info.loadAllGames({
             honkaiStatus: getStatus(account.honkai),
             genshinStatus: getStatus(account.genshin),
-            starrailStatus: getStatus(account.star_rail)
+            starrailStatus: getStatus(account.star_rail),
         });
         desc += retval;
         embed.setDescription(desc);
@@ -417,7 +417,7 @@ exports.hoyolab = {
         if (!info) {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
@@ -425,7 +425,7 @@ exports.hoyolab = {
             return interaction.followUp({
                 content: 'Failed to add account to autocollector.\nEither you reached the max of 5 accounts, ' +
                     'or you are entering a duplicate cookie.',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         // Adding new account always brings user to first page to properly reload everything.
@@ -433,7 +433,7 @@ exports.hoyolab = {
         await interaction.editReply(retval);
         await interaction.followUp({
             content: 'Successfully added account to autocollector!',
-            ephemeral: true
+            ephemeral: true,
         });
     },
     async buttonReact(interaction, client) {
@@ -459,7 +459,7 @@ exports.hoyolab = {
         await interaction.deferReply({ ephemeral: true });
         const retval = await this.getAccount(interaction, 1);
         await interaction.editReply(retval);
-    }
+    },
 };
 exports.poll = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -492,30 +492,30 @@ exports.poll = {
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Poll Editor',
             color: discord_js_1.Colors.Gold,
-            description: desc
+            description: desc,
         });
         const components = [
             new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder({
                 label: 'Edit Title',
                 emoji: '📝',
                 customId: 'poll/0/title',
-                style: discord_js_1.ButtonStyle.Primary
+                style: discord_js_1.ButtonStyle.Primary,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Edit Choices',
                 emoji: '✏️',
                 customId: 'poll/0/add',
-                style: discord_js_1.ButtonStyle.Primary
+                style: discord_js_1.ButtonStyle.Primary,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Edit Expiry',
                 emoji: '⏱️',
                 customId: 'poll/0/expiry',
-                style: discord_js_1.ButtonStyle.Primary
+                style: discord_js_1.ButtonStyle.Primary,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Send',
                 emoji: '📨',
                 customId: 'poll/0/send',
                 style: discord_js_1.ButtonStyle.Success,
-                disabled: pollInfo.choices.length === 0 || pollInfo.title === ''
+                disabled: pollInfo.choices.length === 0 || pollInfo.title === '',
             })),
             new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ChannelSelectMenuBuilder({
                 customId: 'poll/0/channel',
@@ -523,7 +523,7 @@ exports.poll = {
                 minValues: 1,
                 placeholder: 'Click to change the destination channel.',
                 channelTypes: [discord_js_1.ChannelType.GuildText, discord_js_1.ChannelType.GuildAnnouncement],
-            }))
+            })),
         ];
         return { embeds: [embed], components };
     },
@@ -562,7 +562,7 @@ exports.poll = {
             btns.push(new discord_js_1.ButtonBuilder({
                 label,
                 customId: `poll/0/${i}`,
-                style: discord_js_1.ButtonStyle.Primary
+                style: discord_js_1.ButtonStyle.Primary,
             }));
         }
         const components = [];
@@ -572,7 +572,7 @@ exports.poll = {
         const embed = new discord_js_1.EmbedBuilder({
             title: pollInfo.title,
             description: desc,
-            color: discord_js_1.Colors.Gold
+            color: discord_js_1.Colors.Gold,
         }).setAuthor({ name: `${user.name} started a poll`, iconURL: user.avatar });
         return { embeds: [embed], components };
     },
@@ -593,17 +593,17 @@ exports.poll = {
             const choices = c.trim().split('\n').map(x => x.trim()).filter(x => x !== '');
             if (!choices.length) {
                 return interaction.followUp({
-                    content: 'You must provide at least one choice.', ephemeral: true
+                    content: 'You must provide at least one choice.', ephemeral: true,
                 }).then(() => { });
             }
             else if (choices.length > 25) {
                 return interaction.followUp({
-                    content: 'You cannot provide more than 25 choices.', ephemeral: true
+                    content: 'You cannot provide more than 25 choices.', ephemeral: true,
                 }).then(() => { });
             }
             else if (new Set(choices).size !== choices.length) {
                 return interaction.followUp({
-                    content: 'All choices must be unique.', ephemeral: true
+                    content: 'All choices must be unique.', ephemeral: true,
                 }).then(() => { });
             }
             pollInfo.choices = choices.map(c => {
@@ -618,13 +618,13 @@ exports.poll = {
                 if (!date) {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 }
                 else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 }
                 pollInfo.expires = date;
@@ -673,7 +673,7 @@ exports.poll = {
                     message = await channel.send({ embeds, components });
                     await interaction.followUp({
                         content: 'Successfully sent poll! You may now close this dialog.',
-                        ephemeral: true
+                        ephemeral: true,
                     });
                 }
                 await this.cache.delete(pollInfo.mid); // Remove old poll from cache
@@ -691,8 +691,8 @@ exports.poll = {
                                 customId: 'title',
                                 placeholder: 'Enter the new title here.',
                                 style: discord_js_1.TextInputStyle.Short,
-                                required: true
-                            })]
+                                required: true,
+                            })],
                     }));
                     return interaction.showModal(input);
                 case 'add':
@@ -705,8 +705,8 @@ exports.poll = {
                                 value: pollInfo.choices.map(c => c.name).join('\n'),
                                 placeholder: 'Enter choices here, separated by newlines.',
                                 style: discord_js_1.TextInputStyle.Paragraph,
-                                required: true
-                            })]
+                                required: true,
+                            })],
                     }));
                     return interaction.showModal(input);
                 case 'expiry':
@@ -719,8 +719,8 @@ exports.poll = {
                                 value: pollInfo.expires ? new Date(pollInfo.expires).toUTCString() : '',
                                 placeholder: 'Enter the date/relative time in UTC/GMT.',
                                 style: discord_js_1.TextInputStyle.Short,
-                                required: false
-                            })]
+                                required: false,
+                            })],
                     }));
                     return interaction.showModal(input);
                 case 'send':
@@ -761,13 +761,13 @@ exports.poll = {
         if (!channel.permissionsFor(interaction.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         else if (!channel.permissionsFor(client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         pollInfo.cid = channel.id;
@@ -782,11 +782,11 @@ exports.poll = {
             uid: interaction.user.id,
             cid: interaction.channelId,
             title: '',
-            choices: []
+            choices: [],
         }, Utils.date_after_hours(24)); // Expires in 24 hours.
         const retval = await this.getPollEditor(id);
         await interaction.editReply(retval);
-    }
+    },
 };
 exports.poll_edit = {
     data: new discord_js_1.ContextMenuCommandBuilder()
@@ -805,14 +805,14 @@ exports.poll_edit = {
         }
         else if (pollInfo.uid !== interaction.user.id) {
             return interaction.editReply({
-                content: 'You are not the owner of this poll!'
+                content: 'You are not the owner of this poll!',
             }).then(() => { });
         }
         // Create a new edit dialog, and make it expire in 24 hours.
         await exports.poll.cache.set(thisId, pollInfo, Utils.date_after_hours(24));
         const retval = await exports.poll.getPollEditor(thisId);
         await interaction.editReply(retval);
-    }
+    },
 };
 exports.poll_end = {
     data: new discord_js_1.ContextMenuCommandBuilder()
@@ -833,6 +833,6 @@ exports.poll_end = {
         const { embeds } = await exports.poll.getPoll(id);
         await interaction.targetMessage.edit({ embeds, components: [] });
         return interaction.deleteReply();
-    }
+    },
 };
 //# sourceMappingURL=fun_commands.js.map

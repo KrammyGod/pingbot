@@ -74,7 +74,7 @@ class HoyoAccountInfo {
             `> **UID:** ${gameInfo.game_role_id}\n` +
             `> **Level:** ${gameInfo.level}\n`;
     }
-    loadAllGames({ honkaiStatus, genshinStatus, starrailStatus } = {}) {
+    loadAllGames({ honkaiStatus, genshinStatus, starrailStatus, } = {}) {
         let retval = '';
         let infoStr = this.infoString(1);
         const games = {};
@@ -128,7 +128,7 @@ if (require.main === module) {
     Promise.resolve().then(() => __importStar(require('readline'))).then(readline => {
         const rl = readline.createInterface({
             input: process.stdin,
-            output: process.stdout
+            output: process.stdout,
         });
         // Challenge: don't use async/await
         rl.question('Enter cookie or blank to stop: ', function getData(ans) {

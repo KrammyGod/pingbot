@@ -55,7 +55,7 @@ async function get_member(interaction) {
         if (!member) {
             const reply = {
                 content: 'I was unable to fetch your details. Please report this to the support server!',
-                ephemeral: true
+                ephemeral: true,
             };
             return interaction.isRepliable() ?
                 interaction.replied || interaction.deferred ?
@@ -75,7 +75,7 @@ async function member_voice_valid(interaction) {
     if (!member.voice.channel) {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         return interaction.editReply({
-            content: `You must be in a voice channel to use ${rich_cmd}`
+            content: `You must be in a voice channel to use ${rich_cmd}`,
         }).then(() => null);
     }
     return member;
@@ -85,7 +85,7 @@ function check_host(member, guildVoice, rich_cmd) {
         const host = guildVoice.host.id === member.client.user.id ? 'me' : guildVoice.host.toString();
         return {
             content: `You are not the host so you cannot use ${rich_cmd}. The host is ${host}`,
-            allowedMentions: { users: [] }
+            allowedMentions: { users: [] },
         };
     }
     return null;
@@ -122,13 +122,13 @@ async function nowPlaying(guildId) {
         description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
             `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
             `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
-        color: discord_js_1.Colors.Blue
+        color: discord_js_1.Colors.Blue,
     }).setAuthor({
         name: `Added by: @${song.user.username}`,
         url: song.albumUrl,
-        iconURL: song.user.displayAvatarURL()
+        iconURL: song.user.displayAvatarURL(),
     }).setFooter({
-        text: `Loop type: ${guildVoice.loop}`
+        text: `Loop type: ${guildVoice.loop}`,
     }).setThumbnail(song.thumbnail);
     return embed;
 }
@@ -189,12 +189,12 @@ const join = {
         const permissions = voiceChannel.permissionsFor(me);
         if (!permissions.has(discord_js_1.PermissionsBitField.Flags.Connect) || !permissions.has(discord_js_1.PermissionsBitField.Flags.Speak)) {
             return interaction.editReply({
-                content: `I need the permissions to join and speak in ${voiceChannel}!`
+                content: `I need the permissions to join and speak in ${voiceChannel}!`,
             }).then(() => { });
         }
         else if (!channel.permissionsFor(me).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.editReply({
-                content: `I need the permissions to send messages in ${channel}!`
+                content: `I need the permissions to send messages in ${channel}!`,
             }).then(() => { });
         }
         if (guildVoice) {
@@ -214,14 +214,14 @@ const join = {
                 if (guildVoice.host.id === me.user.id) {
                     guildVoice.destroy();
                     return guildVoice.textChannel.send({
-                        content: `No one wants to listen to me in ${guildVoice.voiceChannel} so I'm leaving... 😭`
+                        content: `No one wants to listen to me in ${guildVoice.voiceChannel} so I'm leaving... 😭`,
                     }).then(() => { });
                 }
                 return playNext(guildVoice.voiceChannel.guildId);
             }).on('error', console.error);
         }
         await interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
-    }
+    },
 };
 const leave = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -268,7 +268,7 @@ const np = {
         if (embed) {
             await interaction.editReply({ embeds: [embed] });
         }
-    }
+    },
 };
 const play = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -303,14 +303,14 @@ const play = {
         if (err.notFound) {
             return interaction.followUp({
                 content: 'Data could not be found. Perhaps the video/playlist is private.\n' +
-                    'If you believe this is an error, please report it to the support server.'
+                    'If you believe this is an error, please report it to the support server.',
             });
         }
         else if (err.invalid) {
             return interaction.followUp({
                 content: 'This video is NSFW and you are not in an NSFW enabled text channel ' +
                     "AND voice channel (due to discord's policies).\n" +
-                    'If you believe this is an error, please report it to the support server.'
+                    'If you believe this is an error, please report it to the support server.',
             });
         }
         else {
@@ -428,7 +428,7 @@ const play = {
             const infoData = await play_dl_1.default.search(link, {
                 source: { youtube: 'video' },
                 limit: 1,
-                unblurNSFWThumbnails: isNsfw
+                unblurNSFWThumbnails: isNsfw,
             }).then(res => res.at(0)).catch(() => undefined);
             const song = new GuildVoice_2.Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!this.validate_song(song, member)) {
@@ -454,19 +454,19 @@ const play = {
         const embed = new discord_js_1.EmbedBuilder({
             title: `Successfully added ${songs.length} song(s) to the queue.`,
             description: desc,
-            color: discord_js_1.Colors.Blue
+            color: discord_js_1.Colors.Blue,
         }).setAuthor({
             name: `Added by: @${member.user.tag}`,
             url: showLink,
-            iconURL: member.user.displayAvatarURL()
+            iconURL: member.user.displayAvatarURL(),
         }).setFooter({
-            text: `Loop type: ${guildVoice.loop}`
+            text: `Loop type: ${guildVoice.loop}`,
         }).setThumbnail(showThumbnail);
         await interaction.followUp({ embeds: [embed] });
         if (!guildVoice.started) {
             return playNext(interaction.guildId);
         }
-    }
+    },
 };
 const host = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -489,7 +489,7 @@ const host = {
             host = 'you';
         }
         await interaction.editReply({ content: `The host is ${host}`, allowedMentions: { users: [] } });
-    }
+    },
 };
 const clear = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -513,7 +513,7 @@ const clear = {
             return interaction.editReply(reply).then(() => { });
         guildVoice.fullReset();
         await interaction.editReply({ content: '🚮 **RIP Queue.**' });
-    }
+    },
 };
 const loop = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -543,7 +543,7 @@ const loop = {
             return interaction.editReply(reply).then(() => { });
         guildVoice.loop = interaction.options.getString('type');
         await interaction.editReply({ content: `✅ Loop type set to ${guildVoice.loop}` });
-    }
+    },
 };
 const pause = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -575,7 +575,7 @@ const pause = {
             guildVoice.paused = true;
             await interaction.editReply({ content: '⏸️ Paused.' });
         }
-    }
+    },
 };
 const resume = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -605,7 +605,7 @@ const resume = {
         else {
             await interaction.editReply({ content: 'I am not paused.' });
         }
-    }
+    },
 };
 const queue = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -621,7 +621,7 @@ const queue = {
     getPage(userID, guildVoice, page) {
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Here is the current queue:',
-            color: discord_js_1.Colors.Blue
+            color: discord_js_1.Colors.Blue,
         });
         const max_pages = Math.ceil(guildVoice.fullQueue.length / 10);
         if (max_pages === 0) {
@@ -635,12 +635,12 @@ const queue = {
         // This represents any followup messages that should be sent
         const followUp = {
             embeds: [],
-            ephemeral: true
+            ephemeral: true,
         };
         if (page < 1) {
             const error_embed = new discord_js_1.EmbedBuilder({
                 title: 'Please enter a positive number.',
-                color: discord_js_1.Colors.Red
+                color: discord_js_1.Colors.Red,
             });
             followUp.embeds.push(error_embed);
             page = 1;
@@ -648,7 +648,7 @@ const queue = {
         else if (page > max_pages) {
             const error_embed = new discord_js_1.EmbedBuilder({
                 title: `Too high. Max page: ${max_pages}`,
-                color: discord_js_1.Colors.Red
+                color: discord_js_1.Colors.Red,
             });
             followUp.embeds.push(error_embed);
             page = max_pages;
@@ -672,7 +672,7 @@ const queue = {
         embed.setDescription(desc).setThumbnail(currentQueue[0].thumbnail).setAuthor({
             name: `Added by: @${currentQueue[0].user.username}`,
             url: currentQueue[0].albumUrl,
-            iconURL: currentQueue[0].user.displayAvatarURL()
+            iconURL: currentQueue[0].user.displayAvatarURL(),
         }).setFooter({ text: `Loop type: ${guildVoice.loop}` });
         const jumpPage = Math.floor(idx / 10) + (idx % 10 ? 1 : 0);
         const buttons = [
@@ -699,13 +699,13 @@ const queue = {
             new discord_js_1.ButtonBuilder()
                 .setEmoji('📄')
                 .setStyle(discord_js_1.ButtonStyle.Primary)
-                .setCustomId(`music/${userID}/queue/input`)
+                .setCustomId(`music/${userID}/queue/input`),
         ];
         const retval = {
             embeds: [embed],
             components: [
-                new discord_js_1.ActionRowBuilder().addComponents(...buttons)
-            ]
+                new discord_js_1.ActionRowBuilder().addComponents(...buttons),
+            ],
         };
         if (followUp.embeds.length > 0) {
             retval.followUp = followUp;
@@ -722,7 +722,7 @@ const queue = {
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
@@ -747,11 +747,11 @@ const queue = {
                                     placeholder: 'Enter the page number to jump to...',
                                     style: discord_js_1.TextInputStyle.Short,
                                     maxLength: 100,
-                                    required: true
-                                })
-                            ]
-                        })
-                    ]
+                                    required: true,
+                                }),
+                            ],
+                        }),
+                    ],
                 });
                 return interaction.showModal(input);
             }
@@ -777,7 +777,7 @@ const queue = {
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
-    }
+    },
 };
 const shuffle = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -818,7 +818,7 @@ const shuffle = {
             return interaction.editReply(reply).then(() => { });
         guildVoice.shuffle();
         await interaction.editReply({ content: '🔀 Successfully shuffled the queue.' });
-    }
+    },
 };
 const prev = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -849,7 +849,7 @@ const prev = {
         guildVoice.started = false;
         guildVoice.player.stop();
         await interaction.editReply({ content: '✅ Successfully rewinded to previous song.' });
-    }
+    },
 };
 const skip = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -877,7 +877,7 @@ const skip = {
             guildVoice.songs.shift();
         guildVoice.player.stop();
         await interaction.editReply({ content: '✅ Successfully skipped the current song.' });
-    }
+    },
 };
 const remove_song = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -911,17 +911,17 @@ const remove_song = {
         const res = guildVoice.removeSong(idx);
         if (res === -1) {
             return interaction.editReply({
-                content: `There are only ${guildVoice.fullQueue.length} songs.`
+                content: `There are only ${guildVoice.fullQueue.length} songs.`,
             }).then(() => { });
         }
         else if (res === 0) {
             const skip_cmd = await Utils.get_rich_cmd('skip');
             return interaction.editReply({
-                content: `Song at index ${idx + 1} is currently playing. Use ${skip_cmd} instead.`
+                content: `Song at index ${idx + 1} is currently playing. Use ${skip_cmd} instead.`,
             }).then(() => { });
         }
         await interaction.editReply({ content: `✅ Successfully removed song at index ${idx + 1}.` });
-    }
+    },
 };
 const remove = {
     data: new discord_js_1.SlashCommandSubcommandGroupBuilder()
@@ -934,7 +934,7 @@ const remove = {
     async execute(interaction, client) {
         const subcmd = this.subcommands.get(interaction.options.getSubcommand());
         return subcmd.execute(interaction, client);
-    }
+    },
 };
 const vote_skip = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -967,7 +967,7 @@ const vote_skip = {
             return interaction.editReply({ content: 'There is no song playing.' }).then(() => { });
         }
         await interaction.editReply({ content: 'This command is not implemented yet.' });
-    }
+    },
 };
 const vote = {
     data: new discord_js_1.SlashCommandSubcommandGroupBuilder()
@@ -980,7 +980,7 @@ const vote = {
     async execute(interaction, client) {
         const subcmd = this.subcommands.get(interaction.options.getSubcommand());
         return subcmd.execute(interaction, client);
-    }
+    },
 };
 const restart = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -1014,12 +1014,12 @@ const restart = {
                     .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder()
                     .setLabel('No')
                     .setCustomId('restart/cancel')
-                    .setStyle(discord_js_1.ButtonStyle.Secondary))]
+                    .setStyle(discord_js_1.ButtonStyle.Secondary))],
         });
         const i = await message.awaitMessageComponent({
             filter: i => i.user.id === interaction.user.id,
             componentType: discord_js_1.ComponentType.Button,
-            time: 60_000
+            time: 60_000,
         }).catch(() => null);
         if (i && i.customId === 'restart/confirm') {
             await i.deferUpdate();
@@ -1036,7 +1036,7 @@ const restart = {
         else {
             return interaction.deleteReply();
         }
-    }
+    },
 };
 // All commands are under this main command
 exports.music = {
@@ -1094,6 +1094,6 @@ exports.music = {
         const subcmd = this.subcommands.get(interaction.options.getSubcommandGroup(false) ??
             interaction.options.getSubcommand());
         return subcmd.execute(interaction, client);
-    }
+    },
 };
 //# sourceMappingURL=music_commands.js.map

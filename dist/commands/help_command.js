@@ -56,17 +56,17 @@ async function get_results_category(client, interaction, choices) {
     // Create embed
     const embed = new discord_js_1.EmbedBuilder({
         title: 'Search Results',
-        color: discord_js_1.Colors.Yellow
+        color: discord_js_1.Colors.Yellow,
     }).setAuthor({
         name: `@${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL(),
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
         desc += `${idx + 1}. **${choice.name}**\n`;
         menu.addOptions({
             label: `${idx + 1}. ${choice.name}`,
-            value: `${idx}`
+            value: `${idx}`,
         });
     }
     embed.setDescription(`__${res_title}__\n${desc}`);
@@ -74,7 +74,7 @@ async function get_results_category(client, interaction, choices) {
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
-        ephemeral: true
+        ephemeral: true,
     });
     // Return promise to let caller await it.
     const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60_000 })
@@ -93,7 +93,7 @@ async function get_results_cmd(client, interaction, search) {
             choices.push({
                 name: cmd.name,
                 desc: cmd.desc,
-                is_slash: false
+                is_slash: false,
             });
         }
         else if ((0, client_1.isSlashCommand)(cmd)) {
@@ -104,7 +104,7 @@ async function get_results_cmd(client, interaction, search) {
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
                                 desc: subsubcmd.desc,
-                                is_slash: true
+                                is_slash: true,
                             });
                         }
                     }
@@ -112,7 +112,7 @@ async function get_results_cmd(client, interaction, search) {
                         choices.push({
                             name: `${cmd.data.name} ${subcmd.data.name}`,
                             desc: subcmd.desc,
-                            is_slash: true
+                            is_slash: true,
                         });
                     }
                 }
@@ -121,7 +121,7 @@ async function get_results_cmd(client, interaction, search) {
                 choices.push({
                     name: cmd.data.name,
                     desc: cmd.desc,
-                    is_slash: true
+                    is_slash: true,
                 });
             }
         }
@@ -140,10 +140,10 @@ async function get_results_cmd(client, interaction, search) {
     // Create embed
     const embed = new discord_js_1.EmbedBuilder({
         title: 'Search Results',
-        color: discord_js_1.Colors.Yellow
+        color: discord_js_1.Colors.Yellow,
     }).setAuthor({
         name: `@${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL(),
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
@@ -155,7 +155,7 @@ async function get_results_cmd(client, interaction, search) {
         }
         menu.addOptions({
             label: `${idx + 1}. ${(0, client_1.isSlashCommand)(choice) ? choice.data.name : choice.name}`,
-            value: `${idx}`
+            value: `${idx}`,
         });
     }
     embed.setDescription(`__${res_title}__\n${desc}`);
@@ -163,7 +163,7 @@ async function get_results_cmd(client, interaction, search) {
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
-        ephemeral: true
+        ephemeral: true,
     });
     // Return promise to let caller await it.
     const res = await message.awaitMessageComponent({ componentType: discord_js_1.ComponentType.StringSelect, time: 60_000 })
@@ -179,26 +179,26 @@ async function get_cog_page(client, authorID, page) {
     const max_pages = client.cogs.length;
     const embed = new discord_js_1.EmbedBuilder({
         title: '__All Commands:__',
-        color: discord_js_1.Colors.Aqua
+        color: discord_js_1.Colors.Aqua,
     }).setFooter({
-        text: 'Send me a direct message to create a ticket anytime!'
+        text: 'Send me a direct message to create a ticket anytime!',
     });
     // This represents any followup messages that should be sent
     const followUp = {
         embeds: [],
-        ephemeral: true
+        ephemeral: true,
     };
     if (max_pages === 0) {
         embed.setDescription(`Page 0/${max_pages}`).setFields({
             name: '**No Commands found. :(**',
-            value: "Why don't you contact the support server?"
+            value: "Why don't you contact the support server?",
         });
         return { embeds: [embed] };
     }
     else if (page < 1) {
         const error_embed = new discord_js_1.EmbedBuilder({
             color: discord_js_1.Colors.Red,
-            title: 'Please enter a positive number.'
+            title: 'Please enter a positive number.',
         });
         followUp.embeds.push(error_embed);
         page = 1;
@@ -206,7 +206,7 @@ async function get_cog_page(client, authorID, page) {
     else if (page > max_pages) {
         const error_embed = new discord_js_1.EmbedBuilder({
             color: discord_js_1.Colors.Red,
-            title: `Too high. Max page: ${max_pages}`
+            title: `Too high. Max page: ${max_pages}`,
         });
         followUp.embeds.push(error_embed);
         page = max_pages;
@@ -223,14 +223,14 @@ async function get_cog_page(client, authorID, page) {
                     for (const subsubcommand of subcommand.subcommands.values()) {
                         commands.push({
                             name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
-                            description: subsubcommand.data.description
+                            description: subsubcommand.data.description,
                         });
                     }
                 }
                 else {
                     commands.push({
                         name: `${command.data.name} ${subcommand.data.name}`,
-                        description: subcommand.data.description
+                        description: subcommand.data.description,
                     });
                 }
             }
@@ -258,7 +258,7 @@ async function get_cog_page(client, authorID, page) {
         embed.addFields({
             name: `__**${cog.name}:**__\n**${cog.desc}**`,
             value: field,
-            inline: true
+            inline: true,
         });
     }
     else {
@@ -297,7 +297,7 @@ async function get_cog_page(client, authorID, page) {
     }
     const retval = {
         embeds: [embed],
-        components: [row, row2]
+        components: [row, row2],
     };
     if (followUp.embeds.length > 0) {
         retval.followUp = followUp;
@@ -310,10 +310,10 @@ async function get_cmd_page(client, authorID, command) {
         `\`${client.prefix}${command.name}\``;
     const embed = new discord_js_1.EmbedBuilder({
         title: `__Command ${cmd_tag}__`,
-        color: discord_js_1.Colors.Aqua
+        color: discord_js_1.Colors.Aqua,
     }).setFooter({
         text: 'Options surrounded with <> are required, and [] are optional.\n' +
-            'Send me a direct message to create a ticket anytime!'
+            'Send me a direct message to create a ticket anytime!',
     });
     // Replace all `/command` with new shiny command mention.
     const replace_fn = (match) => Utils.get_rich_cmd(match.slice(2, -1));
@@ -364,11 +364,11 @@ exports.help = {
                                         placeholder: 'Enter the name/page number to jump to...',
                                         style: discord_js_1.TextInputStyle.Short,
                                         maxLength: 100,
-                                        required: true
-                                    })
-                                ]
-                            })
-                        ]
+                                        required: true,
+                                    }),
+                                ],
+                            }),
+                        ],
                     }) :
                     new discord_js_1.ModalBuilder({
                         title: 'Search Command',
@@ -382,11 +382,11 @@ exports.help = {
                                         placeholder: 'Enter name of command...',
                                         style: discord_js_1.TextInputStyle.Short,
                                         maxLength: 100,
-                                        required: true
-                                    })
-                                ]
-                            })
-                        ]
+                                        required: true,
+                                    }),
+                                ],
+                            }),
+                        ],
                     });
                 return interaction.showModal(input);
             }
@@ -396,7 +396,7 @@ exports.help = {
                         content: '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 }
                 else if (cmdName === 'cog') {
@@ -408,7 +408,7 @@ exports.help = {
                             '❓: This help message\n' +
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 }
                 else {
@@ -435,7 +435,7 @@ exports.help = {
                 if (!category) {
                     const error_embed = new discord_js_1.EmbedBuilder({
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
-                        color: discord_js_1.Colors.Red
+                        color: discord_js_1.Colors.Red,
                     });
                     return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
                 }
@@ -457,7 +457,7 @@ exports.help = {
             if (!command) {
                 const error_embed = new discord_js_1.EmbedBuilder({
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
-                    color: discord_js_1.Colors.Red
+                    color: discord_js_1.Colors.Red,
                 });
                 return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
             }
@@ -473,12 +473,12 @@ exports.help = {
         const categoryName = interaction.options.getString('category');
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Performing intensive calculations...',
-            color: discord_js_1.Colors.Yellow
+            color: discord_js_1.Colors.Yellow,
         });
         // Admin invokes are not ephemeral.
         await interaction.reply({
             embeds: [embed],
-            ephemeral: interaction.user.id !== client.admin.id
+            ephemeral: interaction.user.id !== client.admin.id,
         });
         let res;
         if (commandName) {
@@ -489,7 +489,7 @@ exports.help = {
             else if (!command) {
                 const error_embed = new discord_js_1.EmbedBuilder({
                     title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
-                    color: discord_js_1.Colors.Red
+                    color: discord_js_1.Colors.Red,
                 });
                 return interaction.editReply({ embeds: [error_embed] }).then(() => { });
             }
@@ -503,7 +503,7 @@ exports.help = {
             else if (!category) {
                 const error_embed = new discord_js_1.EmbedBuilder({
                     title: `No category with name \`${categoryName.replaceAll('`', '\\`')}\` found.`,
-                    color: discord_js_1.Colors.Red
+                    color: discord_js_1.Colors.Red,
                 });
                 res = await get_cog_page(client, interaction.user.id, 1);
                 interaction.followUp({ embeds: [error_embed], ephemeral: true });
@@ -517,6 +517,6 @@ exports.help = {
         }
         const { embeds, components } = res;
         await interaction.editReply({ embeds, components });
-    }
+    },
 };
 //# sourceMappingURL=help_command.js.map
