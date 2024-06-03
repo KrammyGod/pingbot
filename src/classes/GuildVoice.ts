@@ -8,7 +8,7 @@ import {
     createAudioResource,
     entersState,
     getVoiceConnection,
-    joinVoiceChannel
+    joinVoiceChannel,
 } from '@discordjs/voice';
 import type DTypes from 'discord.js';
 import type VTypes from '@discordjs/voice';
@@ -130,7 +130,7 @@ export default class GuildVoice {
         return joinVoiceChannel({
             channelId: voiceChannel.id,
             guildId: voiceChannel.guildId,
-            adapterCreator: voiceChannel.guild.voiceAdapterCreator
+            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
         });
     }
 
@@ -144,7 +144,7 @@ export default class GuildVoice {
             await this.textChannel.send({
                 content:
                     'Something bad happended while I was playing...\n' +
-                    'Sorry! I will continue to play the next song.'
+                    'Sorry! I will continue to play the next song.',
             });
             throw err;
         });
@@ -170,7 +170,7 @@ export default class GuildVoice {
                         this.destroy();
                         return this.textChannel.send({
                             content: 'No one wants to listen to me in ' +
-                                `${this.voiceChannel} so I'm leaving... 😭`
+                                `${this.voiceChannel} so I'm leaving... 😭`,
                         });
                     }
                 } else {
@@ -179,7 +179,7 @@ export default class GuildVoice {
             }
             return this.textChannel.send({
                 content: `Connected to ${this.voiceChannel}\nHost is ${this.host}`,
-                allowedMentions: { users: [] }
+                allowedMentions: { users: [] },
             });
         });
 
@@ -188,11 +188,10 @@ export default class GuildVoice {
             try {
                 await Promise.race([
                     entersState(connection, VoiceConnectionStatus.Signalling, 5000),
-                    entersState(connection, VoiceConnectionStatus.Connecting, 5000)
+                    entersState(connection, VoiceConnectionStatus.Connecting, 5000),
                 ]);
                 // Seems to be reconecting to a new channel - ignore disconnect.
             } catch (err) {
-                err;
                 // Seems to be a real disconnect which SHOULDN'T be recovered from
                 this.destroy();
             }
@@ -240,7 +239,7 @@ export default class GuildVoice {
             const info = await Play.search(`${song.title} by ${song.artists}`, {
                 source: { youtube: 'video' },
                 limit: 1,
-                unblurNSFWThumbnails: true // We wouldn't have added if it wasn't NSFW allowed
+                unblurNSFWThumbnails: true, // We wouldn't have added if it wasn't NSFW allowed
             }).then(res => res.at(0)).catch(() => undefined);
             if (info) {
                 song.playUrl = info.url; // Different url to actually stream the song
@@ -266,7 +265,7 @@ export default class GuildVoice {
             console.error(e);
         });
         this.currentSongResource = createAudioResource(source.stream, {
-            inputType: source.type
+            inputType: source.type,
         });
         this.player.play(this.currentSongResource);
         this.voted = [];

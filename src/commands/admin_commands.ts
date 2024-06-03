@@ -8,7 +8,7 @@ import { PermissionError } from '@classes/exceptions';
 import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
-    MessageMentions, PermissionsBitField
+    MessageMentions, PermissionsBitField,
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type { MessageCommand } from '@classes/client';
@@ -56,13 +56,13 @@ export const purge: MessageCommand & PurgePrivates = {
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: 'You do not have permission to purge.\n' +
-                    'You need the `Manage Messages` permission.'
+                    'You need the `Manage Messages` permission.',
             }).then(() => { });
         } else if (!message.channel.permissionsFor(message.guild!.members.me!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: "I don't have permission to purge.\n" +
-                    'I need the `Manage Messages` permission.'
+                    'I need the `Manage Messages` permission.',
             }).then(() => { });
         } else if (all) {
             // Extra permissions for purge all
@@ -70,25 +70,25 @@ export const purge: MessageCommand & PurgePrivates = {
                 .has(PermissionsBitField.Flags.ManageChannels)) {
                 return message.reply({
                     content: 'You do not have permission to purge all.\n' +
-                        'You need the `Manage Channels` permission.'
+                        'You need the `Manage Channels` permission.',
                 }).then(() => { });
             } else if (!message.channel.permissionsFor(message.guild!.members.me!)
                 .has(PermissionsBitField.Flags.ManageChannels)) {
                 return message.reply({
                     content: "I don't have permission to purge all.\n" +
-                        'I need the `Manage Channels` permission.'
+                        'I need the `Manage Channels` permission.',
                 }).then(() => { });
             }
             const buttonMessage = await message.reply({
                 content: "## Woah! That's a lot of messages!\n" +
                     '# Are you sure you want to delete all of them?',
-                components: [this.buttons]
+                components: [this.buttons],
             });
 
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: ComponentType.Button,
                 filter: i => i.user.id === message.author.id,
-                time: 60_000
+                time: 60_000,
             }).then(i => i.customId === 'purge/confirm').catch(() => false);
             await buttonMessage.delete().catch(() => { });
             await message.delete().catch(() => { });
@@ -96,7 +96,7 @@ export const purge: MessageCommand & PurgePrivates = {
 
             if (message.channel.isThread()) {
                 return message.reply({
-                    content: 'To purge all in threads, just simply delete the thread.'
+                    content: 'To purge all in threads, just simply delete the thread.',
                 }).then(() => { });
             }
             const new_channel = await Purge.purge_clean_channel(message.channel).catch(() => {
@@ -116,7 +116,7 @@ export const purge: MessageCommand & PurgePrivates = {
         // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
             .then(m => { setTimeout(() => m.delete(), 3000); }).catch(() => { });
-    }
+    },
 };
 
 export const resetdb: MessageCommand = {
@@ -129,9 +129,9 @@ export const resetdb: MessageCommand = {
         await message.channel.sendTyping();
         await reset();
         return message.channel.send({
-            content: 'Successfully reset.'
+            content: 'Successfully reset.',
         }).then(msg => msg.delete().then(() => { }, () => { }));
-    }
+    },
 };
 
 export const add: MessageCommand = {
@@ -180,12 +180,12 @@ export const add: MessageCommand = {
         await message.channel.send({
             content: `${res} ${amount < 0 ? 'lost' : 'gained'} ` +
                 `${Math.abs(amount)} ${client.bot_emojis.brons}.`,
-            allowedMentions: { users: [] }
+            allowedMentions: { users: [] },
         }).then(msg => {
             if (message.guild?.id === config.guild) return;
             setTimeout(() => msg.delete(), 1000);
         });
-    }
+    },
 };
 
 export const metrics: MessageCommand = {
@@ -202,7 +202,7 @@ export const metrics: MessageCommand = {
         }
         if (!metrics.length) content = 'No metrics found.';
         await message.reply({ content });
-    }
+    },
 };
 
 export const upload: MessageCommand = {
@@ -234,7 +234,7 @@ export const upload: MessageCommand = {
             res.push(...await uploadToCDN(formdata));
         }
         await message.reply({ content: `<${res.join('>\n<')}>` });
-    }
+    },
 };
 
 export const update: MessageCommand = {
@@ -261,7 +261,7 @@ export const update: MessageCommand = {
             args // Rest of the args are new sources
         );
         await message.reply({ content: `API replied with: ${res}` });
-    }
+    },
 };
 
 export const del: MessageCommand = {
@@ -280,7 +280,7 @@ export const del: MessageCommand = {
         // Remove CDN url to get the filename
         const res = await deleteFromCDN(args.map(a => a.replace(`${config.cdn}/images/`, '')));
         await message.reply({ content: `API replied with: ${res}` });
-    }
+    },
 };
 
 export const start: MessageCommand = {
@@ -300,7 +300,7 @@ export const start: MessageCommand = {
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-    }
+    },
 };
 
 export const stop: MessageCommand = {
@@ -320,5 +320,5 @@ export const stop: MessageCommand = {
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-    }
+    },
 };

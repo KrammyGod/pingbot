@@ -7,7 +7,7 @@ import {
     ActionRowBuilder, ApplicationCommandType, ButtonBuilder, ButtonStyle,
     ChannelSelectMenuBuilder, ChannelType, Colors, ComponentType,
     ContextMenuCommandBuilder, EmbedBuilder, ModalBuilder, OAuth2Scopes,
-    PermissionsBitField, SlashCommandBuilder, TextChannel, TextInputBuilder, TextInputStyle
+    PermissionsBitField, SlashCommandBuilder, TextChannel, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
@@ -39,7 +39,7 @@ const images = [
     'https://i.imgur.com/KoGmcOh.jpg',
     'https://i.imgur.com/D44fbJu.jpg',
     'https://i.imgur.com/Ldr5DBI.jpg',
-    'https://i.imgur.com/q0jk1HQ.jpg'
+    'https://i.imgur.com/q0jk1HQ.jpg',
 ];
 type CountPrivates = {
     counter: Map<string, number>;
@@ -65,9 +65,9 @@ export const count: SlashCommand & CountPrivates = {
         const image = images[Math.floor(Math.random() * images.length)];
         await interaction.editReply({
             content: `Hey there, its been ${amt} times already...\nTake this....`,
-            embeds: [new EmbedBuilder().setImage(image).setColor('Random')]
+            embeds: [new EmbedBuilder().setImage(image).setColor('Random')],
         });
-    }
+    },
 };
 
 const invite_docs =
@@ -106,13 +106,13 @@ export const invite: SlashCommand = {
         const permissions = '1512670883152';
         const url = client.generateInvite({
             permissions: permissions,
-            scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands]
+            scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands],
         });
         await interaction.editReply({
             content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
-                     'Please do not forget to use `/help command: invite` to verify permissions required!'
+                     'Please do not forget to use `/help command: invite` to verify permissions required!',
         });
-    }
+    },
 };
 
 export const support: SlashCommand = {
@@ -135,9 +135,9 @@ export const support: SlashCommand = {
         // Constant non-expiring invite
         const link = invite_link ?? `https://discord.gg/${invite_code}`;
         await interaction.editReply({
-            content: `Hey there, here's the [invite link](${link}) for the support server!\n`
+            content: `Hey there, here's the [invite link](${link}) for the support server!\n`,
         });
-    }
+    },
 };
 
 export const getid: SlashCommand = {
@@ -174,7 +174,7 @@ export const getid: SlashCommand = {
         const res = await Utils.get_results(interaction, users, {
             title_fmt: n => `Found ${n} users:`,
             desc_fmt: u => `${u.name}`,
-            sel_fmt: u => `**${u.name}**`
+            sel_fmt: u => `**${u.name}**`,
         });
         if (res === null) {
             return interaction.deleteReply();
@@ -183,7 +183,7 @@ export const getid: SlashCommand = {
         } else {
             await interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
         }
-    }
+    },
 };
 
 const all_collector_docs =
@@ -199,16 +199,16 @@ Only use this if you trust me...\n\n`;
 const all_collector_buttons = [
     new ButtonBuilder({
         emoji: '🔔',
-        style: ButtonStyle.Primary
+        style: ButtonStyle.Primary,
     }),
     new ButtonBuilder({
         emoji: '🔕',
-        style: ButtonStyle.Secondary
+        style: ButtonStyle.Secondary,
     }),
     new ButtonBuilder({
         emoji: '✖️',
-        style: ButtonStyle.Danger
-    })
+        style: ButtonStyle.Danger,
+    }),
 ];
 type HoyoStrings = 'HI3' | 'GI' | 'HSR';
 function get_collector_buttons(cmd_name: string, hoyo: HoyoStrings[], idx: string) {
@@ -263,10 +263,10 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                     customId: 'cookie',
                     placeholder: 'Enter your hoyolab cookie here.',
                     style: TextInputStyle.Short,
-                    required: true
-                })]
-            })
-        ]
+                    required: true,
+                })],
+            }),
+        ],
     }),
 
     async delete(client, interaction, id) {
@@ -275,25 +275,25 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                 label: 'Yes!',
                 emoji: '🚮',
                 customId: 'hconfirm',
-                style: ButtonStyle.Danger
+                style: ButtonStyle.Danger,
             }),
             new ButtonBuilder({
                 label: 'No',
                 customId: 'hcancel',
-                style: ButtonStyle.Secondary
-            })
+                style: ButtonStyle.Secondary,
+            }),
         ];
         const message = await interaction.followUp({
             content: '# Are you sure you want to delete this account?',
             components: [new ActionRowBuilder<DTypes.ButtonBuilder>({
-                components: buttons
+                components: buttons,
             })],
-            ephemeral: true
+            ephemeral: true,
         });
 
         const confirmed = await message.awaitMessageComponent({
             componentType: ComponentType.Button,
-            time: 10 * 60 * 1000 // 10 mins before interaction expires
+            time: 10 * 60 * 1000, // 10 mins before interaction expires
         }).then(async i => {
             if (i.customId === 'hcancel') return;
             return true;
@@ -306,14 +306,14 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             return interaction.followUp({
                 content: 'Failed to delete cookie, the embed is out of date!\n' +
                     'Please make sure to only use this command once!',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         const retval = await this.getAccount(interaction, 1);
         await interaction.editReply(retval);
         return interaction.followUp({
             content: 'Successfully deleted cookie!',
-            ephemeral: true
+            ephemeral: true,
         }).then(() => { });
     },
 
@@ -334,7 +334,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         
         const embed = new EmbedBuilder({
             title: 'Hoyolab Autocollect Details',
-            color: Colors.Gold
+            color: Colors.Gold,
         });
         const components = [
             new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
@@ -342,19 +342,19 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                     label: 'Add New',
                     emoji: '➕',
                     customId: 'hoyolab/0/add',
-                    style: ButtonStyle.Primary
+                    style: ButtonStyle.Primary,
                 }),
                 new ButtonBuilder({
                     label: 'Delete',
                     emoji: '✖️',
                     customId: `hoyolab/0/delete/${account?.idx}`,
-                    style: ButtonStyle.Danger
+                    style: ButtonStyle.Danger,
                 }),
                 new ButtonBuilder({
                     label: 'Help',
                     emoji: '❓',
                     style: ButtonStyle.Link,
-                    url: 'https://gist.github.com/KrammyGod/bca6eb7d424064517d779a5e449d4586'
+                    url: 'https://gist.github.com/KrammyGod/bca6eb7d424064517d779a5e449d4586',
                 })
             ),
             new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
@@ -363,16 +363,16 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                     emoji: '⬅️',
                     style: ButtonStyle.Primary,
                     customId: `hoyolab/0/${(account?.page ?? 0) - 1}`,
-                    disabled: !account || account?.page === 1
+                    disabled: !account || account?.page === 1,
                 }),
                 new ButtonBuilder({
                     label: 'Next',
                     emoji: '➡️',
                     style: ButtonStyle.Primary,
                     customId: `hoyolab/0/${(account?.page ?? 0) + 1}`,
-                    disabled: !account || account?.page === max_pages
+                    disabled: !account || account?.page === max_pages,
                 })
-            )
+            ),
         ];
         if (!account) {
             embed.setDescription('No accounts found! Add one by clicking the add button!');
@@ -399,7 +399,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         const { retval, games } = info.loadAllGames({
             honkaiStatus: getStatus(account.honkai),
             genshinStatus: getStatus(account.genshin),
-            starrailStatus: getStatus(account.star_rail)
+            starrailStatus: getStatus(account.star_rail),
         });
         desc += retval;
         embed.setDescription(desc);
@@ -446,7 +446,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         if (!info) {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
@@ -454,7 +454,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             return interaction.followUp({
                 content: 'Failed to add account to autocollector.\nEither you reached the max of 5 accounts, ' +
                     'or you are entering a duplicate cookie.',
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
         // Adding new account always brings user to first page to properly reload everything.
@@ -462,7 +462,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         await interaction.editReply(retval);
         await interaction.followUp({
             content: 'Successfully added account to autocollector!',
-            ephemeral: true
+            ephemeral: true,
         });
     },
 
@@ -489,7 +489,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         await interaction.deferReply({ ephemeral: true });
         const retval = await this.getAccount(interaction, 1);
         await interaction.editReply(retval);
-    }
+    },
 };
 
 type PollPrivates = {
@@ -537,7 +537,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         const embed = new EmbedBuilder({
             title: 'Poll Editor',
             color: Colors.Gold,
-            description: desc
+            description: desc,
         });
         const components = [
             new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
@@ -545,26 +545,26 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     label: 'Edit Title',
                     emoji: '📝',
                     customId: 'poll/0/title',
-                    style: ButtonStyle.Primary
+                    style: ButtonStyle.Primary,
                 }),
                 new ButtonBuilder({
                     label: 'Edit Choices',
                     emoji: '✏️',
                     customId: 'poll/0/add',
-                    style: ButtonStyle.Primary
+                    style: ButtonStyle.Primary,
                 }),
                 new ButtonBuilder({
                     label: 'Edit Expiry',
                     emoji: '⏱️',
                     customId: 'poll/0/expiry',
-                    style: ButtonStyle.Primary
+                    style: ButtonStyle.Primary,
                 }),
                 new ButtonBuilder({
                     label: 'Send',
                     emoji: '📨',
                     customId: 'poll/0/send',
                     style: ButtonStyle.Success,
-                    disabled: pollInfo!.choices.length === 0 || pollInfo!.title === ''
+                    disabled: pollInfo!.choices.length === 0 || pollInfo!.title === '',
                 })
             ),
             new ActionRowBuilder<DTypes.ChannelSelectMenuBuilder>().addComponents(
@@ -575,7 +575,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     placeholder: 'Click to change the destination channel.',
                     channelTypes: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
                 })
-            )
+            ),
         ];
         return { embeds: [embed], components };
     },
@@ -613,7 +613,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             btns.push(new ButtonBuilder({
                 label,
                 customId: `poll/0/${i}`,
-                style: ButtonStyle.Primary
+                style: ButtonStyle.Primary,
             }));
         }
         const components = [];
@@ -623,7 +623,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         const embed = new EmbedBuilder({
             title: pollInfo!.title,
             description: desc,
-            color: Colors.Gold
+            color: Colors.Gold,
         }).setAuthor({ name: `${user!.name} started a poll`, iconURL: user!.avatar });
         return { embeds: [embed], components };
     },
@@ -643,15 +643,15 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             const choices = c.trim().split('\n').map(x => x.trim()).filter(x => x !== '');
             if (!choices.length) {
                 return interaction.followUp({
-                    content: 'You must provide at least one choice.', ephemeral: true
+                    content: 'You must provide at least one choice.', ephemeral: true,
                 }).then(() => { });
             } else if (choices.length > 25) {
                 return interaction.followUp({
-                    content: 'You cannot provide more than 25 choices.', ephemeral: true
+                    content: 'You cannot provide more than 25 choices.', ephemeral: true,
                 }).then(() => { });
             } else if (new Set(choices).size !== choices.length) {
                 return interaction.followUp({
-                    content: 'All choices must be unique.', ephemeral: true
+                    content: 'All choices must be unique.', ephemeral: true,
                 }).then(() => { });
             }
             pollInfo.choices = choices.map(c => {
@@ -665,12 +665,12 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                 if (!date) {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 } else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
-                        ephemeral: true
+                        ephemeral: true,
                     }).then(() => { });
                 }
                 pollInfo.expires = date;
@@ -715,7 +715,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     message = await channel.send({ embeds, components });
                     await interaction.followUp({
                         content: 'Successfully sent poll! You may now close this dialog.',
-                        ephemeral: true
+                        ephemeral: true,
                     });
                 }
                 await this.cache.delete(pollInfo.mid); // Remove old poll from cache
@@ -735,8 +735,8 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     customId: 'title',
                                     placeholder: 'Enter the new title here.',
                                     style: TextInputStyle.Short,
-                                    required: true
-                                })]
+                                    required: true,
+                                })],
                             })
                         );
                     return interaction.showModal(input);
@@ -751,8 +751,8 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     value: pollInfo.choices.map(c => c.name).join('\n'),
                                     placeholder: 'Enter choices here, separated by newlines.',
                                     style: TextInputStyle.Paragraph,
-                                    required: true
-                                })]
+                                    required: true,
+                                })],
                             })
                         );
                     return interaction.showModal(input);
@@ -767,8 +767,8 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     value: pollInfo.expires ? new Date(pollInfo.expires).toUTCString() : '',
                                     placeholder: 'Enter the date/relative time in UTC/GMT.',
                                     style: TextInputStyle.Short,
-                                    required: false
-                                })]
+                                    required: false,
+                                })],
                             })
                         );
                     return interaction.showModal(input);
@@ -812,12 +812,12 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         if (!channel.permissionsFor(interaction.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         } else if (!channel.permissionsFor(client.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
-                ephemeral: true
+                ephemeral: true,
             }).then(() => { });
         }
 
@@ -834,11 +834,11 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             uid: interaction.user.id,
             cid: interaction.channelId,
             title: '',
-            choices: []
+            choices: [],
         }, Utils.date_after_hours(24)); // Expires in 24 hours.
         const retval = await this.getPollEditor(id);
         await interaction.editReply(retval);
-    }
+    },
 };
 
 export const poll_edit: ContextCommand = {
@@ -857,14 +857,14 @@ export const poll_edit: ContextCommand = {
             return interaction.deleteReply();
         } else if (pollInfo.uid !== interaction.user.id) {
             return interaction.editReply({
-                content: 'You are not the owner of this poll!'
+                content: 'You are not the owner of this poll!',
             }).then(() => { });
         }
         // Create a new edit dialog, and make it expire in 24 hours.
         await poll.cache.set(thisId, pollInfo, Utils.date_after_hours(24));
         const retval = await poll.getPollEditor(thisId);
         await interaction.editReply(retval);
-    }
+    },
 };
 
 export const poll_end: ContextCommand = {
@@ -886,5 +886,5 @@ export const poll_end: ContextCommand = {
         const { embeds } = await poll.getPoll(id);
         await interaction.targetMessage.edit({ embeds, components: [] });
         return interaction.deleteReply();
-    }
+    },
 };

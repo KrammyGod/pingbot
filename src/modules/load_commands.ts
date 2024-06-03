@@ -1,7 +1,7 @@
 import glob from 'glob';
 import path from 'path';
 import {
-    CommandFile, CustomClient, isInteractionCommand, isMessageCommand, isSlashCommand
+    CommandFile, CustomClient, isInteractionCommand, isMessageCommand, isSlashCommand,
 } from '@classes/client';
 import { ApplicationCommandOptionType } from 'discord.js';
 

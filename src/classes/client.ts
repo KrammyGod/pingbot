@@ -1,7 +1,7 @@
 import config from '@config';
 import {
     Client, ContextMenuCommandBuilder, SlashCommandSubcommandBuilder,
-    SlashCommandSubcommandGroupBuilder, SlashCommandBuilder
+    SlashCommandSubcommandGroupBuilder, SlashCommandBuilder,
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type GuildVoice from '@classes/GuildVoice';

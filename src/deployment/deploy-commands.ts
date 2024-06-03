@@ -11,7 +11,7 @@ import type {
     APIApplicationCommandOption,
     ClientUser,
     RESTPostAPIChatInputApplicationCommandsJSONBody,
-    RESTPostAPIContextMenuApplicationCommandsJSONBody
+    RESTPostAPIContextMenuApplicationCommandsJSONBody,
 } from 'discord.js';
 
 const token = config.token ?? '';
@@ -29,7 +29,7 @@ function reverse_command(cmd: { options?: APIApplicationCommandOption[] }) {
     });
 }
 
-!async function () {
+(async function () {
     // Read all commands from the commands directory
     const commands: (
         RESTPostAPIContextMenuApplicationCommandsJSONBody | RESTPostAPIChatInputApplicationCommandsJSONBody
@@ -64,4 +64,4 @@ function reverse_command(cmd: { options?: APIApplicationCommandOption[] }) {
     } else {
         console.log('Unknown user, might be error?');
     }
-}();
+})();

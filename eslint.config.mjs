@@ -13,34 +13,40 @@ export default tseslint.config(
                 'error',
                 4,
                 {
-                    'SwitchCase': 1
-                }
+                    'SwitchCase': 1,
+                },
             ],
             'quotes': [
                 'error',
                 'single',
                 {
-                    'avoidEscape': true
-                }
+                    'avoidEscape': true,
+                },
             ],
             'semi': [
                 'error',
-                'always'
+                'always',
             ],
             'max-len': [
                 'warn',
-                120
+                120,
             ],
             'comma-dangle': [
                 'error',
                 {
-                    'arrays': 'only-multiline',
-                    'objects': 'only-multiline',
-                    'imports': 'only-multiline',
-                    'exports': 'only-multiline',
-                    'functions': 'only-multiline'
-                }
-            ]
-        }
-    }
+                    'arrays': 'always-multiline',
+                    'objects': 'always-multiline',
+                    'imports': 'always-multiline',
+                    'exports': 'always-multiline',
+                    'functions': 'only-multiline',
+                },
+            ],
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                {
+                    'caughtErrors': 'none',
+                },
+            ],
+        },
+    },
 );

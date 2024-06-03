@@ -18,7 +18,7 @@ const LOGGER = {
         const lines = typeof msg === 'string' ? msg : inspect(msg, {
             colors: true,
             depth: null,
-            compact: false
+            compact: false,
         });
         for (const line of lines.split('\n')) {
             console.log('\x1b[96m%s\x1b[0m%s', `LOG [${LOGGER.today}]: `, line);
@@ -29,7 +29,7 @@ const LOGGER = {
         const lines = typeof msg === 'string' ? msg : inspect(msg, {
             colors: true,
             depth: null,
-            compact: false
+            compact: false,
         });
         for (const line of lines.split('\n')) {
             console.log('\x1b[31m%s\x1b[0m%s', `ERR [${LOGGER.today}]: `, line);
@@ -40,11 +40,11 @@ const LOGGER = {
             '\x1b[95m%s\x1b[0m',
             `END [${LOGGER.today}]: END RESET ON ${new Date().toLocaleTimeString()} UTC\n`
         );
-    }
+    },
 };
 
 const pool = new Pool({
-    connectionTimeoutMillis: 2000
+    connectionTimeoutMillis: 2000,
 });
 async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
     const client = await pool.connect();
