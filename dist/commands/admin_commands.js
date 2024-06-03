@@ -268,8 +268,7 @@ exports.update = {
         }
         await message.channel.sendTyping();
         const urls = args.splice(0, args.length / 2);
-        const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')), args // Rest of the args are new sources
-        );
+        const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')), args);
         await message.reply({ content: `API replied with: ${res}` });
     },
 };

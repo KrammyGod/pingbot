@@ -43,7 +43,7 @@ exports.purge_clean_channel = purge_clean_channel;
  */
 async function purge_from_channel(channel, amount, filter = () => true) {
     // Keep async to keep Promise<number> signature
-    const bulk_delete = async (messages) => {
+    const bulk_delete = (messages) => {
         // Discord bulk delete doesn't like single messages.
         if (messages.length <= 1) {
             return messages.at(0)?.delete().then(() => 1, () => 0) ?? 0;
