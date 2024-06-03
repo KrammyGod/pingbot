@@ -7,6 +7,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 0
     groups:
       production-deps:
         dependency-type: "production"
