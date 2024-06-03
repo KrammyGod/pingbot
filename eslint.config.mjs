@@ -2,43 +2,49 @@
 
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import stylisticJs from '@stylistic/eslint-plugin';
 
 export default tseslint.config(
     eslint.configs.recommended,
     ...tseslint.configs.recommended,
     {
+        'plugins': {
+            '@stylistic/js': stylisticJs,
+        },
         'rules': {
-            'no-console': 0,
-            'indent': [
+            '@stylistic/js/indent': [
                 'error',
                 4,
                 {
                     'SwitchCase': 1,
                 },
             ],
-            'quotes': [
+            '@stylistic/js/quotes': [
                 'error',
                 'single',
                 {
                     'avoidEscape': true,
                 },
             ],
-            'semi': [
+            '@stylistic/js/semi': [
                 'error',
                 'always',
             ],
-            'max-len': [
+            '@stylistic/js/max-len': [
                 'warn',
-                120,
+                {
+                    'code': 120,
+                    'ignoreUrls': true,
+                },
             ],
-            'comma-dangle': [
+            '@stylistic/js/comma-dangle': [
                 'error',
                 {
                     'arrays': 'always-multiline',
                     'objects': 'always-multiline',
-                    'imports': 'always-multiline',
+                    'imports': 'always',
                     'exports': 'always-multiline',
-                    'functions': 'only-multiline',
+                    'functions': 'always-multiline',
                 },
             ],
             '@typescript-eslint/no-unused-vars': [

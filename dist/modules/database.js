@@ -580,8 +580,7 @@ async function addCookie(userID, cookie) {
 exports.addCookie = addCookie;
 function deleteCookie(userID, idx) {
     return query(`DELETE FROM hoyolab_cookies_list
-            WHERE id = $1 AND idx = $2 RETURNING *`, [userID, idx] // idx serves as a nice identifier
-    ).then(rows => !!rows.at(0));
+            WHERE id = $1 AND idx = $2 RETURNING *`, [userID, idx]).then(rows => !!rows.at(0));
 }
 exports.deleteCookie = deleteCookie;
 function getEmoji(name) {

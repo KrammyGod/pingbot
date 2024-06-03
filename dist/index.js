@@ -76,7 +76,7 @@ manager.on('shardCreate', shard => {
             DB.end().then(() => process.exit(0));
         }
     });
-    shard.once(discord_js_1.ShardEvents.Message, async (message) => {
+    shard.once(discord_js_1.ShardEvents.Message, (message) => {
         if (message === 'ready') {
             console.log(`Shard ${shard.id} is ready!`);
             if (++readyShards === manager.totalShards) {

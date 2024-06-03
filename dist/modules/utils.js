@@ -21,7 +21,7 @@ async function fetch_user_fast(uid, userCb, ctx) {
     return retval;
 }
 exports.fetch_user_fast = fetch_user_fast;
-async function fetch_guild_cache(gid, guildCb, ctx) {
+function fetch_guild_cache(gid, guildCb, ctx) {
     const client = new client_1.CustomClient();
     return client.shard?.broadcastEval((client, { gid, guildCb, ctx }) => {
         return eval(guildCb)(client.guilds.cache.get(gid), ctx);
@@ -68,7 +68,7 @@ async function convert_channel(text) {
     return channel2;
 }
 exports.convert_channel = convert_channel;
-async function convert_emoji(text, emojiCb, ctx) {
+function convert_emoji(text, emojiCb, ctx) {
     const client = new client_1.CustomClient();
     if (!text.startsWith(':') || !text.endsWith(':'))
         return;
