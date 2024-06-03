@@ -61,7 +61,7 @@ exports.purge = {
     async execute(interaction) {
         const message = await interaction.reply({
             content: 'Performing intensive calculations...',
-            ephemeral: true
+            ephemeral: true,
         }).then(i => i.fetch());
         // Parse input
         // amount being NaN means all is true.
@@ -87,14 +87,14 @@ exports.purge = {
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: 'You do not have permission to purge.\n' +
-                    'You need the `Manage Messages` permission.'
+                    'You need the `Manage Messages` permission.',
             }).then(() => { });
         }
         else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: "I don't have permission to purge.\n" +
-                    'I need the `Manage Messages` permission.'
+                    'I need the `Manage Messages` permission.',
             }).then(() => { });
         }
         // Purge all, or anything over 100 messages, really
@@ -102,12 +102,12 @@ exports.purge = {
             const buttonMessage = await interaction.editReply({
                 content: "## Woah! That's a lot of messages!\n# Are you sure " +
                     `you want to delete ${isNaN(amount) ? 'all' : amount} messages?`,
-                components: [this.buttons]
+                components: [this.buttons],
             });
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: discord_js_1.ComponentType.Button,
                 filter: i => i.user.id === interaction.user.id,
-                time: 60_000
+                time: 60_000,
             }).then(i => i.customId === 'purge/confirm').catch(() => false);
             if (!confirmed)
                 return interaction.deleteReply();
@@ -120,25 +120,25 @@ exports.purge = {
                 .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: 'You do not have permission to purge all.\n' +
-                        'You need the `Manage Channels` permission.'
+                        'You need the `Manage Channels` permission.',
                 }).then(() => { });
             }
             else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
                 .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: "I don't have permission to purge all.\n" +
-                        'I need the `Manage Channels` permission.'
+                        'I need the `Manage Channels` permission.',
                 }).then(() => { });
             }
             // Check to satisfy typescript
             if (interaction.channel.isThread()) {
                 return interaction.editReply({
-                    content: 'To purge all in threads, just simply delete the thread.'
+                    content: 'To purge all in threads, just simply delete the thread.',
                 }).then(() => { });
             }
             const new_channel = await Purge.purge_clean_channel(interaction.channel).catch(() => {
                 interaction.editReply({
-                    content: "I can't purge here. Make sure I have permissions to modify the channel."
+                    content: "I can't purge here. Make sure I have permissions to modify the channel.",
                 });
                 throw new exceptions_1.PermissionError();
             });
@@ -150,7 +150,7 @@ exports.purge = {
             // Read message history required to purge specific messages
             return interaction.editReply({
                 content: "I don't have permission to purge here.\n" +
-                    'I need the `Read Message History` permission.'
+                    'I need the `Read Message History` permission.',
             }).then(() => { });
         }
         const user_filter = (m) => !user || m.author.id === user.id;
@@ -159,7 +159,7 @@ exports.purge = {
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
             .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
-    }
+    },
 };
 const main_menu = {
     buildEmbeds(guild) {
@@ -189,7 +189,7 @@ const main_menu = {
         return [new discord_js_1.EmbedBuilder({
                 title: 'Guild Settings',
                 color: discord_js_1.Colors.Blue,
-                description
+                description,
             })];
     },
     buildComponents(userID) {
@@ -213,7 +213,7 @@ const main_menu = {
     },
     textInput() {
         throw new Error('/guild: main_menu does not have text inputs!');
-    }
+    },
 };
 const welcome_menu = {
     buildEmbeds(guild) {
@@ -243,7 +243,7 @@ const welcome_menu = {
                 title: 'Welcome Settings',
                 color: discord_js_1.Colors.Blue,
                 description,
-                footer: { text: 'Note: Click ❓ to see dynamic welcome message options.' }
+                footer: { text: 'Note: Click ❓ to see dynamic welcome message options.' },
             })];
     },
     buildComponents(userID, guild) {
@@ -272,7 +272,7 @@ const welcome_menu = {
                 .setPlaceholder('Select a role...')
                 .setDefaultRoles(guild.welcome_roleid ? [guild.welcome_roleid] : [])
                 .setMinValues(0)
-                .setMaxValues(1))
+                .setMaxValues(1)),
         ];
     },
     async buttonReact(guild, menu, action, interaction) {
@@ -290,9 +290,9 @@ const welcome_menu = {
                                         style: discord_js_1.TextInputStyle.Paragraph,
                                         value: guild?.welcome_msg ?? '',
                                         max_length: 2000,
-                                        required: false
-                                    })]
-                            })]
+                                        required: false,
+                                    })],
+                            })],
                     });
                     await interaction.showModal(input);
                     break;
@@ -308,7 +308,7 @@ const welcome_menu = {
                         '> ${USER} - Mentions the newly joined member.\n' +
                         '> ${SERVER} - Replaces with the name of the server.\n' +
                         '> ${MEMBERCOUNT} - Replaces with the number of current members in the server.',
-                    ephemeral: true
+                    ephemeral: true,
                 });
                 break;
             default:
@@ -327,7 +327,7 @@ const welcome_menu = {
                             await interaction.editReply({ content: null });
                             await interaction.followUp({
                                 content: 'Channel must be a text channel.',
-                                ephemeral: true
+                                ephemeral: true,
                             });
                             return menu;
                         }
@@ -335,7 +335,7 @@ const welcome_menu = {
                             await interaction.editReply({ content: null });
                             await interaction.followUp({
                                 content: `You do not have permission to send messages in ${chn}.`,
-                                ephemeral: true
+                                ephemeral: true,
                             });
                             return menu;
                         }
@@ -343,7 +343,7 @@ const welcome_menu = {
                             await interaction.editReply({ content: null });
                             await interaction.followUp({
                                 content: `I do not have permission to send messages in ${chn}.`,
-                                ephemeral: true
+                                ephemeral: true,
                             });
                             return menu;
                         }
@@ -359,7 +359,7 @@ const welcome_menu = {
                             await interaction.editReply({ content: null });
                             await interaction.followUp({
                                 content: 'Cannot assign a bot role.',
-                                ephemeral: true
+                                ephemeral: true,
                             });
                             return menu;
                         }
@@ -370,7 +370,7 @@ const welcome_menu = {
                             await interaction.followUp({
                                 content: `I am unable to add ${role} due to my role ` +
                                     'being lower than it.',
-                                ephemeral: true
+                                ephemeral: true,
                             });
                             return menu;
                         }
@@ -380,7 +380,7 @@ const welcome_menu = {
                             await interaction.followUp({
                                 content: `You are unable to add ${role} due to your highest role ` +
                                     'being lower than it.',
-                                ephemeral: true
+                                ephemeral: true,
                             });
                             return menu;
                         }
@@ -398,7 +398,7 @@ const welcome_menu = {
         const msg = fields.getTextInputValue('guild/welcome_menu/msg');
         guild.welcome_msg = msg;
         return menu;
-    }
+    },
 };
 const emoji_menu = {
     buildEmbeds(guild) {
@@ -410,8 +410,8 @@ const emoji_menu = {
                 description,
                 footer: {
                     text: 'Toggling this option will enable/disable server-wide emoji replacement.\n' +
-                        'To toggle for individual channels, disable webhook permissions for the bot.'
-                }
+                        'To toggle for individual channels, disable webhook permissions for the bot.',
+                },
             })];
     },
     buildComponents(userID) {
@@ -448,7 +448,7 @@ const emoji_menu = {
     },
     textInput() {
         throw new Error('/guild: emoji_menu does not have text inputs!');
-    }
+    },
 };
 exports.guild = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -592,7 +592,7 @@ exports.guild = {
             .has(discord_js_1.PermissionsBitField.Flags.ManageGuild)) {
             return interaction.editReply({
                 content: 'You do not have permission to edit guild settings.\n' +
-                    'You need the `Manage Guild` permission.'
+                    'You need the `Manage Guild` permission.',
             }).then(() => { });
         }
         // Check to make sure that dialog does not currently exist for the guild
@@ -615,6 +615,6 @@ exports.guild = {
         const embeds = this.buildEmbeds(guild, 'main_menu');
         const components = this.buildComponents(interaction.user.id, guild, 'main_menu');
         await interaction.editReply({ content: null, embeds, components });
-    }
+    },
 };
 //# sourceMappingURL=mod_commands.js.map

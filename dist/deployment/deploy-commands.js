@@ -48,7 +48,7 @@ function reverse_command(cmd) {
         }
     });
 }
-!async function () {
+(async function () {
     // Read all commands from the commands directory
     const commands = [];
     const commandFiles = glob_1.default.sync(path_1.default.resolve(__dirname, '../commands/*.js'));
@@ -81,5 +81,5 @@ function reverse_command(cmd) {
     else {
         console.log('Unknown user, might be error?');
     }
-}();
+})();
 //# sourceMappingURL=deploy-commands.js.map

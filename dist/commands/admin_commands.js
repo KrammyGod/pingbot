@@ -74,14 +74,14 @@ exports.purge = {
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: 'You do not have permission to purge.\n' +
-                    'You need the `Manage Messages` permission.'
+                    'You need the `Manage Messages` permission.',
             }).then(() => { });
         }
         else if (!message.channel.permissionsFor(message.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return message.reply({
                 content: "I don't have permission to purge.\n" +
-                    'I need the `Manage Messages` permission.'
+                    'I need the `Manage Messages` permission.',
             }).then(() => { });
         }
         else if (all) {
@@ -90,25 +90,25 @@ exports.purge = {
                 .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
                 return message.reply({
                     content: 'You do not have permission to purge all.\n' +
-                        'You need the `Manage Channels` permission.'
+                        'You need the `Manage Channels` permission.',
                 }).then(() => { });
             }
             else if (!message.channel.permissionsFor(message.guild.members.me)
                 .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
                 return message.reply({
                     content: "I don't have permission to purge all.\n" +
-                        'I need the `Manage Channels` permission.'
+                        'I need the `Manage Channels` permission.',
                 }).then(() => { });
             }
             const buttonMessage = await message.reply({
                 content: "## Woah! That's a lot of messages!\n" +
                     '# Are you sure you want to delete all of them?',
-                components: [this.buttons]
+                components: [this.buttons],
             });
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: discord_js_1.ComponentType.Button,
                 filter: i => i.user.id === message.author.id,
-                time: 60_000
+                time: 60_000,
             }).then(i => i.customId === 'purge/confirm').catch(() => false);
             await buttonMessage.delete().catch(() => { });
             await message.delete().catch(() => { });
@@ -116,7 +116,7 @@ exports.purge = {
                 return;
             if (message.channel.isThread()) {
                 return message.reply({
-                    content: 'To purge all in threads, just simply delete the thread.'
+                    content: 'To purge all in threads, just simply delete the thread.',
                 }).then(() => { });
             }
             const new_channel = await Purge.purge_clean_channel(message.channel).catch(() => {
@@ -134,7 +134,7 @@ exports.purge = {
         // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
             .then(m => { setTimeout(() => m.delete(), 3000); }).catch(() => { });
-    }
+    },
 };
 exports.resetdb = {
     name: 'resetdb',
@@ -145,9 +145,9 @@ exports.resetdb = {
         await message.channel.sendTyping();
         await (0, reset_db_1.default)();
         return message.channel.send({
-            content: 'Successfully reset.'
+            content: 'Successfully reset.',
         }).then(msg => msg.delete().then(() => { }, () => { }));
-    }
+    },
 };
 exports.add = {
     name: 'add',
@@ -197,13 +197,13 @@ exports.add = {
         await message.channel.send({
             content: `${res} ${amount < 0 ? 'lost' : 'gained'} ` +
                 `${Math.abs(amount)} ${client.bot_emojis.brons}.`,
-            allowedMentions: { users: [] }
+            allowedMentions: { users: [] },
         }).then(msg => {
             if (message.guild?.id === _config_1.default.guild)
                 return;
             setTimeout(() => msg.delete(), 1000);
         });
-    }
+    },
 };
 exports.metrics = {
     name: 'metrics',
@@ -219,7 +219,7 @@ exports.metrics = {
         if (!metrics.length)
             content = 'No metrics found.';
         await message.reply({ content });
-    }
+    },
 };
 exports.upload = {
     name: 'upload',
@@ -247,7 +247,7 @@ exports.upload = {
             res.push(...await (0, cdn_1.uploadToCDN)(formdata));
         }
         await message.reply({ content: `<${res.join('>\n<')}>` });
-    }
+    },
 };
 exports.update = {
     name: 'update',
@@ -271,7 +271,7 @@ exports.update = {
         const res = await (0, cdn_1.updateCDN)(urls.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')), args // Rest of the args are new sources
         );
         await message.reply({ content: `API replied with: ${res}` });
-    }
+    },
 };
 exports.del = {
     name: 'delete',
@@ -288,7 +288,7 @@ exports.del = {
         // Remove CDN url to get the filename
         const res = await (0, cdn_1.deleteFromCDN)(args.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')));
         await message.reply({ content: `API replied with: ${res}` });
-    }
+    },
 };
 exports.start = {
     name: 'start',
@@ -307,7 +307,7 @@ exports.start = {
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-    }
+    },
 };
 exports.stop = {
     name: 'stop',
@@ -326,6 +326,6 @@ exports.stop = {
                 .then(msg => setTimeout(() => msg.delete(), 2000))
                 .catch(() => { });
         }
-    }
+    },
 };
 //# sourceMappingURL=admin_commands.js.map

@@ -11,7 +11,7 @@ headers.append('Authorization', _config_1.default.secret);
 async function getCDNMetrics() {
     const res = await fetch(`${_config_1.default.origin}/api/metrics`, {
         method: 'GET',
-        headers
+        headers,
     }).then(res => res.json()).catch(e => console.error(`GET: ${e}`));
     return res ?? { metrics: [] };
 }
@@ -20,7 +20,7 @@ async function uploadToCDN(body) {
     const { urls } = await fetch(`${_config_1.default.origin}/api/upload`, {
         method: 'POST',
         headers,
-        body
+        body,
     }).then(res => {
         if (res.status === 200)
             return res.json();
@@ -41,7 +41,7 @@ async function updateCDN(filenames, newSources) {
     const res = await fetch(`${_config_1.default.origin}/api/update`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ filenames, sources })
+        body: JSON.stringify({ filenames, sources }),
     }).then(res => res.json()).catch(e => console.error(`PUT: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error updating files';
@@ -52,7 +52,7 @@ async function deleteFromCDN(filenames) {
     const res = await fetch(`${_config_1.default.origin}/api/delete`, {
         method: 'DELETE',
         headers,
-        body: JSON.stringify({ filenames })
+        body: JSON.stringify({ filenames }),
     }).then(res => res.json()).catch(e => console.error(`DELETE: ${e}`));
     headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';

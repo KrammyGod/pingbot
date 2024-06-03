@@ -169,7 +169,7 @@ exports.delete_ephemeral_message = delete_ephemeral_message;
 function wait_for_button(message, confirm_id) {
     return message.awaitMessageComponent({
         componentType: discord_js_1.ComponentType.Button,
-        time: 10 * 60 * 1000 // 10 minutes before interaction expires
+        time: 10 * 60 * 1000, // 10 minutes before interaction expires
     }).then(i => i.customId === confirm_id, () => false);
 }
 exports.wait_for_button = wait_for_button;
@@ -186,7 +186,7 @@ exports.wait_for_button = wait_for_button;
  *
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
-async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}` }) {
+async function get_results(interaction, choices, { title_fmt = idx => `Found ${idx} items:`, desc_fmt = choice => `${choice}`, sel_fmt = choice => `${choice}`, }) {
     if (choices.length <= 1)
         return choices.at(0);
     // Take first 10 results
@@ -198,10 +198,10 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     // Create embed
     const embed = new discord_js_1.EmbedBuilder({
         title: 'Search Results',
-        color: discord_js_1.Colors.Yellow
+        color: discord_js_1.Colors.Yellow,
     }).setAuthor({
         name: `@${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL(),
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
@@ -214,11 +214,11 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
-        ephemeral: true
+        ephemeral: true,
     });
     const res = await message.awaitMessageComponent({
         componentType: discord_js_1.ComponentType.StringSelect,
-        time: 10 * 60 * 1000 // 10 minutes before interaction token expires.
+        time: 10 * 60 * 1000, // 10 minutes before interaction token expires.
     }).then(i => {
         if (i.values[0] === '-1')
             return null;
@@ -240,7 +240,7 @@ async function* fetch_history(channel, amount, filter = () => true) {
         // Always fetch max amount to be efficient
         const messages = await channel.messages.fetch({
             limit: 100,
-            before: prev
+            before: prev,
         });
         if (!messages.size)
             break;
