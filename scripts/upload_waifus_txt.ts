@@ -65,7 +65,7 @@ class Waifu {
 }
 
 const pool = new Pool({
-    host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
+    host: process.env.PRODHOST, // Not included in .env.example, since for personal use only.
 });
 function getClient() {
     return pool.connect().then(client => {
@@ -82,7 +82,7 @@ function releaseClient(client: PoolClient, revert: boolean) {
 function query<R extends QueryResultRow = QueryResultRow, I = unknown>(
     client: PoolClient,
     query: string,
-    values?: I[]
+    values?: I[],
 ) {
     return client.query<R>(query, values).then(res => res.rows);
 }
@@ -156,14 +156,14 @@ async function upload() {
             WHERE iid = $6
         `, [
             updated.name, updated.gender, updated.origin,
-            updated.img, updated.nimg, old.iid
+            updated.img, updated.nimg, old.iid,
         ]);
         // Deleting imgs
         if (old.img.length > updated.img.length) {
             const res = await query(
                 client,
                 'UPDATE user_chars SET _img = $1 WHERE _img > $1 AND wid = $2 RETURNING *',
-                [updated.img.length, old.wid]
+                [updated.img.length, old.wid],
             );
             if (res.length) {
                 console.log(imgDiff(res, 'normal image changed'));
@@ -178,7 +178,7 @@ async function upload() {
                 SET _nimg = 1, nsfw = FALSE
                 WHERE wid = $1 AND
                 (nsfw OR _nimg > 1) RETURNING *`,
-                [old.wid]
+                [old.wid],
             );
             if (res.length) {
                 console.log(imgDiff(res, 'lewd image reset'));
@@ -187,7 +187,7 @@ async function upload() {
             const res = await query(
                 client,
                 'UPDATE user_chars SET _nimg = $1 WHERE _nimg > $1 AND wid = $2 RETURNING *',
-                [updated.nimg.length, old.wid]
+                [updated.nimg.length, old.wid],
             );
             if (res.length) {
                 console.log(imgDiff(res, 'lewd image changed'));
@@ -198,7 +198,7 @@ async function upload() {
 
     const confirm = rl.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
     });
     const confirmed = await confirm.question('Confirm upload? (y/n) ').then(ans => ans === 'y', () => false);
     confirm.close();

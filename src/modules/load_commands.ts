@@ -3,7 +3,7 @@ import path from 'path';
 import {
     CommandFile, CustomClient, isInteractionCommand, isMessageCommand, isSlashCommand,
 } from '@classes/client';
-import { ApplicationCommandOptionType } from 'discord.js';
+import { ApplicationCommandOptionType, } from 'discord.js';
 
 export default async function load(client: CustomClient) {
     client.cogs = [];

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import config from '@config';
 import Pixiv from 'pixiv.ts';
-import { load } from 'cheerio';
+import { load, } from 'cheerio';
 
 // Pixiv object for scraping pixiv images.
 let pixiv: Pixiv;

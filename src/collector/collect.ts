@@ -1,7 +1,7 @@
 import config from '@config';
-import { getUID } from '@modules/hoyolab';
-import { Client } from 'pg';
-import { inspect } from 'util';
+import { getUID, } from '@modules/hoyolab';
+import { Client, } from 'pg';
+import { inspect, } from 'util';
 
 const client = new Client({ connectionTimeoutMillis: 2000 });
 
@@ -10,7 +10,7 @@ const LOGGER = {
     start() {
         console.log(
             '\x1b[92m%s\x1b[0m',
-            `BGN [${LOGGER.today}]: BEGIN ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC`
+            `BGN [${LOGGER.today}]: BEGIN ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC`,
         );
     },
     log(msg?: unknown) {
@@ -38,7 +38,7 @@ const LOGGER = {
     end() {
         console.log(
             '\x1b[95m%s\x1b[0m',
-            `END [${LOGGER.today}]: END ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC\n`
+            `END [${LOGGER.today}]: END ${process.env.name} ON ${new Date().toLocaleTimeString()} UTC\n`,
         );
     },
 };
@@ -287,7 +287,7 @@ type HoyolabAccount = {
 async function collect() {
     const accounts = await client.query<HoyolabAccount>(
         `SELECT * FROM hoyolab_cookies_list WHERE ${process.env.type} <> $1`,
-        ['none']
+        ['none'],
     ).then(res => res.rows);
     const message: SendMessage = {
         accounts: [],

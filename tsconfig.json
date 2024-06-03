@@ -13,9 +13,9 @@
       "@classes/*": ["classes/*"],
       "@modules/*": ["modules/*"],
       "@config": ["classes/config.ts"],
-    }
+    },
   },
   "include": [
-    "src/**/*"
-  ]
+    "src/**/*",
+  ],
 }

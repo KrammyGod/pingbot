@@ -2,7 +2,7 @@ import config from '@config';
 import * as DB from '@modules/database';
 import * as Hoyo from '@modules/hoyolab';
 import * as Utils from '@modules/utils';
-import { parseDate } from 'chrono-node';
+import { parseDate, } from 'chrono-node';
 import {
     ActionRowBuilder, ApplicationCommandType, ButtonBuilder, ButtonStyle,
     ChannelSelectMenuBuilder, ChannelType, Colors, ComponentType,
@@ -10,7 +10,7 @@ import {
     PermissionsBitField, SlashCommandBuilder, TextChannel, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand } from '@classes/client';
+import type { CachedSlashCommand, ContextCommand, CustomClient, SlashCommand, } from '@classes/client';
 
 export const name = 'Fun';
 export const desc = 'This category contains all the commands for fun, or are informational.';
@@ -166,10 +166,10 @@ export const getid: SlashCommand = {
             (client, query) => {
                 const u = client.users.cache.filter(u =>
                     u.displayName.toLowerCase().includes(query) ||
-                    u.tag.toLowerCase().includes(query)
+                    u.tag.toLowerCase().includes(query),
                 );
                 return u.map(u => ({ name: `@${u.username}`, id: u.id }));
-            }, { context: query }
+            }, { context: query },
         ).then(results => results.flat()) ?? [];
         const res = await Utils.get_results(interaction, users, {
             title_fmt: n => `Found ${n} users:`,
@@ -224,13 +224,13 @@ function get_collector_buttons(cmd_name: string, hoyo: HoyoStrings[], idx: strin
             suffix = 's';
         }
         buttons.push(ButtonBuilder.from(all_collector_buttons[0]).setLabel(name).setCustomId(
-            `${cmd_name}/0/n${suffix}/${idx}`
+            `${cmd_name}/0/n${suffix}/${idx}`,
         ));
         buttons.push(ButtonBuilder.from(all_collector_buttons[1]).setLabel(name).setCustomId(
-            `${cmd_name}/0/c${suffix}/${idx}`
+            `${cmd_name}/0/c${suffix}/${idx}`,
         ));
         buttons.push(ButtonBuilder.from(all_collector_buttons[2]).setLabel(name).setCustomId(
-            `${cmd_name}/0/d${suffix}/${idx}`
+            `${cmd_name}/0/d${suffix}/${idx}`,
         ));
         rows.push(new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(buttons));
     }
@@ -355,7 +355,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                     emoji: '❓',
                     style: ButtonStyle.Link,
                     url: 'https://gist.github.com/KrammyGod/bca6eb7d424064517d779a5e449d4586',
-                })
+                }),
             ),
             new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
                 new ButtonBuilder({
@@ -371,7 +371,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
                     style: ButtonStyle.Primary,
                     customId: `hoyolab/0/${(account?.page ?? 0) + 1}`,
                     disabled: !account || account?.page === max_pages,
-                })
+                }),
             ),
         ];
         if (!account) {
@@ -565,7 +565,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     customId: 'poll/0/send',
                     style: ButtonStyle.Success,
                     disabled: pollInfo!.choices.length === 0 || pollInfo!.title === '',
-                })
+                }),
             ),
             new ActionRowBuilder<DTypes.ChannelSelectMenuBuilder>().addComponents(
                 new ChannelSelectMenuBuilder({
@@ -574,7 +574,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     minValues: 1,
                     placeholder: 'Click to change the destination channel.',
                     channelTypes: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
-                })
+                }),
             ),
         ];
         return { embeds: [embed], components };
@@ -737,7 +737,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     style: TextInputStyle.Short,
                                     required: true,
                                 })],
-                            })
+                            }),
                         );
                     return interaction.showModal(input);
                 case 'add':
@@ -753,7 +753,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     style: TextInputStyle.Paragraph,
                                     required: true,
                                 })],
-                            })
+                            }),
                         );
                     return interaction.showModal(input);
                 case 'expiry':
@@ -769,7 +769,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     style: TextInputStyle.Short,
                                     required: false,
                                 })],
-                            })
+                            }),
                         );
                     return interaction.showModal(input);
                 case 'send':

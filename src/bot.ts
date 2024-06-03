@@ -3,10 +3,10 @@ import path from 'path';
 import load from '@modules/load_commands';
 import config from '@config';
 import * as DB from '@modules/database';
-import { inspect } from 'util';
-import { convert_emoji } from '@modules/utils';
-import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
-import { CustomClient, GuildVoices, InteractionCommand, isContextCommand, isSlashCommand } from '@classes/client';
+import { inspect, } from 'util';
+import { convert_emoji, } from '@modules/utils';
+import { DatabaseMaintenanceError, IgnoredException, } from '@classes/exceptions';
+import { CustomClient, GuildVoices, InteractionCommand, isContextCommand, isSlashCommand, } from '@classes/client';
 import {
     ActivityType, Collection, Events, IntentsBitField,
     Partials, PermissionsBitField,
@@ -127,7 +127,7 @@ async function handle_command(message: DTypes.Message) {
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
         return command.execute(message, args.filter(a => a !== ''), client).catch(err =>
-            handle_message_errors(message, commandName, err)
+            handle_message_errors(message, commandName, err),
         );
     }
     return handle_reply(message);
@@ -176,12 +176,12 @@ client.on(Events.InteractionCreate, interaction => {
         if (interaction.isContextMenuCommand() && isContextCommand(command)) {
             // Error handling after command.
             return command.execute(interaction, client).catch(err =>
-                handle_interaction_errors(interaction, interaction.commandName, err)
+                handle_interaction_errors(interaction, interaction.commandName, err),
             );
         } else if (interaction.isChatInputCommand() && isSlashCommand(command)) {
             // Error handling after command.
             return command.execute(interaction, client).catch(err =>
-                handle_interaction_errors(interaction, interaction.commandName, err)
+                handle_interaction_errors(interaction, interaction.commandName, err),
             );
         } else {
             throw new Error(`${interaction}\nis not a valid interaction for\n${command}.`);
@@ -196,7 +196,7 @@ client.on(Events.InteractionCreate, interaction => {
         if (id !== '0' && interaction.user.id !== id) return;
 
         return command.buttonReact(interaction, client).catch(err =>
-            handle_interaction_errors(interaction, commandName, err)
+            handle_interaction_errors(interaction, commandName, err),
         );
     } else if (interaction.isAnySelectMenu()) {
         if (!command.menuReact) return;
@@ -206,13 +206,13 @@ client.on(Events.InteractionCreate, interaction => {
         if (id !== '0' && interaction.user.id !== id) return;
 
         return command.menuReact(interaction, client).catch(err =>
-            handle_interaction_errors(interaction, commandName, err)
+            handle_interaction_errors(interaction, commandName, err),
         );
     } else if (interaction.isModalSubmit()) {
         if (!command.textInput) return;
         // With modal, it only applies to user so no need to check for issues.
         return command.textInput(interaction, client).catch(err =>
-            handle_interaction_errors(interaction, commandName, err)
+            handle_interaction_errors(interaction, commandName, err),
         );
     } else {
         throw new Error('Interaction not implemented.');
@@ -402,7 +402,7 @@ function handle_interaction_errors(interaction: DTypes.RepliableInteraction, com
         return;
     } else if (err instanceof DatabaseMaintenanceError) {
         interaction.reply({ content: err.message, ephemeral: true }).catch(() =>
-            interaction.followUp({ content: err.message, ephemeral: true }).catch(() => { })
+            interaction.followUp({ content: err.message, ephemeral: true }).catch(() => { }),
         );
         return;
     } else if (err instanceof IgnoredException) {

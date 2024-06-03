@@ -5,7 +5,7 @@ import {
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type GuildVoice from '@classes/GuildVoice';
-import type { Cache } from '@modules/database';
+import type { Cache, } from '@modules/database';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isSlashSubcommand(obj: any): obj is SlashSubcommand {

@@ -2,10 +2,10 @@
 import glob from 'glob';
 import path from 'path';
 import config from '@config';
-import { REST } from '@discordjs/rest';
-import { Routes } from 'discord-api-types/v10';
-import { ApplicationCommandOptionType } from 'discord.js';
-import { CommandFile, isInteractionCommand, isSlashCommand } from '@classes/client';
+import { REST, } from '@discordjs/rest';
+import { Routes, } from 'discord-api-types/v10';
+import { ApplicationCommandOptionType, } from 'discord.js';
+import { CommandFile, isInteractionCommand, isSlashCommand, } from '@classes/client';
 import type {
     APIApplicationCommand,
     APIApplicationCommandOption,
