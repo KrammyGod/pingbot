@@ -1,8 +1,8 @@
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
-import { CachedSlashCommand, SlashCommand } from '@classes/client';
-import { PermissionError } from '@classes/exceptions';
+import { CachedSlashCommand, SlashCommand, } from '@classes/client';
+import { PermissionError, } from '@classes/exceptions';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
     PermissionsBitField, ComponentType, SlashCommandBuilder, Colors,
@@ -229,12 +229,12 @@ const main_menu: GuildMenus = {
                             .setValue('welcome_menu'),
                         new StringSelectMenuOptionBuilder()
                             .setLabel('Emoji Replacement')
-                            .setValue('emoji_menu')
+                            .setValue('emoji_menu'),
                     )
                     .setPlaceholder('Select a setting to edit...')
                     .setCustomId(`guild/${userID}/main_menu`)
                     .setMinValues(1)
-                    .setMaxValues(1)
+                    .setMaxValues(1),
             )];
     },
     buttonReact() {
@@ -290,7 +290,7 @@ const welcome_menu: GuildMenus = {
                     new ButtonBuilder()
                         .setEmoji('❓')
                         .setCustomId(`guild/${userID}/welcome_menu/help`)
-                        .setStyle(ButtonStyle.Secondary)
+                        .setStyle(ButtonStyle.Secondary),
                 ),
             new ActionRowBuilder<ChannelSelectMenuBuilder>()
                 .addComponents(
@@ -299,7 +299,7 @@ const welcome_menu: GuildMenus = {
                         .setPlaceholder('Select a channel...')
                         .setDefaultChannels(guild.welcome_channelid ? [guild.welcome_channelid] : [])
                         .setMinValues(0)
-                        .setMaxValues(1)
+                        .setMaxValues(1),
                 ),
             new ActionRowBuilder<RoleSelectMenuBuilder>()
                 .addComponents(
@@ -308,7 +308,7 @@ const welcome_menu: GuildMenus = {
                         .setPlaceholder('Select a role...')
                         .setDefaultRoles(guild.welcome_roleid ? [guild.welcome_roleid] : [])
                         .setMinValues(0)
-                        .setMaxValues(1)
+                        .setMaxValues(1),
                 ),
         ];
     },
@@ -375,7 +375,7 @@ const welcome_menu: GuildMenus = {
                         });
                         return menu;
                     } else if (!chn.permissionsFor(interaction.guild.members.me!).has(
-                        PermissionsBitField.Flags.SendMessages
+                        PermissionsBitField.Flags.SendMessages,
                     )) {
                         await interaction.editReply({ content: null });
                         await interaction.followUp({
@@ -463,7 +463,7 @@ const emoji_menu: GuildMenus = {
                 new ButtonBuilder()
                     .setEmoji('🔙')
                     .setCustomId(`guild/${userID}/emoji_menu/back`)
-                    .setStyle(ButtonStyle.Primary)
+                    .setStyle(ButtonStyle.Primary),
             )];
     },
     buttonReact(guild, menu, action) {

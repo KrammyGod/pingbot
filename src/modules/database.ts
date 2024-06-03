@@ -1,10 +1,10 @@
 import config from '@classes/config';
 import * as Utils from '@modules/utils';
-import { Pool } from 'pg';
-import { Colors, EmbedBuilder } from 'discord.js';
-import { DatabaseMaintenanceError } from '@classes/exceptions';
-import type { QueryResultRow } from 'pg';
-import type { TextBasedChannel } from 'discord.js';
+import { Pool, } from 'pg';
+import { Colors, EmbedBuilder, } from 'discord.js';
+import { DatabaseMaintenanceError, } from '@classes/exceptions';
+import type { QueryResultRow, } from 'pg';
+import type { TextBasedChannel, } from 'discord.js';
 
 const enum GenderTypes {
     Female = '♀️',
@@ -111,7 +111,7 @@ type CharacterDetails = {
     img: string;
     nimg: string;
     nsfw: boolean;
-}
+};
 class Character {
     uid: string;
     wid: string;
@@ -315,7 +315,7 @@ function sortQueryAndParams(colName: string, params: string[], name: string) {
     // This modifies params to make it all the correct ones
     params.push(
         `${name}`, `${name} %`, `% ${name}`, `% ${name} %`,
-        `${name}%`, `%${name}`, `%${name}%`
+        `${name}%`, `%${name}`, `%${name}%`,
     );
     return (
         `WHERE ${colName} ILIKE $${params.length}
@@ -336,7 +336,7 @@ function getClient() {
     return pool.connect().catch(() => {
         // Wrap so we can throw our own error.
         throw new DatabaseMaintenanceError(
-            'Database is currently under maintenance. Please try again later.'
+            'Database is currently under maintenance. Please try again later.',
         );
     });
 }
@@ -355,7 +355,7 @@ type IsolationLevels = 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
 async function multi_query<R extends QueryResultRow = object, I = unknown>(
     queries: string[],
     values: I[][] = [],
-    level: IsolationLevels = 'READ COMMITTED'
+    level: IsolationLevels = 'READ COMMITTED',
 ) {
     const client = await getClient();
     try {
@@ -399,7 +399,7 @@ export function getUidsList(shardId: number, totalShards: number) {
         SELECT uid FROM uids
         LIMIT (SELECT COUNT(*) FROM uids) / $1
         OFFSET (SELECT COUNT(*) FROM uids) / $1 * $2`,
-        [totalShards, shardId]
+        [totalShards, shardId],
     ).then(res => res.map(row => row.uid));
 }
 /* END DATABASE SETUP */
@@ -407,19 +407,19 @@ export function getUidsList(shardId: number, totalShards: number) {
 /* GETTERS/SETTERS FOR DATABASE */
 export function getUserCount() {
     return query<{ count: string }>(
-        'SELECT COUNT(*) FROM user_info'
+        'SELECT COUNT(*) FROM user_info',
     ).then(ret => parseInt(ret[0].count));
 }
 export function getBrons(userID: string) {
     return query<{ brons: number }>(
         'SELECT brons FROM user_info WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(ret => ret.at(0)?.brons);
 }
 export function addBrons(userID: string, amount: number) {
     return query<{ uid: string }>(
         'UPDATE user_info SET brons = brons + $2 WHERE uid = $1 RETURNING uid',
-        [userID, amount]
+        [userID, amount],
     ).then(res => res.at(0)?.uid);
 }
 export function getAndSetDaily(userID: string) {
@@ -435,7 +435,7 @@ export function getAndSetDaily(userID: string) {
             WHERE user_info.collected = FALSE
             RETURNING collected`,
         ],
-        [[userID], [userID, firstSignUp, dailyAmt]]
+        [[userID], [userID, firstSignUp, dailyAmt]],
     ).then(res => {
         const collect_success = res[1].at(0)?.collected ?? false;
         // User would exist if res[0][0] exists
@@ -446,25 +446,25 @@ export function getAndSetDaily(userID: string) {
 export function getCollected(userID: string) {
     return query<{ collected: boolean }>(
         'SELECT collected FROM user_info WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(ret => ret.at(0)?.collected);
 }
 export function getWhales(userID: string) {
     return query<{ whales: number }>(
         'SELECT whales FROM user_info WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(ret => ret.at(0)?.whales);
 }
 export function getAllCompleted(userID: string) {
     return query<{ origin: string, count: number }>(
         'SELECT origin, count FROM completed_series WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(res => new Map(res.map(row => [row.origin, row.count])));
 }
 export function getCompleted(userID: string, origin: string) {
     return query<{ count: number }>(
         'SELECT count FROM completed_series WHERE uid = $1 AND origin = $2',
-        [userID, origin]
+        [userID, origin],
     ).then(res => res.at(0)?.count);
 }
 export function setCompleted(userID: string, origin: string, count: number) {
@@ -473,7 +473,7 @@ export function setCompleted(userID: string, origin: string, count: number) {
             VALUES ($1, $2, $3)
         ON CONFLICT (uid, origin)
         DO UPDATE SET count = EXCLUDED.count`,
-        [userID, origin, count]
+        [userID, origin, count],
     ).then(() => true).catch(err => {
         if (err instanceof DatabaseMaintenanceError) throw err;
         return false;
@@ -482,13 +482,13 @@ export function setCompleted(userID: string, origin: string, count: number) {
 export function getUserLBStats(userID: string) {
     return query<{ brons: number, idx: string }>(
         'SELECT brons, idx FROM leaderboard WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(res => res.at(0) ? ({ brons: res[0].brons, idx: parseInt(res[0].idx) }) : undefined);
 }
 export function getLeaderboards(start: number) {
     return query<{ uid: string, brons: number, waifus: string, idx: string }>(
         'SELECT * FROM leaderboard LIMIT 10 OFFSET $1',
-        [start]
+        [start],
     ).then(res => res.map(row => ({
         uid: row.uid,
         brons: row.brons,
@@ -499,7 +499,7 @@ export function getLeaderboards(start: number) {
 export function getUserStarLBStats(userID: string) {
     return query<{ brons: number, stars: string, idx: string }>(
         'SELECT brons, stars, idx FROM starLeaderboard WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(res => res.at(0) ? ({
         brons: res[0].brons,
         stars: parseInt(res[0].stars),
@@ -509,7 +509,7 @@ export function getUserStarLBStats(userID: string) {
 export function getStarLeaderboards(start: number) {
     return query<{ uid: string, brons: number, stars: string, idx: string }>(
         'SELECT * FROM starLeaderboard LIMIT 10 OFFSET $1',
-        [start]
+        [start],
     ).then(res => res.map(row => ({
         uid: row.uid,
         brons: row.brons,
@@ -546,7 +546,7 @@ export function insertWaifu(waifu: PartialWaifu) {
             RETURNING *`,
             'REFRESH MATERIALIZED VIEW chars',
         ],
-        [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]
+        [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]],
     ).then(res => new Waifu(res[0][0]));
 }
 export function fetchWaifuByDetails(details: PartialWaifu) {
@@ -554,18 +554,18 @@ export function fetchWaifuByDetails(details: PartialWaifu) {
         `SELECT * FROM chars
         WHERE name = $1 AND gender = $2 AND origin = $3
         AND fc = TRUE LIMIT 1`,
-        [details.name, details.gender, details.origin]
+        [details.name, details.gender, details.origin],
     ).then(res => res.at(0) ? new Waifu(res[0]) : undefined);
 }
 export function fetchWaifu(wid: string) {
     return query<WaifuDetails>(
         'SELECT * FROM chars WHERE wid = $1',
-        [wid]
+        [wid],
     ).then(res => new Waifu(res[0]));
 }
 export function fetchWaifuCount() {
     return query<{ count: string }>(
-        'SELECT COUNT(*) FROM waifus'
+        'SELECT COUNT(*) FROM waifus',
     ).then(ret => parseInt(ret[0].count));
 }
 export function searchWaifuByName(name: string) {
@@ -576,7 +576,7 @@ export function searchWaifuByName(name: string) {
         ) A
         ${sortQueryAndParams('name', params, name)}
         LIMIT $1`,
-        params
+        params,
     ).then(Waifu.fromRows);
 }
 export function searchOriginByName(name: string) {
@@ -587,7 +587,7 @@ export function searchOriginByName(name: string) {
         ) A
         ${sortQueryAndParams('origin', params, name)}
         LIMIT $1`,
-        params
+        params,
     ).then(res => res.map(row => row.origin));
 }
 export function fetchCompleteOrigin(origin: string) {
@@ -597,19 +597,19 @@ export function fetchCompleteOrigin(origin: string) {
     // a case-insensitive query.
     return query<{ origin: string }>(
         'SELECT origin FROM chars WHERE origin ILIKE $1',
-        [origin]
+        [origin],
     ).then(res => res.at(0)?.origin);
 }
 export function getAnimesCount() {
     return query<{ count: string }>(
-        'SELECT COUNT(DISTINCT origin) FROM waifus'
+        'SELECT COUNT(DISTINCT origin) FROM waifus',
     ).then(ret => parseInt(ret[0].count));
 }
 export function getAnimes(start: number) {
     return query<{ origin: string, count: string }>(
         `SELECT origin, COUNT(*) FROM waifus GROUP BY origin
         ORDER BY origin LIMIT $1 OFFSET $2`,
-        [defaultLimit, start]
+        [defaultLimit, start],
     );
 }
 export function getAnime(anime: string) {
@@ -617,7 +617,7 @@ export function getAnime(anime: string) {
         `SELECT * FROM chars
         WHERE origin = $1 AND fc = TRUE
         ORDER BY name`,
-        [anime]
+        [anime],
     ).then(Waifu.fromRows);
 }
 export const enum Levels {
@@ -631,7 +631,7 @@ export function fetchRandomWaifu(amt: number, level: Levels) {
             return query<WaifuDetails>(
                 `SELECT name, gender, origin, img, nimg
                     FROM waifus ORDER BY RANDOM() LIMIT $1`,
-                [amt]
+                [amt],
             ).then(Waifu.fromRows);
         case Levels.MEDIUM:
             return query<WaifuDetails>(
@@ -646,14 +646,14 @@ export function fetchRandomWaifu(amt: number, level: Levels) {
                         )
                     ) B
                 ) A ORDER BY RANDOM() LIMIT $1`,
-                [amt]
+                [amt],
             ).then(Waifu.fromRows);
         case Levels.HARD:
             return query<WaifuDetails>(
                 `SELECT name, gender, origin,
                     img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
                 FROM chars ORDER BY RANDOM() LIMIT $1`,
-                [amt]
+                [amt],
             ).then(Waifu.fromRows);
     }
     // Says unreachable, however if an invalid level is provided,
@@ -683,7 +683,7 @@ export function fetchAutocollectByIdx(userID: string, idx: string) {
             ) AS page
             FROM hoyolab_cookies_list
         ) A WHERE id = $1 AND idx = $2`,
-        [userID, idx]
+        [userID, idx],
     ).then(res => res.at(0));
 }
 export function fetchAutocollectByPage(userID: string, page: number) {
@@ -691,14 +691,14 @@ export function fetchAutocollectByPage(userID: string, page: number) {
         `SELECT *, $2::int + 1 AS page FROM hoyolab_cookies_list
             WHERE id = $1
         ORDER BY idx LIMIT 1 OFFSET $2`,
-        [userID, page]
+        [userID, page],
     ).then(res => res.at(0));
 }
 export function fetchAutocollectLength(userID: string) {
     return query<{ count: string }>(
         `SELECT COUNT(*) FROM hoyolab_cookies_list
             WHERE id = $1`,
-        [userID]
+        [userID],
     ).then(res => parseInt(res[0].count));
 }
 export function toggleAutocollect(userID: string, game: GameType, type: CheckinType, idx: string) {
@@ -706,7 +706,7 @@ export function toggleAutocollect(userID: string, game: GameType, type: CheckinT
         `UPDATE hoyolab_cookies_list
             SET ${game} = $2
             WHERE id = $1 AND idx = $3`,
-        [userID, type, idx]
+        [userID, type, idx],
     ).then(() => { });
 }
 export async function addCookie(userID: string, cookie: string) {
@@ -719,26 +719,26 @@ export async function addCookie(userID: string, cookie: string) {
         `INSERT INTO hoyolab_cookies_list (id, cookie)
             VALUES ($1, $2) ON CONFLICT (id, cookie)
         DO NOTHING RETURNING *`,
-        [userID, cookie]
+        [userID, cookie],
     ).then(res => !!res.at(0));
 }
 export function deleteCookie(userID: string, idx: string) {
     return query(
         `DELETE FROM hoyolab_cookies_list
             WHERE id = $1 AND idx = $2 RETURNING *`,
-        [userID, idx] // idx serves as a nice identifier
+        [userID, idx], // idx serves as a nice identifier
     ).then(rows => !!rows.at(0));
 }
 export function getEmoji(name: string) {
     return query<{ emoji: string }>(
         'SELECT emoji FROM emojis WHERE name = $1',
-        [name]
+        [name],
     ).then(res => res.at(0)?.emoji);
 }
 export function addEmoji(name: string, emoji: string) {
     return query(
         'INSERT INTO emojis(name, emoji) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING',
-        [name, emoji]
+        [name, emoji],
     );
 }
 /* End HoyoLab data */
@@ -751,7 +751,7 @@ export function fetchAllUsers(wid: string) {
             WHERE wid = $1
         ORDER BY lvl DESC, idx
         LIMIT 20`, // Higher limit to fit embed
-        [wid]
+        [wid],
     ).then(Character.fromRows);
 }
 // For high list
@@ -759,13 +759,13 @@ export function fetchUserHighCount(userID: string) {
     return query<{ max: string }>(
         `SELECT MAX(idx) FROM
             get_high_user_chars($1)`,
-        [userID]
+        [userID],
     ).then(ret => parseInt(ret.at(0)?.max ?? '0'));
 }
 export function fetchUserCharacterCount(userID: string) {
     return query<{ max: string }>(
         'SELECT MAX(idx) FROM all_user_chars WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(ret => parseInt(ret.at(0)?.max ?? '0'));
 }
 type Range = { start?: number, end?: number };
@@ -786,7 +786,7 @@ export function fetchUserStarredCount(userID: string) {
     return query<{ count: string }>(
         `SELECT COUNT(*) FROM all_user_chars
             WHERE uid = $1 AND fc = TRUE`,
-        [userID]
+        [userID],
     ).then(ret => parseInt(ret[0].count));
 }
 export function fetchRandomStarred(userID: string) {
@@ -795,7 +795,7 @@ export function fetchRandomStarred(userID: string) {
         `SELECT * FROM all_user_chars
             WHERE uid = $1 AND fc = TRUE
         ORDER BY RANDOM() LIMIT 1`,
-        [userID]
+        [userID],
     ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserCharacter(userID: string, wid: string) {
@@ -803,14 +803,14 @@ export function fetchUserCharacter(userID: string, wid: string) {
     return query<CharacterDetails>(
         `SELECT * FROM all_user_chars
             WHERE uid = $1 AND wid = $2`,
-        [userID, wid]
+        [userID, wid],
     ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserHighCharacter(userID: string, wid: string) {
     return query<CharacterDetails>(
         `SELECT * FROM get_high_user_chars($1)
             WHERE wid = $2`,
-        [userID, wid]
+        [userID, wid],
     ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserHighestCharacter(userID: string) {
@@ -818,7 +818,7 @@ export function fetchUserHighestCharacter(userID: string) {
         `SELECT * FROM all_user_chars
             WHERE uid = $1
         ORDER BY lvl DESC, idx LIMIT 1`,
-        [userID]
+        [userID],
     ).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 export function fetchUserCharactersList(userID: string, start: number) {
@@ -826,7 +826,7 @@ export function fetchUserCharactersList(userID: string, start: number) {
     return query(
         `SELECT * FROM get_user_chars($1)
         WHERE idx >= $2 LIMIT $3`,
-        [userID, start, defaultLimit]
+        [userID, start, defaultLimit],
     ).then(Character.fromRows);
 }
 export function fetchUserHighCharactersList(userID: string, start: number) {
@@ -834,7 +834,7 @@ export function fetchUserHighCharactersList(userID: string, start: number) {
     return query(
         `SELECT * FROM get_high_user_chars($1)
         WHERE idx >= $2 LIMIT $3`,
-        [userID, start, defaultLimit]
+        [userID, start, defaultLimit],
     ).then(Character.fromRows);
 }
 export function queryUserCharacter(userID: string, name: string) {
@@ -843,7 +843,7 @@ export function queryUserCharacter(userID: string, name: string) {
         `SELECT * FROM get_user_chars($1)
         ${sortQueryAndParams('name', params, name)}
         LIMIT $2`,
-        params
+        params,
     ).then(Character.fromRows);
 }
 export function queryUserHighCharacter(userID: string, name: string) {
@@ -852,14 +852,14 @@ export function queryUserHighCharacter(userID: string, name: string) {
         `SELECT * FROM get_high_user_chars($1)
         ${sortQueryAndParams('name', params, name)}
         LIMIT $2`,
-        params
+        params,
     ).then(Character.fromRows);
 }
 export function fetchUserAnimeCount(userID: string, origin: string) {
     return query<{ count: string }>(
         `SELECT COUNT(*) FROM all_user_chars
             WHERE uid = $1 AND origin = $2 AND fc = TRUE`,
-        [userID, origin]
+        [userID, origin],
     ).then(ret => parseInt(ret[0].count));
 }
 function getCommonQuery() {
@@ -900,8 +900,10 @@ function generateCharacterQuery(level: GuaranteeLevel) {
 // Special type of character that also includes whether it is new or old
 export type CharacterInsert = Character & { new: boolean };
 // Used for single pulls
-export async function generateAndAddCharacter(userID: string, amtTaken: { amt: number }):
-    Promise<CharacterInsert | string> {
+export async function generateAndAddCharacter(
+    userID: string,
+    amtTaken: { amt: number },
+): Promise<CharacterInsert | string> {
     const amt = getCostPerPull(false);
     amtTaken.amt = -amt; // Returning to the front end brons difference
     return multi_query<CharacterDetails & { new: boolean }>(
@@ -911,7 +913,7 @@ export async function generateAndAddCharacter(userID: string, amtTaken: { amt: n
                 (${generateCharacterQuery(GuaranteeLevel.COMMON)})
             )`,
         ],
-        [[userID, false, amt], [userID]]
+        [[userID, false, amt], [userID]],
     ).then(res => {
         const c = new Character(res[1][0]) as CharacterInsert;
         c.new = res[1][0].new;
@@ -924,8 +926,11 @@ export async function generateAndAddCharacter(userID: string, amtTaken: { amt: n
         return 'there was an error with the database.';
     });
 }
-export function generateAndAddCharacters(userID: string, special: boolean, amtTaken: { amt: number }):
-    Promise<CharacterInsert[] | string> {
+export function generateAndAddCharacters(
+    userID: string,
+    special: boolean,
+    amtTaken: { amt: number },
+): Promise<CharacterInsert[] | string> {
     // special = false - multi
     // special = true - whales
     const PULL_AMT = 10;
@@ -955,14 +960,14 @@ export function generateAndAddCharacters(userID: string, special: boolean, amtTa
     params.push([userID]);
     return multi_query<CharacterDetails & { new: boolean }>(
         queries,
-        params
+        params,
     ).then(res =>
         // Whales has extra query for user_info
         res.splice(1).map(x => {
             const c = new Character(x[0]) as CharacterInsert;
             c.new = x[0].new;
             return c;
-        })
+        }),
     ).catch((err: Error) => {
         if (err instanceof DatabaseMaintenanceError) throw err;
         else if (err.message.includes('user_info_brons_check')) return 'not enough brons';
@@ -984,7 +989,7 @@ function setUserCharacterImage(userID: string, wid: string, img: number) {
             ) RETURNING _img`,
             'SELECT img FROM all_user_chars WHERE uid = $1 AND wid = $2',
         ],
-        [[userID, wid, img], [userID, wid]]
+        [[userID, wid, img], [userID, wid]],
     ).then(res => ({ _img: res[0][0]._img, img: res[1][0].img }));
 }
 function setUserCharacterNImage(userID: string, wid: string, nimg: number) {
@@ -999,7 +1004,7 @@ function setUserCharacterNImage(userID: string, wid: string, nimg: number) {
             ) RETURNING _nimg`,
             'SELECT _nimg, nimg FROM all_user_chars WHERE uid = $1 AND wid = $2',
         ],
-        [[userID, wid, nimg], [userID, wid]]
+        [[userID, wid, nimg], [userID, wid]],
     ).then(res => ({ _nimg: res[0][0]._nimg, nimg: res[1][0].nimg }));
 }
 function setUserCharacterNsfw(userID: string, wid: string, nsfw: boolean) {
@@ -1017,7 +1022,7 @@ function setUserCharacterNsfw(userID: string, wid: string, nsfw: boolean) {
             `SELECT _nimg, nimg, nsfw FROM all_user_chars
             WHERE uid = $1 AND wid = $2`,
         ],
-        [[userID, wid, nsfw], [], [userID, wid]]
+        [[userID, wid, nsfw], [], [userID, wid]],
     ).then(res => [res[0][0], res[2][0]] as [
         { nsfw: boolean } | undefined,
         { _nimg: number, nimg: string, nsfw: boolean }
@@ -1027,7 +1032,7 @@ export async function deleteUserCharacter(char: Character) {
     // Just in case, retrieve index; I'm paranoid.
     const { idx } = await query<{ idx: string }>(
         'SELECT idx FROM user_chars WHERE uid = $1 AND wid = $2',
-        [char.uid, char.wid]
+        [char.uid, char.wid],
     ).then(res => res[0]);
     // Note that we didn't need to also include index,
     // but we do it just in case; will be helpful when
@@ -1040,7 +1045,7 @@ export async function deleteUserCharacter(char: Character) {
             `UPDATE user_chars SET idx = idx - 1
             WHERE uid = $1 AND idx >= $2`,
         ],
-        [[char.uid, char.wid, idx], [char.uid, idx]]
+        [[char.uid, char.wid, idx], [char.uid, idx]],
     ).then(res => res[0].length);
 }
 export async function deleteUserCommonCharacters(userID: string, { start = 1, end }: Range = {}) {
@@ -1065,7 +1070,7 @@ export function moveUserCharacter(char: Character, pos: number) {
             RETURNING *`,
             'CALL repair_index($1)',
         ],
-        [[], [char.uid, char.wid, char.idx, pos], [char.uid]]
+        [[], [char.uid, char.wid, char.idx, pos], [char.uid]],
     ).then(ret => ret[1].length === 1);
 }
 export function swapUserCharacters(char1: Character, char2: Character) {
@@ -1083,7 +1088,7 @@ export function swapUserCharacters(char1: Character, char2: Character) {
             [],
             [char1.uid, char1.wid, char1.idx, char2.idx],
             [char2.uid, char2.wid, char2.idx, char1.idx],
-        ]
+        ],
     ).then(() => { });
 }
 // Trade characters; deal with this in the far future
@@ -1118,7 +1123,7 @@ export function isGuildEmpty(guild: GuildSettings) {
 export function getGuild(gid: string) {
     return query<GuildSettings>(
         'SELECT * FROM guild_settings WHERE gid = $1',
-        [gid]
+        [gid],
     ).then(res => res.at(0) ?? { ...EMPTY_GUILD_SETTINGS, gid });
 }
 // Set any to null to remove instead of undefined.
@@ -1143,7 +1148,7 @@ export function setGuild(settings: GuildSettings) {
         `INSERT INTO guild_settings(${cols})
             VALUES(${values}) ON CONFLICT (gid)
         DO UPDATE SET ${colUpdates}`,
-        params
+        params,
     ).then(() => { });
 }
 
@@ -1160,7 +1165,7 @@ type GuessStreak = {
 export function getGuessStreaks(userID: string) {
     return query<GuessStreak>(
         'SELECT * FROM guess_info WHERE uid = $1',
-        [userID]
+        [userID],
     ).then(res => res.at(0));
 }
 export function addOneToGuessStreak(userID: string, level: Levels) {
@@ -1169,7 +1174,7 @@ export function addOneToGuessStreak(userID: string, level: Levels) {
             VALUES($1, $2, $3) ON CONFLICT (uid)
         DO UPDATE SET ${level}_streak = guess_info.${level}_streak + 1
         RETURNING ${level}_streak, ${level}_max_streak`,
-        [userID, 1, 1]
+        [userID, 1, 1],
     ).then(res => {
         if (!res) throw new Error(`Guess streak ${level} not found`);
         return {
@@ -1182,7 +1187,7 @@ export function resetGuessStreak(userID: string, level: Levels) {
     return query(
         `UPDATE guess_info SET ${level}_streak = 0
             WHERE uid = $1`,
-        [userID]
+        [userID],
     ).then(() => { });
 }
 
@@ -1194,7 +1199,7 @@ export class Cache<T extends object> {
             `SELECT data FROM local_data
                 WHERE cmd = $1 AND id = $2 AND
                     (CURRENT_DATE < expiry OR expiry IS NULL)`,
-            [this.cmd, id]
+            [this.cmd, id],
         ).then(res => res.at(0)?.data);
     }
 
@@ -1204,14 +1209,14 @@ export class Cache<T extends object> {
             ON CONFLICT (cmd, id) DO UPDATE SET
                 data = EXCLUDED.data,
                 expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`,
-            [this.cmd, id, data, expiry]
+            [this.cmd, id, data, expiry],
         ).then(() => { });
     }
 
     delete(id: string | null = null) {
         return query<T>(
             'DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *',
-            [this.cmd, id]
+            [this.cmd, id],
         );
     }
 }
@@ -1220,6 +1225,6 @@ export class Cache<T extends object> {
 export function deleteLocalData(id: string) {
     return query(
         'DELETE FROM local_data WHERE id = $1',
-        [id]
+        [id],
     ).then(() => { }, () => { });
 }

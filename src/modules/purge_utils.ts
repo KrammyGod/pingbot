@@ -20,10 +20,10 @@ export async function purge_clean_channel(channel: Exclude<DTypes.GuildTextBased
 export async function purge_from_channel(
     channel: DTypes.GuildTextBasedChannel,
     amount: number,
-    filter: (message: DTypes.Message) => boolean = () => true
+    filter: (message: DTypes.Message) => boolean = () => true,
 ) {
     // Keep async to keep Promise<number> signature
-    const bulk_delete = async (messages: DTypes.Message[]) => {
+    const bulk_delete = (messages: DTypes.Message[]) => {
         // Discord bulk delete doesn't like single messages.
         if (messages.length <= 1) {
             return messages.at(0)?.delete().then(() => 1, () => 0) ?? 0;
@@ -78,7 +78,7 @@ export async function purge_from_channel(
 export async function purge_from_dm(
     channel: DTypes.DMChannel | DTypes.PartialDMChannel,
     amount: number,
-    filter: (message: DTypes.Message) => boolean = m => m.author.id === channel.client.user.id
+    filter: (message: DTypes.Message) => boolean = m => m.author.id === channel.client.user.id,
 ) {
     let deleted = 0;
     for await (const msg of Utils.fetch_history(channel, amount, filter)) {

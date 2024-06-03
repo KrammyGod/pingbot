@@ -1,5 +1,5 @@
-import { CustomClient } from '@classes/client';
-import { TimedOutError } from '@classes/exceptions';
+import { CustomClient, } from '@classes/client';
+import { TimedOutError, } from '@classes/exceptions';
 import {
     ActionRowBuilder, ApplicationCommandOptionType, Colors,
     CommandInteraction, ComponentType, EmbedBuilder, Routes,
@@ -24,7 +24,7 @@ export async function fetch_user_fast<T, R>(
 export async function fetch_user_fast<T, R>(
     uid: string,
     userCb: (user: DTypes.User | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
-    ctx?: R
+    ctx?: R,
 ) {
     const client = new CustomClient();
     // This is quite a hack, essentially define the callback using eval,
@@ -33,7 +33,7 @@ export async function fetch_user_fast<T, R>(
         (client, { uid, userCb, ctx }) => {
             return eval(userCb)(client.users.cache.get(uid), ctx) as DTypes.Awaitable<T | undefined>;
         },
-        { context: { uid, userCb: userCb.toString(), ctx } }
+        { context: { uid, userCb: userCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
     if (!retval && client.user_cache_ready) {
         // Mimic serialization
@@ -42,32 +42,34 @@ export async function fetch_user_fast<T, R>(
     return retval;
 }
 
-export async function fetch_guild_cache<T>(
+export function fetch_guild_cache<T>(
     gid: string,
     guildCb: (guild: DTypes.Guild | undefined) => DTypes.Awaitable<T | undefined>
 ): Promise<DTypes.Serialized<T> | undefined>;
-export async function fetch_guild_cache<T, R>(
+export function fetch_guild_cache<T, R>(
     gid: string,
     guildCb: (guild: DTypes.Guild | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx: R
 ): Promise<DTypes.Serialized<T> | undefined>;
-export async function fetch_guild_cache<T, R>(
+export function fetch_guild_cache<T, R>(
     gid: string,
     guildCb: (guild: DTypes.Guild | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
-    ctx?: R
+    ctx?: R,
 ) {
     const client = new CustomClient();
     return client.shard?.broadcastEval(
         (client, { gid, guildCb, ctx }) => {
             return eval(guildCb)(client.guilds.cache.get(gid), ctx) as DTypes.Awaitable<T | undefined>;
         },
-        { context: { gid, guildCb: guildCb.toString(), ctx } }
+        { context: { gid, guildCb: guildCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
 }
 
 export async function convert_user(text: string): Promise<DTypes.User | undefined>;
-export async function convert_user(text: string, guild: Readonly<DTypes.Guild>):
-    Promise<DTypes.GuildMember | undefined>;
+export async function convert_user(
+    text: string,
+    guild: Readonly<DTypes.Guild>
+): Promise<DTypes.GuildMember | undefined>;
 export async function convert_user(text: string, guild?: Readonly<DTypes.Guild>) {
     const client = new CustomClient();
     if (!text.startsWith('@')) return;
@@ -81,9 +83,9 @@ export async function convert_user(text: string, guild?: Readonly<DTypes.Guild>)
         return client.shard?.broadcastEval(
             (client, text) => client.users.cache.find(u =>
                 u.displayName.toLowerCase().includes(text) ||
-                u.tag.toLowerCase().includes(text)
+                u.tag.toLowerCase().includes(text),
             )?.id,
-            { context: text }
+            { context: text },
         ).then(results => client.users.fetch(results.find(r => r !== undefined) ?? '0').catch(() => undefined));
     }
 
@@ -96,8 +98,8 @@ export async function convert_user(text: string, guild?: Readonly<DTypes.Guild>)
         members.find(m =>
             m.displayName.toLowerCase().includes(text) ||
             m.user.displayName.toLowerCase().includes(text) ||
-            m.user.tag.toLowerCase().includes(text)
-        )
+            m.user.tag.toLowerCase().includes(text),
+        ),
     );
 }
 export async function convert_channel(text: string) {
@@ -112,25 +114,25 @@ export async function convert_channel(text: string) {
     text = text.toLowerCase();
     const channel2 = await client.shard?.broadcastEval(
         (client, text) => client.channels.cache.find(c =>
-            c.isDMBased() ? false : c.name.toLowerCase().includes(text)
+            c.isDMBased() ? false : c.name.toLowerCase().includes(text),
         )?.id,
-        { context: text }
+        { context: text },
     ).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
     return channel2;
 }
-export async function convert_emoji<T>(
+export function convert_emoji<T>(
     text: string,
     emojiCb: (emoji: DTypes.GuildEmoji | undefined) => DTypes.Awaitable<T | undefined>,
 ): Promise<DTypes.Serialized<T> | undefined>;
-export async function convert_emoji<T, R>(
+export function convert_emoji<T, R>(
     text: string,
     emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
     ctx: R
 ): Promise<DTypes.Serialized<T> | undefined>;
-export async function convert_emoji<T, R>(
+export function convert_emoji<T, R>(
     text: string,
     emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
-    ctx?: R
+    ctx?: R,
 ) {
     const client = new CustomClient();
     if (!text.startsWith(':') || !text.endsWith(':')) return;
@@ -139,10 +141,10 @@ export async function convert_emoji<T, R>(
     return client.shard?.broadcastEval(
         (client, { text, emojiCb, ctx }) => {
             return eval(emojiCb)(client.emojis.cache.find(e =>
-                e.name!.toLowerCase() === text
+                e.name!.toLowerCase() === text,
             ), ctx) as DTypes.Awaitable<T | undefined>;
         },
-        { context: { text, emojiCb: emojiCb.toString(), ctx } }
+        { context: { text, emojiCb: emojiCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
 }
 
@@ -188,7 +190,7 @@ export function channel_is_nsfw_safe(channel: DTypes.TextBasedChannel) {
 // Helper that sends all embeds by wave
 export async function send_embeds_by_wave(
     interaction: DTypes.RepliableInteraction,
-    embeds: DTypes.EmbedBuilder[]
+    embeds: DTypes.EmbedBuilder[],
 ) {
     // 10 embeds per message
     let wave = embeds.splice(0, 10);
@@ -276,7 +278,7 @@ export async function get_results<T>(
         title_fmt?: (arg: number) => string,
         desc_fmt?: (arg: T) => string,
         sel_fmt?: (arg: T) => string
-    }
+    },
 ) {
     if (choices.length <= 1) return choices.at(0);
 
@@ -329,7 +331,7 @@ export async function get_results<T>(
 export async function* fetch_history(
     channel: DTypes.TextBasedChannel,
     amount: number,
-    filter: (message: DTypes.Message) => boolean = () => true
+    filter: (message: DTypes.Message) => boolean = () => true,
 ) {
     let prev: string | undefined;
     while (amount > 0) {

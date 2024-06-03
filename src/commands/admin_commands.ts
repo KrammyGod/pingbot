@@ -4,14 +4,14 @@ import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
-import { PermissionError } from '@classes/exceptions';
-import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN } from '@modules/cdn';
+import { PermissionError, } from '@classes/exceptions';
+import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN, } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
     MessageMentions, PermissionsBitField,
 } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { MessageCommand } from '@classes/client';
+import type { MessageCommand, } from '@classes/client';
 
 export const name = 'Admin Message Commands';
 export const desc = "You shouldn't be seeing this";
@@ -220,7 +220,7 @@ export const upload: MessageCommand = {
         const res = [];
         await message.channel.sendTyping();
         const all = await Promise.all(args.map(url => 
-            scrape(url).catch(() => ({ images: [url], source: url }))
+            scrape(url).catch(() => ({ images: [url], source: url })),
         ));
         if (all.length) {
             const formdata = new FormData();
@@ -258,7 +258,7 @@ export const update: MessageCommand = {
         const urls = args.splice(0, args.length / 2);
         const res = await updateCDN(
             urls.map(a => a.replace(`${config.cdn}/images/`, '')),
-            args // Rest of the args are new sources
+            args, // Rest of the args are new sources
         );
         await message.reply({ content: `API replied with: ${res}` });
     },

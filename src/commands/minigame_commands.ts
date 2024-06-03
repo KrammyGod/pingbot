@@ -1,9 +1,9 @@
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { DatabaseMaintenanceError } from '@classes/exceptions';
-import { Colors, EmbedBuilder, SlashCommandBuilder, SlashCommandSubcommandBuilder } from 'discord.js';
+import { DatabaseMaintenanceError, } from '@classes/exceptions';
+import { Colors, EmbedBuilder, SlashCommandBuilder, SlashCommandSubcommandBuilder, } from 'discord.js';
 import type DTypes from 'discord.js';
-import type { CustomClient, SlashCommand, SlashSubcommand } from '@classes/client';
+import type { CustomClient, SlashCommand, SlashSubcommand, } from '@classes/client';
 
 export const name = 'Minigames';
 export const desc = 'This category is for commands that allow you to play fun games with your precious brons.';
@@ -181,7 +181,7 @@ const guess_number: SlashSubcommand & NumberPrivates = {
         }
         // Will throw if user doesn't have enough brons.
         const success = await DB.addBrons(interaction.user.id, change).then(uid =>
-            uid === interaction.user.id    
+            uid === interaction.user.id,    
         ).catch(err => {
             if (err instanceof DatabaseMaintenanceError) throw err;
             return false;
@@ -245,7 +245,7 @@ async function generate_flip(
     client: CustomClient,
     interaction: DTypes.CommandInteraction,
     side: Coin,
-    bet: number
+    bet: number,
 ): Promise<[EmbedBuilder, string[], boolean]> {
     // 2/3 chance of winning.
     const sides = [Coin.Heads, Coin.Tails, side];
@@ -263,7 +263,7 @@ async function generate_flip(
     }
     // Will throw if user doesn't have enough brons.
     const res = await DB.addBrons(interaction.user.id, change).then(uid =>
-        uid === interaction.user.id
+        uid === interaction.user.id,
     ).catch(err => {
         if (err instanceof DatabaseMaintenanceError) throw err;
         return false;

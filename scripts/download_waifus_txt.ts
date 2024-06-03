@@ -13,7 +13,7 @@ const imgReplacer = (i: string) => {
 };
 
 const pool = new Pool({
-    host: process.env.PRODHOST // Not included in .env.example, since for personal use only.
+    host: process.env.PRODHOST, // Not included in .env.example, since for personal use only.
 });
 function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
     return pool.query<R>(query, values).then(res => res.rows);
@@ -82,7 +82,7 @@ function loadFromFile() {
 async function confirm(prompt: string) {
     const confirm = rl.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
     });
     const confirmed = await confirm.question(prompt).then(ans => ans === 'y', () => false);
     confirm.close();
@@ -147,7 +147,7 @@ if (require.main === module) {
         const maxImgLength = Math.max(...waifus.map(w => w.img.length)) + 2;
         const maxNimgLength = Math.max(...waifus.map(w => w.nimg.length)) + 2;
         const headerLengths = [
-            maxIIDLength, maxNameLength, maxGenderLength, maxOriginLength, maxImgLength, maxNimgLength
+            maxIIDLength, maxNameLength, maxGenderLength, maxOriginLength, maxImgLength, maxNimgLength,
         ];
         let headerStr = '';
         for (let i = 0; i < headers.length; ++i) {
@@ -163,7 +163,7 @@ if (require.main === module) {
             `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
             `${connector}${horizontalLine.repeat(maxGenderLength)}` +
             `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
-            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`
+            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`,
         );
 
         // Body
@@ -174,7 +174,7 @@ if (require.main === module) {
                 `${verticalLine} ${waifu.gender.padEnd(maxGenderLength - 1)}` +
                 `${verticalLine} ${waifu.origin.padEnd(maxOriginLength - 1)}` +
                 `${verticalLine} ${waifu.img.padEnd(maxImgLength - 1)}` +
-                `${verticalLine} ${waifu.nimg.padEnd(maxNimgLength - 1)}${verticalLine}\n`
+                `${verticalLine} ${waifu.nimg.padEnd(maxNimgLength - 1)}${verticalLine}\n`,
             );
         }
 
@@ -183,7 +183,7 @@ if (require.main === module) {
             `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
             `${connector}${horizontalLine.repeat(maxGenderLength)}` +
             `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
-            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`
+            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`,
         );
         writer.end(() => pool.end());
     })();

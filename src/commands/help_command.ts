@@ -4,9 +4,9 @@ import {
     ComponentType, EmbedBuilder, ModalBuilder, SlashCommandBuilder,
     StringSelectMenuBuilder, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
-import { isMessageCommand, isSlashCommand, isSlashSubcommandGroup } from '@classes/client';
+import { isMessageCommand, isSlashCommand, isSlashSubcommandGroup, } from '@classes/client';
 import DTypes from 'discord.js';
-import type { CommandFile, CustomClient, SlashCommand } from '@classes/client';
+import type { CommandFile, CustomClient, SlashCommand, } from '@classes/client';
 
 export const name = 'Help';
 export const desc = 'This is a special category dedicated for you!';
@@ -28,7 +28,7 @@ const asyncReplace = (str: string, regex: RegExp, replace_fn: (match: string) =>
 async function get_results_category(
     client: CustomClient,
     interaction: DTypes.RepliableInteraction,
-    choices: CommandFile[]
+    choices: CommandFile[],
 ) {
     if (choices.length === 0) return undefined;
     else if (choices.length === 1) return choices[0];
@@ -261,7 +261,7 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
         });
     } else {
         embed.setDescription(
-            `${embed.data.description}\n\n__**${cog.name}:**__\n**${cog.desc}**\n${field}`
+            `${embed.data.description}\n\n__**${cog.name}:**__\n**${cog.desc}**\n${field}`,
         );
     }
     const row = new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
@@ -284,7 +284,7 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
         new ButtonBuilder()
             .setEmoji('❓')
             .setStyle(ButtonStyle.Secondary)
-            .setCustomId(`help/${authorID}/help/cog`)
+            .setCustomId(`help/${authorID}/help/cog`),
     );
     const row2 = new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -314,8 +314,7 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
     return retval;
 }
 
-async function get_cmd_page(client: CustomClient, authorID: string, command: FullCommand):
-    Promise<HelperRetVal> {
+async function get_cmd_page(client: CustomClient, authorID: string, command: FullCommand): Promise<HelperRetVal> {
     const cmd_tag = command.is_slash ?
         await Utils.get_rich_cmd(command.name) :
         `\`${client.prefix}${command.name}\``;
@@ -347,7 +346,7 @@ async function get_cmd_page(client: CustomClient, authorID: string, command: Ful
         new ButtonBuilder()
             .setEmoji('❓')
             .setStyle(ButtonStyle.Secondary)
-            .setCustomId(`help/${authorID}/help/cmd`)
+            .setCustomId(`help/${authorID}/help/cmd`),
     );
 
     return { embeds: [embed], components: [row] };
@@ -458,8 +457,8 @@ export const help: SlashCommand = {
                     client,
                     interaction,
                     client.cogs.filter(cog =>
-                        cog.name.toLowerCase().includes(value.toLowerCase())
-                    ).sort()
+                        cog.name.toLowerCase().includes(value.toLowerCase()),
+                    ).sort(),
                 );
                 // Either null or undefined, doesn't matter
                 if (!category) {
@@ -470,13 +469,13 @@ export const help: SlashCommand = {
                     return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
                 }
                 const { embeds, components, followUp } = await get_cog_page(
-                    client, interaction.user.id, client.cogs.indexOf(category) + 1
+                    client, interaction.user.id, client.cogs.indexOf(category) + 1,
                 );
                 await interaction.editReply({ embeds, components });
                 if (followUp) await interaction.followUp(followUp);
             } else {
                 const { embeds, components, followUp } = await get_cog_page(
-                    client, interaction.user.id, page
+                    client, interaction.user.id, page,
                 );
                 await interaction.editReply({ embeds, components });
                 if (followUp) await interaction.followUp(followUp);
@@ -528,8 +527,8 @@ export const help: SlashCommand = {
                 client,
                 interaction,
                 client.cogs.filter(cog =>
-                    cog.name.toLowerCase().includes(categoryName.toLowerCase())
-                ).sort()
+                    cog.name.toLowerCase().includes(categoryName.toLowerCase()),
+                ).sort(),
             );
             if (category === null) {
                 res = await get_cog_page(client, interaction.user.id, 1);

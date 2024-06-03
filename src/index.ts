@@ -1,9 +1,9 @@
 import http from 'http';
 import config from '@config';
 import * as DB from '@modules/database';
-import { Colors, EmbedBuilder, ShardEvents, ShardingManager } from 'discord.js';
-import type { SendMessage } from './collector/collect';
-import type { CustomClient } from '@classes/client';
+import { Colors, EmbedBuilder, ShardEvents, ShardingManager, } from 'discord.js';
+import type { SendMessage, } from './collector/collect';
+import type { CustomClient, } from '@classes/client';
 
 const manager = new ShardingManager('./dist/bot.js', {
     token: config.token,
@@ -53,7 +53,7 @@ manager.on('shardCreate', shard => {
             DB.end().then(() => process.exit(0));
         }
     });
-    shard.once(ShardEvents.Message, async (message: string) => {
+    shard.once(ShardEvents.Message, (message: string) => {
         if (message === 'ready') {
             console.log(`Shard ${shard.id} is ready!`);
             if (++readyShards === manager.totalShards) {

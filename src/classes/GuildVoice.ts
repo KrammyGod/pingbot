@@ -1,7 +1,7 @@
 import Play from 'play-dl';
-import { ChannelType } from 'discord.js';
-import { GuildVoices } from '@classes/client';
-import { SpotifyTrack, YouTubeVideo } from 'play-dl';
+import { ChannelType, } from 'discord.js';
+import { GuildVoices, } from '@classes/client';
+import { SpotifyTrack, YouTubeVideo, } from 'play-dl';
 import {
     VoiceConnectionStatus,
     createAudioPlayer,
@@ -49,7 +49,7 @@ export class Song {
         infoData: YouTubeVideo | SpotifyTrack | undefined,
         uniqueId: number,
         isNsfw: boolean,
-        playlist_url?: string
+        playlist_url?: string,
     ) {
         this.invalid = true;
         this.notFound = true;
@@ -108,7 +108,7 @@ export default class GuildVoice {
     constructor(
         textChannel: DTypes.TextBasedChannel,
         voiceChannel: DTypes.VoiceBasedChannel,
-        host: DTypes.GuildMember
+        host: DTypes.GuildMember,
     ) {
         this.textChannel = textChannel;
         this.voiceChannel = voiceChannel;
@@ -151,7 +151,7 @@ export default class GuildVoice {
         connection.on(VoiceConnectionStatus.Ready, async () => {
             // Get latest voice channel info
             this.voiceChannel = await this.voiceChannel.guild.channels.fetch(
-                connection.joinConfig.channelId!
+                connection.joinConfig.channelId!,
             ) as DTypes.VoiceBasedChannel;
             const me = this.voiceChannel.guild.members.me!;
             // This makes it so that I can play music in stage channels

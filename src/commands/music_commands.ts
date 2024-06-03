@@ -2,9 +2,9 @@ import util from 'util';
 import Play from 'play-dl';
 import GuildVoice from '@classes/GuildVoice';
 import * as Utils from '@modules/utils';
-import { Song, LoopType } from '@classes/GuildVoice';
-import { GuildVoices, CustomClient } from '@classes/client';
-import { AudioPlayerStatus } from '@discordjs/voice';
+import { Song, LoopType, } from '@classes/GuildVoice';
+import { GuildVoices, CustomClient, } from '@classes/client';
+import { AudioPlayerStatus, } from '@discordjs/voice';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
     Colors, ComponentType, EmbedBuilder, GuildMember,
@@ -15,7 +15,7 @@ import {
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type * as PlayTypes from 'play-dl';
-import type { SlashCommand, SlashSubcommand, SlashSubcommandGroup } from '@classes/client';
+import type { SlashCommand, SlashSubcommand, SlashSubcommandGroup, } from '@classes/client';
 
 export const name = 'Music';
 export const desc = 'This category contains commands for playing music!';
@@ -284,7 +284,7 @@ const play: SlashSubcommand & PlayPrivates = {
                 .addChoices(
                     { name: '🔀 None', value: LoopType.none },
                     { name: '🔂 One', value: LoopType.one },
-                    { name: '🔁 All', value: LoopType.all }
+                    { name: '🔁 All', value: LoopType.all },
                 ))
         .addBooleanOption(option =>
             option
@@ -527,7 +527,7 @@ const loop: SlashSubcommand = {
                 .addChoices(
                     { name: '🔀 None', value: LoopType.none },
                     { name: '🔂 One', value: LoopType.one },
-                    { name: '🔁 All', value: LoopType.all }
+                    { name: '🔁 All', value: LoopType.all },
                 ).setRequired(true)),
 
     desc: 'Sets a new loop type. Only hosts may use this command.\n\n' +
@@ -1048,7 +1048,7 @@ const restart: SlashSubcommand = {
                 new ButtonBuilder()
                     .setLabel('No')
                     .setCustomId('restart/cancel')
-                    .setStyle(ButtonStyle.Secondary)
+                    .setStyle(ButtonStyle.Secondary),
             )],
         });
         const i = await message.awaitMessageComponent({
@@ -1133,7 +1133,7 @@ export const music: SlashCommand = {
     async execute(interaction, client) {
         const subcmd = this.subcommands!.get(
             interaction.options.getSubcommandGroup(false) ??
-            interaction.options.getSubcommand()!
+            interaction.options.getSubcommand()!,
         );
         return subcmd!.execute(interaction, client);
     },

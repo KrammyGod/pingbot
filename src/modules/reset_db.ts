@@ -1,16 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-import { from } from 'pg-copy-streams';
-import { inspect } from 'util';
-import { pipeline } from 'stream/promises';
-import { Pool, QueryResultRow } from 'pg';
+import { from, } from 'pg-copy-streams';
+import { inspect, } from 'util';
+import { pipeline, } from 'stream/promises';
+import { Pool, QueryResultRow, } from 'pg';
 
 const LOGGER = {
     today: new Date().toLocaleDateString(),
     start() {
         console.log(
             '\x1b[92m%s\x1b[0m',
-            `BGN [${LOGGER.today}]: BEGIN RESET ON ${new Date().toLocaleTimeString()} UTC`
+            `BGN [${LOGGER.today}]: BEGIN RESET ON ${new Date().toLocaleTimeString()} UTC`,
         );
     },
     log(msg?: unknown) {
@@ -38,7 +38,7 @@ const LOGGER = {
     end() {
         console.log(
             '\x1b[95m%s\x1b[0m',
-            `END [${LOGGER.today}]: END RESET ON ${new Date().toLocaleTimeString()} UTC\n`
+            `END [${LOGGER.today}]: END RESET ON ${new Date().toLocaleTimeString()} UTC\n`,
         );
     },
 };
@@ -60,11 +60,11 @@ async function query<R extends QueryResultRow = object, I = unknown>(query: stri
 export default async function reset() {
     await query(
         'UPDATE user_info SET collected = $1',
-        [false]
+        [false],
     );
     await query(
         'UPDATE user_info SET whales = $1',
-        [false]
+        [false],
     );
     LOGGER.log('Set collected and whales to false!');
 }

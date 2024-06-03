@@ -39,6 +39,7 @@
     "start": "node --env-file=.env --enable-source-maps ."
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^2.1.0",
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
     "@types/node": "^20.14.0",
