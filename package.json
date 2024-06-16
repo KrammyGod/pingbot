@@ -39,13 +39,13 @@
     "start": "node --env-file=.env --enable-source-maps ."
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^2.1.0",
+    "@stylistic/eslint-plugin": "^2.2.0",
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
     "@types/node": "^20.14.2",
     "@types/pg": "^8.11.6",
     "@types/pg-copy-streams": "^1.2.5",
-    "eslint": "^9.4.0",
+    "eslint": "^9.5.0",
     "rimraf": "^5.0.7",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",

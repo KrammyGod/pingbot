@@ -4,7 +4,7 @@
  */
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
-import { Pool, PoolClient, QueryResultRow } from 'pg';
+import { Pool, PoolClient, QueryResultRow, } from 'pg';
 
 // The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
