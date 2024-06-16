@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
-import { Pool, QueryResultRow } from 'pg';
+import { Pool, QueryResultRow, } from 'pg';
 
 const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
 // The shared file path between upload_waifus_txt.ts and download_waifus_txt.ts
