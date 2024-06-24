@@ -39,17 +39,17 @@
     "start": "node --env-file=.env --enable-source-maps ."
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^2.2.0",
+    "@stylistic/eslint-plugin": "^2.2.2",
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.14.2",
+    "@types/node": "^20.14.8",
     "@types/pg": "^8.11.6",
     "@types/pg-copy-streams": "^1.2.5",
     "eslint": "^9.5.0",
     "rimraf": "^5.0.7",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.0.0-alpha.24"
+    "typescript-eslint": "^8.0.0-alpha.30"
   },
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
