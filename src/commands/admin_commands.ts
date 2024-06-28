@@ -218,7 +218,7 @@ export const upload: MessageCommand = {
             });
         }
         const res = [];
-        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
         const flags = MessageFlags.SuppressEmbeds | MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         const all = await Promise.all(args.map(url => 
@@ -246,12 +246,14 @@ export const sauce: MessageCommand = {
 
     async execute(message, args) {
         if (args.length < 1) {
-            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+            config.lambda = !config.lambda;
+            const content = config.lambda ? 'Using lambda.' : 'Not using lambda.';
+            return message.channel.send({ content }).then(msg => {
                 setTimeout(() => message.delete().catch(() => { }), 200);
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
         const flags = MessageFlags.SuppressEmbeds | MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         let content = args.map((arg, i) => `${i + 1}. ${arg}`).join('\n') + '\n\n';
@@ -283,7 +285,7 @@ export const update: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
         const flags = MessageFlags.SuppressEmbeds | MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         const urls = args.splice(0, args.length / 2);
@@ -307,7 +309,7 @@ export const del: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
         await message.channel.sendTyping();
         // Remove CDN url to get the filename
         const res = await deleteFromCDN(args.map(a => a.replace(`${config.cdn}/images/`, '')));
