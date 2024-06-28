@@ -111,7 +111,7 @@ export async function getSauce(rawImageLink: string, retries: number = 2): Promi
         numres: '1',
         // pixiv, danbooru, gelbooru, twitter
         dbmask: (0x20 | 0x200 | 0x1000000 | 0x10000000000).toString(),
-        api_key: Buffer.from('NWM5Y2U4YmE5YWUxZDQyMzZjOWFmNWY2NTQ2MTUzZmJkZGM5YTYzYQ==', 'base64').toString(),
+        api_key: Buffer.from(config.saucenao, 'base64').toString(),
         url: rawImageLink,
     });
     console.log('(scraper/getSauce) fetching:', url);

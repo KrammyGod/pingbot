@@ -60,6 +60,10 @@ export default {
      * The channel ID of where to send approved submission requests
      */
     chars: process.env.NEW_CHAR_ID!,
+    /**
+     * The saucenao API key to use for sauce command in base64.
+     */
+    saucenao: process.env.SAUCENAO!,
 
     ////// Flags
     /**
