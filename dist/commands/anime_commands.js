@@ -29,10 +29,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.submit = exports.move = exports.swap = exports.users = exports.top = exports.stars = exports.dall = exports.whale = exports.multi = exports.roll = exports.high = exports.list_menu = exports.list = exports.profile_menu = exports.profile = exports.daily = exports.lb = exports.bal = exports.anime = exports.animes = exports.desc = exports.name = void 0;
 const fs_1 = __importDefault(require("fs"));
 const _config_1 = __importDefault(require("../classes/config.js"));
-const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const client_1 = require("../classes/client");
+const scraper_1 = require("../modules/scraper");
 const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
 exports.name = 'Animes/Gacha';
@@ -2395,7 +2395,7 @@ exports.submit = {
                     return url;
                 }
                 // Use our helper to get the image data.
-                const { images, source } = await (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url }));
+                const { images, source } = await (0, scraper_1.getRawImageLink)(url).catch(() => ({ images: [url], source: url }));
                 const { ext, blob } = await (0, cdn_1.getImage)(images[0]);
                 const formdata = new FormData();
                 formdata.append('images', blob, `tmp.${ext}`);

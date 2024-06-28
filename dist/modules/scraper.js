@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSauce = exports.getRawImageLink = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const pixiv_ts_1 = __importDefault(require("pixiv.ts"));
@@ -12,14 +13,14 @@ let pixiv;
 /**
  * Returns all images scraped from the given url.
  */
-async function scrape(source) {
+async function getRawImageLink(source) {
     const images = [];
     // Generate unique ID for logs
     const id = crypto_1.default.randomInt(100000);
     // This part is parsing pixiv images.
-    console.log(`${id}: Got ${source}`);
+    console.log(`(scraper/getRawImageLink ${id}) Got ${source}`);
     if (source.startsWith('https://www.pixiv.net/')) {
-        console.log(`${id}: I think it's a pixiv link. Trying pixiv...`);
+        console.log(`(scraper/getRawImageLink ${id}) I think it's a pixiv link. Trying pixiv...`);
         if (pixiv === undefined) {
             // Login to pixiv only when needed.
             pixiv = await pixiv_ts_1.default.refreshLogin(_config_1.default.pixiv).catch(() => {
@@ -57,11 +58,11 @@ async function scrape(source) {
                 images.push(new_url);
             }
         }
-        console.log(`${id}: Have ${JSON.stringify(images)} after pixiv.`);
+        console.log(`(scraper/getRawImageLink ${id}) Have ${JSON.stringify(images)} after pixiv.`);
     }
     // This part is parsing danbooru images.
     if (source.startsWith('https://danbooru.donmai.us/')) {
-        console.log(`${id}: I think it's a danbooru link. Trying danbooru...`);
+        console.log(`(scraper/getRawImageLink ${id}) I think it's a danbooru link. Trying danbooru...`);
         const $ = await fetch(source).then(res => res.text()).then(cheerio_1.load);
         const sectionTag = $('section').find('.image-container');
         // Backup in case there is no section/image source
@@ -71,28 +72,79 @@ async function scrape(source) {
         if (raw_image) {
             images.push(raw_image);
         }
-        console.log(`${id}: Have ${JSON.stringify(images)} after danbooru.`);
+        console.log(`(scraper/getRawImageLink ${id}) Have ${JSON.stringify(images)} after danbooru.`);
     }
     if (!images.length) {
-        console.log(`${id}: Trying twitter...`);
-        console.log(`${id}: GET ${_config_1.default.scraper}?url=${source}`);
+        console.log(`(scraper/getRawImageLink ${id}) Trying twitter...`);
+        console.log(`(scraper/getRawImageLink ${id}) GET ${_config_1.default.scraper}?url=${source}`);
         // Let a separate server handle the parsing of twitter images with playwright.
         const { imgs } = await fetch(`${_config_1.default.scraper}?url=${source}`)
             .then(res => {
-            console.log(`${id}: Scraper returned ${res.status}.`);
+            console.log(`(scraper/getRawImageLink ${id}) Scraper returned ${res.status}.`);
             return res.json();
         }, () => {
             return { imgs: [] };
         });
         images.push(...imgs);
-        console.log(`${id}: Response: ${JSON.stringify(images)}`);
+        console.log(`(scraper/getRawImageLink ${id}) Response: ${JSON.stringify(images)}`);
     }
     // No images could be found, tell caller to try uploading source
     if (!images.length) {
-        console.log(`${id}: Exhausted all known links. No images found.`);
+        console.log(`(scraper/getRawImageLink ${id}) Exhausted all known links. No images found.`);
         images.push(source);
     }
     return { images, source };
 }
-exports.default = scrape;
+exports.getRawImageLink = getRawImageLink;
+;
+async function getSauce(rawImageLink, retries = 4) {
+    // We keep retrying, and keep getting no short limit
+    // Likely we've hit long limit, stop and error
+    if (retries === 0) {
+        return {
+            error: true,
+            sauce: 'SauceNao long limit reached.',
+        };
+    }
+    const url = 'https://saucenao.com/search.php?' + new URLSearchParams({
+        output_type: '2',
+        numres: '1',
+        // pixiv, danbooru, gelbooru, twitter
+        dbmask: (0x20 | 0x200 | 0x1000000 | 0x10000000000).toString(),
+        api_key: Buffer.from('NWM5Y2U4YmE5YWUxZDQyMzZjOWFmNWY2NTQ2MTUzZmJkZGM5YTYzYQ==', 'base64').toString(),
+        url: rawImageLink,
+    });
+    console.log('(scraper/getSauce) fetching:', url);
+    return fetch(url).then(res => res.json()).then(async (res) => {
+        if (res.header.status > 0) {
+            return {
+                error: true,
+                sauce: res.header.message,
+            };
+        }
+        else if (res.header.status < 0) {
+            if (res.header.short_remaining) {
+                // If there exists the short_remaining key, we've failed the search, so error
+                return {
+                    error: true,
+                    sauce: res.header.message,
+                };
+            }
+            // Otherwise we've hit short limit, wait 30 seconds (short limit), and retry.
+            return new Promise(resolve => setTimeout(() => {
+                getSauce(rawImageLink, retries - 1).then(resolve);
+            }, 30000));
+        }
+        return {
+            error: false,
+            sauce: res.results[0].data.ext_urls[0],
+        };
+    }).catch((err) => {
+        return {
+            error: true,
+            sauce: err.toString(),
+        };
+    });
+}
+exports.getSauce = getSauce;
 //# sourceMappingURL=scraper.js.map
