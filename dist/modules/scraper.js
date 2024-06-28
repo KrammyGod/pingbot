@@ -8,6 +8,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const pixiv_ts_1 = __importDefault(require("pixiv.ts"));
 const cheerio_1 = require("cheerio");
+const client_lambda_1 = require("@aws-sdk/client-lambda");
 // Pixiv object for scraping pixiv images.
 let pixiv;
 /**
@@ -97,10 +98,18 @@ async function getRawImageLink(source) {
 }
 exports.getRawImageLink = getRawImageLink;
 ;
+const client = new client_lambda_1.LambdaClient();
 /**
  * Scrape saucenao.com API for best image source we can get.
  */
 async function getSauce(rawImageLink, retries = 2) {
+    // Using AWS lambda to scrape saucenao as they have rotating IPs, resulting in better rate limits.
+    const command = new client_lambda_1.InvokeCommand({
+        FunctionName: 'SauceNao-Scraper',
+        Payload: JSON.stringify({ url: rawImageLink }),
+    });
+    const res = await client.send(command).then(res => new TextDecoder().decode(res.Payload));
+    return JSON.parse(res);
     const url = 'https://saucenao.com/search.php?' + new URLSearchParams({
         output_type: '2',
         numres: '1',
