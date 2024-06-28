@@ -8,7 +8,7 @@ import { getRawImageLink, getSauce, } from '@modules/scraper';
 import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN, } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
-    MessageMentions, PermissionsBitField,
+    MessageFlags, MessageMentions, PermissionsBitField,
 } from 'discord.js';
 import type DTypes from 'discord.js';
 import type { MessageCommand, } from '@classes/client';
@@ -218,6 +218,8 @@ export const upload: MessageCommand = {
             });
         }
         const res = [];
+        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        const flags = MessageFlags.SuppressEmbeds | MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         const all = await Promise.all(args.map(url => 
             getRawImageLink(url).catch(() => ({ images: [url], source: url })),
@@ -233,7 +235,7 @@ export const upload: MessageCommand = {
             }
             res.push(...await uploadToCDN(formdata));
         }
-        await message.reply({ content: `${res.map((r, i) => `${i + 1}. <${r}>`).join('\n')}` });
+        await message.reply({ content: `${res.map((r, i) => `${i + 1}. ${r}`).join('\n')}`, flags });
     },
 };
 
@@ -249,16 +251,18 @@ export const sauce: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
+        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        const flags = MessageFlags.SuppressEmbeds | MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         let content = args.map((arg, i) => `${i + 1}. ${arg}`).join('\n') + '\n\n';
         for (const [i, arg] of args.entries()) {
             const response = await getSauce(arg);
             content += `${i + 1}. ${response.sauce}\n`;
             if (response.error) {
-                return message.reply({ content }).then(() => { });
+                return message.reply({ content, flags }).then(() => { });
             }
         }
-        await message.reply({ content });
+        await message.reply({ content, flags });
     },
 };
 
@@ -279,13 +283,15 @@ export const update: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
+        await message.edit({ flags: MessageFlags.SuppressEmbeds });
+        const flags = MessageFlags.SuppressEmbeds | MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         const urls = args.splice(0, args.length / 2);
         const res = await updateCDN(
             urls.map(a => a.replace(`${config.cdn}/images/`, '')),
             args, // Rest of the args are new sources
         );
-        await message.reply({ content: `API replied with: ${res}` });
+        await message.reply({ content: `API replied with: ${res}`, flags });
     },
 };
 
@@ -301,6 +307,7 @@ export const del: MessageCommand = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
+        await message.edit({ flags: MessageFlags.SuppressEmbeds });
         await message.channel.sendTyping();
         // Remove CDN url to get the filename
         const res = await deleteFromCDN(args.map(a => a.replace(`${config.cdn}/images/`, '')));
