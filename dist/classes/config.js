@@ -65,6 +65,11 @@ exports.default = {
      * The saucenao API key to use for sauce command in base64.
      */
     saucenao: process.env.SAUCENAO,
+    /**
+     * Whether to use lambda to scrape saucenao.
+     * Default set to true on start. Toggled with ${PREFIX}sauce command.
+     */
+    lambda: true,
     ////// Flags
     /**
      * Flag used to indicate in testing mode. Logs won't be sent to log channel.

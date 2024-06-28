@@ -233,7 +233,7 @@ exports.upload = {
             });
         }
         const res = [];
-        await message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds }), 200);
         const flags = discord_js_1.MessageFlags.SuppressEmbeds | discord_js_1.MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         const all = await Promise.all(args.map(url => (0, scraper_1.getRawImageLink)(url).catch(() => ({ images: [url], source: url }))));
@@ -257,12 +257,14 @@ exports.sauce = {
     desc: 'Uses saucenao to find the source of an image.',
     async execute(message, args) {
         if (args.length < 1) {
-            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+            _config_1.default.lambda = !_config_1.default.lambda;
+            const content = _config_1.default.lambda ? 'Using lambda.' : 'Not using lambda.';
+            return message.channel.send({ content }).then(msg => {
                 setTimeout(() => message.delete().catch(() => { }), 200);
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds }), 200);
         const flags = discord_js_1.MessageFlags.SuppressEmbeds | discord_js_1.MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         let content = args.map((arg, i) => `${i + 1}. ${arg}`).join('\n') + '\n\n';
@@ -293,7 +295,7 @@ exports.update = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds }), 200);
         const flags = discord_js_1.MessageFlags.SuppressEmbeds | discord_js_1.MessageFlags.SuppressNotifications;
         await message.channel.sendTyping();
         const urls = args.splice(0, args.length / 2);
@@ -312,7 +314,7 @@ exports.del = {
                 setTimeout(() => msg.delete(), 2000);
             });
         }
-        await message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds });
+        setTimeout(() => message.edit({ flags: discord_js_1.MessageFlags.SuppressEmbeds }), 200);
         await message.channel.sendTyping();
         // Remove CDN url to get the filename
         const res = await (0, cdn_1.deleteFromCDN)(args.map(a => a.replace(`${_config_1.default.cdn}/images/`, '')));
