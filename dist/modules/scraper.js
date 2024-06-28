@@ -97,15 +97,10 @@ async function getRawImageLink(source) {
 }
 exports.getRawImageLink = getRawImageLink;
 ;
-async function getSauce(rawImageLink, retries = 4) {
-    // We keep retrying, and keep getting no short limit
-    // Likely we've hit long limit, stop and error
-    if (retries === 0) {
-        return {
-            error: true,
-            sauce: 'SauceNao long limit reached.',
-        };
-    }
+/**
+ * Scrape saucenao.com API for best image source we can get.
+ */
+async function getSauce(rawImageLink, retries = 2) {
     const url = 'https://saucenao.com/search.php?' + new URLSearchParams({
         output_type: '2',
         numres: '1',
@@ -131,6 +126,14 @@ async function getSauce(rawImageLink, retries = 4) {
                 };
             }
             // Otherwise we've hit short limit, wait 30 seconds (short limit), and retry.
+            // We keep retrying, and keep getting no short limit
+            // Likely we've hit long limit, stop and error
+            if (retries === 0) {
+                return {
+                    error: true,
+                    sauce: res.header.message,
+                };
+            }
             return new Promise(resolve => setTimeout(() => {
                 getSauce(rawImageLink, retries - 1).then(resolve);
             }, 30000));
