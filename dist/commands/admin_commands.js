@@ -26,14 +26,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stop = exports.start = exports.del = exports.update = exports.upload = exports.metrics = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
+exports.stop = exports.start = exports.del = exports.update = exports.sauce = exports.upload = exports.metrics = exports.add = exports.resetdb = exports.purge = exports.desc = exports.name = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const reset_db_1 = __importDefault(require("../modules/reset_db"));
-const scraper_1 = __importDefault(require("../modules/scraper"));
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const Purge = __importStar(require("../modules/purge_utils"));
 const exceptions_1 = require("../classes/exceptions");
+const scraper_1 = require("../modules/scraper");
 const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
 exports.name = 'Admin Message Commands';
@@ -234,7 +234,7 @@ exports.upload = {
         }
         const res = [];
         await message.channel.sendTyping();
-        const all = await Promise.all(args.map(url => (0, scraper_1.default)(url).catch(() => ({ images: [url], source: url }))));
+        const all = await Promise.all(args.map(url => (0, scraper_1.getRawImageLink)(url).catch(() => ({ images: [url], source: url }))));
         if (all.length) {
             const formdata = new FormData();
             for (const obj of all) {
@@ -247,6 +247,29 @@ exports.upload = {
             res.push(...await (0, cdn_1.uploadToCDN)(formdata));
         }
         await message.reply({ content: `<${res.join('>\n<')}>` });
+    },
+};
+exports.sauce = {
+    name: 'sauce',
+    admin: true,
+    desc: 'Uses saucenao to find the source of an image.',
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        let content = args.join('\n') + '\n';
+        for (const arg of args) {
+            const response = await (0, scraper_1.getSauce)(arg);
+            content += `${response.sauce}\n`;
+            if (response.error) {
+                return message.reply({ content }).then(() => { });
+            }
+        }
+        await message.reply({ content });
     },
 };
 exports.update = {
