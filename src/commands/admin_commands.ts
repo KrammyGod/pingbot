@@ -1,10 +1,10 @@
 import config from '@config';
 import reset from '@modules/reset_db';
-import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
 import { PermissionError, } from '@classes/exceptions';
+import { getRawImageLink, getSauce, } from '@modules/scraper';
 import { deleteFromCDN, getCDNMetrics, getImage, updateCDN, uploadToCDN, } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType,
@@ -220,7 +220,7 @@ export const upload: MessageCommand = {
         const res = [];
         await message.channel.sendTyping();
         const all = await Promise.all(args.map(url => 
-            scrape(url).catch(() => ({ images: [url], source: url })),
+            getRawImageLink(url).catch(() => ({ images: [url], source: url })),
         ));
         if (all.length) {
             const formdata = new FormData();
@@ -234,6 +234,31 @@ export const upload: MessageCommand = {
             res.push(...await uploadToCDN(formdata));
         }
         await message.reply({ content: `<${res.join('>\n<')}>` });
+    },
+};
+
+export const sauce: MessageCommand = {
+    name: 'sauce',
+    admin: true,
+    desc: 'Uses saucenao to find the source of an image.',
+
+    async execute(message, args) {
+        if (args.length < 1) {
+            return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
+                setTimeout(() => message.delete().catch(() => { }), 200);
+                setTimeout(() => msg.delete(), 2000);
+            });
+        }
+        await message.channel.sendTyping();
+        let content = args.join('\n') + '\n';
+        for (const arg of args) {
+            const response = await getSauce(arg);
+            content += `${response.sauce}\n`;
+            if (response.error) {
+                return message.reply({ content }).then(() => { });
+            }
+        }
+        await message.reply({ content });
     },
 };
 

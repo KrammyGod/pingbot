@@ -1,9 +1,9 @@
 import fs from 'fs';
 import config from '@config';
-import scrape from '@modules/scraper';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import { CustomClient, } from '@classes/client';
+import { getRawImageLink, } from '@modules/scraper';
 import { getImage, uploadToCDN, } from '@modules/cdn';
 import {
     ActionRowBuilder, ButtonStyle,
@@ -2655,7 +2655,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                     return url;
                 }
                 // Use our helper to get the image data.
-                const { images, source } = await scrape(url).catch(() => ({ images: [url], source: url }));
+                const { images, source } = await getRawImageLink(url).catch(() => ({ images: [url], source: url }));
                 const { ext, blob } = await getImage(images[0]);
                 
                 const formdata = new FormData();
