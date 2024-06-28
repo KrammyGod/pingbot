@@ -233,7 +233,7 @@ export const upload: MessageCommand = {
             }
             res.push(...await uploadToCDN(formdata));
         }
-        await message.reply({ content: `<${res.join('>\n<')}>` });
+        await message.reply({ content: `${res.map((r, i) => `${i + 1}. <${r}>`).join('\n')}` });
     },
 };
 
@@ -250,10 +250,10 @@ export const sauce: MessageCommand = {
             });
         }
         await message.channel.sendTyping();
-        let content = args.join('\n') + '\n';
-        for (const arg of args) {
+        let content = args.map((arg, i) => `${i + 1}. ${arg}`).join('\n') + '\n\n';
+        for (const [i, arg] of args.entries()) {
             const response = await getSauce(arg);
-            content += `${response.sauce}\n`;
+            content += `${i + 1}. ${response.sauce}\n`;
             if (response.error) {
                 return message.reply({ content }).then(() => { });
             }
