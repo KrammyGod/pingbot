@@ -31,4 +31,18 @@ Prior to formal education on databases, the schema for the Postgres instance was
 
 This specific bot is hosted on a personal [Orange Pi 5](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html), and to lessen the burden on its processor, there is a [workflow](.github/workflows/push.yml) that transpiles the TypeScript files into JavaScript files, and then uploads them to a different branch, `dist`. The same workflow uses pm2, and the [configuration file](ecosystem.config.js) to automatically deploy the latest version.
 
+## package.json scripts
+
+- `collect:game` - Runs the autocollector for the specified game
+- `reset` - Runs the daily reset for daily rotating commands like `/daily`
+- `cookie` - Tests the hoyolab cookie to see if it is still valid
+- `download` - Downloads the waifus into files/waifus.txt
+- `upload` - Uploads files/waifus.txt into database
+- `dev` - Starts the bot in development mode, using nodemon
+- `lint` - Lints the source code
+- `lint:fix` - Runs eslint with fix option
+- `build` - Transpiles the source code
+- `deploy` - Transpiles the source code and registers slash commands
+- `start` - Transpiles the source code and starts the bot
+
 More details will be added as the project progresses when necessary.
