@@ -270,7 +270,6 @@ exports.sauce = {
         let content = args.map((arg, i) => `${i + 1}. ${arg}`).join('\n') + '\n\n';
         for (const [i, arg] of args.entries()) {
             const response = await (0, scraper_1.getSauce)(arg);
-            console.dir(response, { depth: null });
             // pixiv sauces have different link, prefer en/artworks/ format.
             content += `${i + 1}. ${response.sauce.replace('member_illust.php?mode=medium&illust_id=', 'en/artworks/')}\n`;
             if (response.error) {
