@@ -97,7 +97,6 @@ async function getRawImageLink(source) {
     return { images, source };
 }
 exports.getRawImageLink = getRawImageLink;
-;
 const client = new client_lambda_1.LambdaClient();
 /**
  * Scrape saucenao.com API for best image source we can get.

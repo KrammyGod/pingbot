@@ -91,7 +91,7 @@ class Cooldown {
 /**
  * A mapping of any ID to a cooldown.
  * This allows global cooldowns, per-user cooldowns, per-guild cooldowns, etc.
- * If has more use, can be included as a separate module.
+ * If it has more use, can be included as a separate module.
  */
 class CooldownMapping {
     /**

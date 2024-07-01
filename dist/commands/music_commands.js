@@ -29,9 +29,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.music = exports.desc = exports.name = void 0;
 const util_1 = __importDefault(require("util"));
 const play_dl_1 = __importDefault(require("play-dl"));
-const GuildVoice_1 = __importDefault(require("../classes/GuildVoice"));
+const GuildVoice_1 = __importStar(require("../classes/GuildVoice"));
 const Utils = __importStar(require("../modules/utils"));
-const GuildVoice_2 = require("../classes/GuildVoice");
 const client_1 = require("../classes/client");
 const voice_1 = require("@discordjs/voice");
 const discord_js_1 = require("discord.js");
@@ -117,7 +116,7 @@ async function nowPlaying(guildId) {
     const emptyBars = Math.round(barLength * percentageLeft);
     const bar = client.bot_emojis.barfull.repeat(barLength - emptyBars) +
         client.bot_emojis.barempty.repeat(emptyBars);
-    const embed = new discord_js_1.EmbedBuilder({
+    return new discord_js_1.EmbedBuilder({
         title: '🎶 Now Playing:',
         description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
             `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
@@ -130,7 +129,6 @@ async function nowPlaying(guildId) {
     }).setFooter({
         text: `Loop type: ${guildVoice.loop}`,
     }).setThumbnail(song.thumbnail);
-    return embed;
 }
 const playNextLock = new Map();
 function getPlayNextLock(guildId) {
@@ -353,31 +351,31 @@ const play = {
         let showThumbnail = null;
         // Now we search
         const validateResults = await play_dl_1.default.validate(link);
-        // Do token refresh in case of expiry for both spotify and youtube
+        // Do token refresh in case of expiry for both Spotify and YouTube
         if (play_dl_1.default.is_expired()) {
             await play_dl_1.default.refreshToken();
         }
         const isNsfw = Utils.channel_is_nsfw_safe(interaction.channel) &&
             Utils.channel_is_nsfw_safe(guildVoice.voiceChannel);
         if (validateResults === 'yt_playlist') {
-            if (!link.match(/(&|\?)index=[0-9]+/)) {
+            if (!link.match(/([&?])index=[0-9]+/)) {
                 const playlistInfo = await play_dl_1.default.playlist_info(link, { incomplete: true }).catch(() => undefined);
                 if (!playlistInfo)
                     return this.on_partial_error(interaction, { notFound: true });
                 showLink = playlistInfo.url;
                 showThumbnail = playlistInfo.thumbnail?.url ?? null;
                 for (const video of await playlistInfo.all_videos()) {
-                    const song = new GuildVoice_2.Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
+                    const song = new GuildVoice_1.Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
                     if (!this.validate_song(song, member))
                         continue;
                     songs.push(song);
                 }
             }
             else {
-                // Otherwise its still a single video
+                // Otherwise It's still a single video
                 const infoData = await play_dl_1.default.video_basic_info(link)
                     .then(res => res.video_details).catch(() => undefined);
-                const song = new GuildVoice_2.Song(infoData, guildVoice.getUniqueId(), isNsfw);
+                const song = new GuildVoice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
                 if (!this.validate_song(song, member)) {
                     return this.on_partial_error(interaction, song);
                 }
@@ -390,7 +388,7 @@ const play = {
             // Link is single video
             const infoData = await play_dl_1.default.video_basic_info(link)
                 .then(res => res.video_details).catch(() => undefined);
-            const song = new GuildVoice_2.Song(infoData, guildVoice.getUniqueId(), isNsfw);
+            const song = new GuildVoice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!this.validate_song(song, member)) {
                 return this.on_partial_error(interaction, song);
             }
@@ -406,7 +404,7 @@ const play = {
             showLink = spotify.url;
             showThumbnail = spotify.thumbnail?.url ?? null;
             if (spotify.type === 'track') {
-                const song = new GuildVoice_2.Song(spotify, guildVoice.getUniqueId(), isNsfw);
+                const song = new GuildVoice_1.Song(spotify, guildVoice.getUniqueId(), isNsfw);
                 if (!this.validate_song(song, member)) {
                     return this.on_partial_error(interaction, song);
                 }
@@ -416,7 +414,7 @@ const play = {
                 // Else its multiple songs
                 const all_tracks = await spotify.all_tracks();
                 for (const track of all_tracks) {
-                    const song = new GuildVoice_2.Song(track, guildVoice.getUniqueId(), isNsfw, spotify.url);
+                    const song = new GuildVoice_1.Song(track, guildVoice.getUniqueId(), isNsfw, spotify.url);
                     if (!this.validate_song(song, member)) {
                         return this.on_partial_error(interaction, song);
                     }
@@ -430,7 +428,7 @@ const play = {
                 limit: 1,
                 unblurNSFWThumbnails: isNsfw,
             }).then(res => res.at(0)).catch(() => undefined);
-            const song = new GuildVoice_2.Song(infoData, guildVoice.getUniqueId(), isNsfw);
+            const song = new GuildVoice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!this.validate_song(song, member)) {
                 return this.on_partial_error(interaction, song);
             }
@@ -844,7 +842,7 @@ const prev = {
         const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs.at(0)?.id);
         if (currIdx === 0)
             return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => { });
-        // Hack we do, pretend we just started playing so it doesn't skip the new song we added.
+        // Hack we do, pretend we just started playing, so it doesn't skip the new song we added.
         guildVoice.songs.unshift(guildVoice.fullQueue[currIdx - 1]);
         guildVoice.started = false;
         guildVoice.player.stop();

@@ -64,8 +64,7 @@ async function convert_channel(text) {
         return channel;
     // OK get with name
     text = text.toLowerCase();
-    const channel2 = await client.shard?.broadcastEval((client, text) => client.channels.cache.find(c => c.isDMBased() ? false : c.name.toLowerCase().includes(text))?.id, { context: text }).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
-    return channel2;
+    return await client.shard?.broadcastEval((client, text) => client.channels.cache.find(c => c.isDMBased() ? false : c.name.toLowerCase().includes(text))?.id, { context: text }).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
 }
 exports.convert_channel = convert_channel;
 function convert_emoji(text, emojiCb, ctx) {
@@ -140,6 +139,7 @@ function date_after_hours(hours) {
 exports.date_after_hours = date_after_hours;
 /**
  * If is a number, pass as miliseconds since epoch.
+ * @param date
  * @param fmt {@link DateFormats} @example
  * t: Hours:Minutes AM|PM
  * T: Hours:Minutes:Seconds AM|PM
@@ -155,7 +155,7 @@ function timestamp(date, fmt = 'f') {
 exports.timestamp = timestamp;
 /**
  * Only interactions can make ephemeral messages. Unfortunately Discord.JS
- * doesn't currently support deleting ephemeral messages for ephemeral followups and etc.
+ * doesn't currently support deleting ephemeral messages for ephemeral followups.
  * However, Discord has a route to support this, and that's what this function does.
  */
 function delete_ephemeral_message(i, msg) {

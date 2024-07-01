@@ -63,7 +63,7 @@ function reverse_command(cmd) {
                     // April Fools reverse command
                     commandData.name = commandData.name.split('').reverse().join('');
                     if ((0, client_1.isSlashCommand)(command)) {
-                        // @ts-expect-error We know its not a context command, but typescript doesn't know that.
+                        // @ts-expect-error We know it's not a context command, but typescript doesn't know that.
                         (commandData).description = commandData.description.split('').reverse().join('');
                         reverse_command(commandData);
                     }

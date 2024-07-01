@@ -1021,7 +1021,7 @@ async function get_char_as_embed(channel, authorID, target, idx_or_wid, high) {
     if (authorID === target.id) {
         await character.loadWaifu();
         const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
-        // Switching image is always available; not all images are always available however.
+        // Switching image is always available; not all images are always available, however.
         if (character.fc) {
             if (!is_nsfw) {
                 menu.addOptions({
@@ -1252,7 +1252,7 @@ async function delete_char(client, interaction, char) {
     }
     const refund = (char.fc ? 4 : 2) * res; // CONSTANT: Refund brons
     DB.addBrons(interaction.user.id, refund);
-    embed.setTitle(`Succesfully deleted ${char.getWFC(interaction.channel)}${char.name} ` +
+    embed.setTitle(`Successfully deleted ${char.getWFC(interaction.channel)}${char.name} ` +
         `${char.gender}! +${refund} ${client.bot_emojis.brons}`);
     return { embeds: [embed], ephemeral: true };
 }
@@ -1992,7 +1992,7 @@ exports.users = {
         .setRequired(true))
         .setDescription('Get a list of all users that have a certain character.'),
     desc: 'Find all the users that own that character. This will give the waifu number too so\n' +
-        'you can trade with them. The waifu name is case insensitive, and will prioritize\n' +
+        'you can trade with them. The waifu name is case-insensitive, and will prioritize\n' +
         'names equal to the given name.\n\n' +
         'This command also shows all the details about the waifu!\n\n' +
         'Usage: `/users waifu_name: <waifu_name>`\n\n' +
@@ -2125,7 +2125,7 @@ exports.move = {
     desc: 'Moves a character from one position to another in your list.\n\n' +
         '**Usage:** `/move char: <char> position: <position>`\n\n' +
         '__**Options:**__\n' +
-        '*char:* The character to move. Can be index or position. (Required)\n' +
+        '*char:* The character to move. Can be an index or position. (Required)\n' +
         '*position:* The position to move the character to. (Required)\n\n' +
         'Examples: `/move char: 1 position: 2`',
     async execute(interaction) {
