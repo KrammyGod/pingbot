@@ -102,7 +102,7 @@ export async function getRawImageLink(source: string) {
 interface GetSauceResponse {
     error: boolean;
     sauce: string;
-};
+}
 const client = new LambdaClient();
 /**
  * Scrape saucenao.com API for best image source we can get.

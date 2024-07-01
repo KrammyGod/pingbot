@@ -125,7 +125,7 @@ export const resetdb: MessageCommand = {
     desc: 'Performs emergency reset on whales and daily.',
 
     async execute(message) {
-        message.delete();
+        setTimeout(() => message.delete().catch(() => { }), 200);
         await message.channel.sendTyping();
         await reset();
         return message.channel.send({

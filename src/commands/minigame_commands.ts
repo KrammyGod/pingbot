@@ -9,8 +9,8 @@ export const name = 'Minigames';
 export const desc = 'This category is for commands that allow you to play fun games with your precious brons.';
 
 class Cooldown {
-    private rate: number;
-    private per: number;
+    private readonly rate: number;
+    private readonly per: number;
     private used: number;
     private last: number;
 
@@ -76,11 +76,11 @@ class Cooldown {
 /**
  * A mapping of any ID to a cooldown.
  * This allows global cooldowns, per-user cooldowns, per-guild cooldowns, etc.
- * If has more use, can be included as a separate module.
+ * If it has more use, can be included as a separate module.
  */
 class CooldownMapping {
-    private rate: number;
-    private per: number;
+    private readonly rate: number;
+    private readonly per: number;
     private cooldowns: Map<string, Cooldown>;
 
     /**

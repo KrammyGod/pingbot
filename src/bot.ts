@@ -154,7 +154,7 @@ client.on(Events.InteractionCreate, interaction => {
     const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
     // Unknown interaction
     if (!commandName) return;
-    let command: InteractionCommand | undefined = undefined;
+    let command: InteractionCommand | undefined;
     if (interaction.isCommand() && config.events) {
         // Special event reversed command; typescript doesn't like the hacky solutions
         command = client.commands.get(commandName.split('').reverse().join(''));
@@ -251,11 +251,11 @@ async function update_voice(oldState: DTypes.VoiceState, newState: DTypes.VoiceS
     else if (oldState.id === client.user.id) return;
     // Ensure they are moving out of a voice channel
     else if (oldState.channelId === newState.channelId || !oldState.channelId) return;
-    // Ensure its the same ID
+    // Ensure it's the same ID
     else if (guildVoice.voiceChannel.id !== oldState.channelId) return;
     // OK They left for sure.
     // Set new host if possible:
-    const mems = oldState.channel!.members.filter(m => m.user.bot === false);
+    const mems = oldState.channel!.members.filter(m => !m.user.bot);
     const newHost = mems.at(Math.floor(Math.random() * mems.size));
     // No more members in channel, so leave the vc.
     if (!newHost) {
@@ -282,12 +282,12 @@ async function set_new_host(oldState: DTypes.VoiceState, newState: DTypes.VoiceS
     else if (oldState.id === client.user.id) return;
     // Ensure they are moving
     else if (oldState.channelId === newState.channelId || !newState.channelId) return;
-    // Ensure its the same ID
+    // Ensure it's the same ID
     else if (guildVoice.voiceChannel.id !== newState.channelId) return;
     // OK They joined for sure.
     // Set new host if needed:
     if (guildVoice.host.id === client.user.id) {
-        const mems = newState.channel?.members.filter(m => m.user.bot === false) ?? new Collection();
+        const mems = newState.channel?.members.filter(m => !m.user.bot) ?? new Collection();
         const newHost = mems.at(Math.floor(Math.random() * mems.size));
         guildVoice.host = newHost ?? guildVoice.voiceChannel.guild.members.me!;
     }
@@ -433,7 +433,7 @@ client.on(Events.Error, handle_error);
 
 async function loading() {
     client.admin = await client.users.fetch(config.admin);
-    // Ensure log channel is setup before we start the database.
+    // Ensure log channel is set up before we start the database.
     client.log_channel = await client.channels.fetch(config.log, {
         allowUnknownGuild: true,
     }) as DTypes.TextBasedChannel;

@@ -1,21 +1,28 @@
 import util from 'util';
+import type * as PlayTypes from 'play-dl';
 import Play from 'play-dl';
-import GuildVoice from '@classes/GuildVoice';
+import GuildVoice, {LoopType, Song,} from '@classes/GuildVoice';
 import * as Utils from '@modules/utils';
-import { Song, LoopType, } from '@classes/GuildVoice';
-import { GuildVoices, CustomClient, } from '@classes/client';
-import { AudioPlayerStatus, } from '@discordjs/voice';
+import type {SlashCommand, SlashSubcommand, SlashSubcommandGroup,} from '@classes/client';
+import {CustomClient, GuildVoices,} from '@classes/client';
+import {AudioPlayerStatus,} from '@discordjs/voice';
+import type DTypes from 'discord.js';
 import {
-    ActionRowBuilder, ButtonBuilder, ButtonStyle,
-    Colors, ComponentType, EmbedBuilder, GuildMember,
-    ModalBuilder, PermissionsBitField, SlashCommandBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    Colors,
+    ComponentType,
+    EmbedBuilder,
+    GuildMember,
+    ModalBuilder,
+    PermissionsBitField,
+    SlashCommandBuilder,
     SlashCommandSubcommandBuilder,
     SlashCommandSubcommandGroupBuilder,
-    TextInputBuilder, TextInputStyle,
+    TextInputBuilder,
+    TextInputStyle,
 } from 'discord.js';
-import type DTypes from 'discord.js';
-import type * as PlayTypes from 'play-dl';
-import type { SlashCommand, SlashSubcommand, SlashSubcommandGroup, } from '@classes/client';
 
 export const name = 'Music';
 export const desc = 'This category contains commands for playing music!';
@@ -103,11 +110,11 @@ async function nowPlaying(guildId: string) {
     const bar =
         client.bot_emojis.barfull.repeat(barLength - emptyBars) +
         client.bot_emojis.barempty.repeat(emptyBars);
-    const embed = new EmbedBuilder({
+    return new EmbedBuilder({
         title: '🎶 Now Playing:',
         description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
-                     `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
-                     `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
+            `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
+            `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
         color: Colors.Blue,
     }).setAuthor({
         name: `Added by: @${song.user.username}`,
@@ -116,7 +123,6 @@ async function nowPlaying(guildId: string) {
     }).setFooter({
         text: `Loop type: ${guildVoice.loop}`,
     }).setThumbnail(song.thumbnail);
-    return embed;
 }
 
 const playNextLock = new Map<string, boolean>();
@@ -358,14 +364,14 @@ const play: SlashSubcommand & PlayPrivates = {
 
         // Now we search
         const validateResults = await Play.validate(link);
-        // Do token refresh in case of expiry for both spotify and youtube
+        // Do token refresh in case of expiry for both Spotify and YouTube
         if (Play.is_expired()) {
             await Play.refreshToken();
         }
         const isNsfw = Utils.channel_is_nsfw_safe(interaction.channel!) &&
             Utils.channel_is_nsfw_safe(guildVoice.voiceChannel);
         if (validateResults === 'yt_playlist') {
-            if (!link.match(/(&|\?)index=[0-9]+/)) {
+            if (!link.match(/([&?])index=[0-9]+/)) {
                 const playlistInfo = await Play.playlist_info(link, { incomplete: true }).catch(() => undefined);
                 if (!playlistInfo) return this.on_partial_error(interaction, { notFound: true });
                 showLink = playlistInfo.url!;
@@ -376,7 +382,7 @@ const play: SlashSubcommand & PlayPrivates = {
                     songs.push(song);
                 }
             } else {
-                // Otherwise its still a single video
+                // Otherwise It's still a single video
                 const infoData = await Play.video_basic_info(link)
                     .then(res => res.video_details).catch(() => undefined);
                 const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
@@ -859,7 +865,7 @@ const prev: SlashSubcommand = {
         const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs.at(0)?.id);
         if (currIdx === 0) return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => { });
 
-        // Hack we do, pretend we just started playing so it doesn't skip the new song we added.
+        // Hack we do, pretend we just started playing, so it doesn't skip the new song we added.
         guildVoice.songs.unshift(guildVoice.fullQueue[currIdx - 1]);
         guildVoice.started = false;
         guildVoice.player.stop();

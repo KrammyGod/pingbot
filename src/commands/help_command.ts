@@ -249,7 +249,7 @@ async function get_cog_page(client: CustomClient, authorID: string, page: number
             };
             // Don't ask me about the regex, it was way too long ago...
             // Shouldn't be that hard to figure out though...
-            const desc = await asyncReplace(command.desc, /{\/[\S]+(?: [\S]+)?}/g, replace_fn);
+            const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
             field += `> \`${client.prefix}${command.name}\` - ${desc}\n`;
         }
     }
@@ -331,7 +331,7 @@ async function get_cmd_page(client: CustomClient, authorID: string, command: Ful
     const replace_fn = (match: string) => Utils.get_rich_cmd(match.slice(2, -1));
     // Don't ask me about the regex, it was way too long ago...
     // Shouldn't be that hard to figure out though...
-    const desc = await asyncReplace(command.desc, /{\/[\S]+(?: [\S]+)?}/g, replace_fn);
+    const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
     embed.setDescription(desc);
 
     const row = new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(

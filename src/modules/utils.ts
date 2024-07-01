@@ -1,11 +1,16 @@
-import { CustomClient, } from '@classes/client';
-import { TimedOutError, } from '@classes/exceptions';
+import {CustomClient,} from '@classes/client';
+import {TimedOutError,} from '@classes/exceptions';
+import type DTypes from 'discord.js';
 import {
-    ActionRowBuilder, ApplicationCommandOptionType, Colors,
-    CommandInteraction, ComponentType, EmbedBuilder, Routes,
+    ActionRowBuilder,
+    ApplicationCommandOptionType,
+    Colors,
+    CommandInteraction,
+    ComponentType,
+    EmbedBuilder,
+    Routes,
     StringSelectMenuBuilder,
 } from 'discord.js';
-import type DTypes from 'discord.js';
 
 function strip(text: string, char: string) {
     return text.replaceAll(new RegExp(`^${char}+|${char}+$`, 'g'), '');
@@ -112,13 +117,12 @@ export async function convert_channel(text: string) {
 
     // OK get with name
     text = text.toLowerCase();
-    const channel2 = await client.shard?.broadcastEval(
+    return await client.shard?.broadcastEval(
         (client, text) => client.channels.cache.find(c =>
             c.isDMBased() ? false : c.name.toLowerCase().includes(text),
         )?.id,
-        { context: text },
+        {context: text},
     ).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
-    return channel2;
 }
 export function convert_emoji<T>(
     text: string,
@@ -221,6 +225,7 @@ export function date_after_hours(hours: number) {
 type DateFormats = 't' | 'T' | 'd' | 'D' | 'f' | 'F' | 'R';
 /**
  * If is a number, pass as miliseconds since epoch.
+ * @param date
  * @param fmt {@link DateFormats} @example
  * t: Hours:Minutes AM|PM
  * T: Hours:Minutes:Seconds AM|PM
@@ -236,7 +241,7 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
 
 /**
  * Only interactions can make ephemeral messages. Unfortunately Discord.JS
- * doesn't currently support deleting ephemeral messages for ephemeral followups and etc.
+ * doesn't currently support deleting ephemeral messages for ephemeral followups.
  * However, Discord has a route to support this, and that's what this function does.
  */
 export function delete_ephemeral_message(i: DTypes.RepliableInteraction, msg: DTypes.Message) {

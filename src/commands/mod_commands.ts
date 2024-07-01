@@ -1,16 +1,30 @@
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
-import { CachedSlashCommand, SlashCommand, } from '@classes/client';
-import { PermissionError, } from '@classes/exceptions';
-import {
-    ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
-    PermissionsBitField, ComponentType, SlashCommandBuilder, Colors,
-    escapeCodeBlock, codeBlock, escapeEscape, escapeInlineCode,
-    StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder,
-    RoleSelectMenuBuilder, TextInputBuilder, ModalBuilder, TextInputStyle,
-} from 'discord.js';
+import {CachedSlashCommand, SlashCommand,} from '@classes/client';
+import {PermissionError,} from '@classes/exceptions';
 import type DTypes from 'discord.js';
+import {
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ChannelSelectMenuBuilder,
+    codeBlock,
+    Colors,
+    ComponentType,
+    EmbedBuilder,
+    escapeCodeBlock,
+    escapeEscape,
+    escapeInlineCode,
+    ModalBuilder,
+    PermissionsBitField,
+    RoleSelectMenuBuilder,
+    SlashCommandBuilder,
+    StringSelectMenuBuilder,
+    StringSelectMenuOptionBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+} from 'discord.js';
 
 export const name = 'Moderation';
 export const desc = 'Helpful bunch of commands for moderators who want an easier time.';
@@ -426,12 +440,11 @@ const welcome_menu: GuildMenus = {
             }
             default:
                 throw new Error(`/guild: welcome_menu menuReact invalid action: ${menuType}`);
-        };
+        }
         return menu;
     },
     textInput(guild, menu, fields) {
-        const msg = fields.getTextInputValue('guild/welcome_menu/msg');
-        guild.welcome_msg = msg;
+        guild.welcome_msg = fields.getTextInputValue('guild/welcome_menu/msg');
         return menu;
     },
 };
