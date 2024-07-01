@@ -38,7 +38,7 @@ export function fromGenderTypes(gend: GenderTypes) {
 
 // Used to transform any image into a CDN link
 function transformImage(img: string) {
-    // Better fix in future; nimg can be undefined.
+    // Better fix in the future; nimg can be undefined.
     if (!img) return img;
     if (img.match(/^https?:\/\//)) {
         // Commons are not uploaded to CDN
@@ -1115,7 +1115,7 @@ export function isGuildEmpty(guild: GuildSettings) {
         guild.welcome_msg === null &&
         guild.welcome_roleid === null &&
         guild.welcome_channelid === null &&
-        guild.emoji_replacement === true;
+        guild.emoji_replacement;
 
 }
 // Will return an empty GuildSettings object if not found
@@ -1133,7 +1133,7 @@ export function setGuild(settings: GuildSettings) {
     let values: string = '$1';
     let colUpdates: string = 'gid = EXCLUDED.gid';
     // Use empty guild settings as keys to iterate
-    // The reason is because settings itself, may inherit from GuildSettings
+    // The reason is that settings itself, may inherit from GuildSettings,
     // so it might have extra keys that we don't want to add to the query.
     for (const key in EMPTY_GUILD_SETTINGS) {
         // We already added gid to the paramaters; it is required.

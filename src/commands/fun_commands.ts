@@ -150,7 +150,7 @@ export const getid: SlashCommand = {
                 .setRequired(true))
         .setDescription('Get the discord ID of a user'),
 
-    desc: 'Get the discord ID of a user so you can use it for all the anime commands!\n' +
+    desc: 'Get the discord ID of a user, so you can use it for all the anime commands!\n' +
           'You can search for partial matches too!\n\n' +
           'Usage: `/getid user: <username>`\n\n' +
           '__**Options**__\n' +
@@ -320,7 +320,7 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
     async getAccount(interaction, pageOrIdx) {
         const max_pages = await DB.fetchAutocollectLength(interaction.user.id);
         let account = undefined;
-        // If there exists an account and we're getting a page #
+        // If there exists an account, and we're getting a page #
         if (typeof pageOrIdx === 'number' && max_pages !== 0) {
             if (pageOrIdx < 1) pageOrIdx = 1;
             else if (pageOrIdx > max_pages) pageOrIdx = max_pages;
@@ -695,7 +695,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                 await interaction.deferUpdate();
                 const channel = await client.channels.fetch(pollInfo.cid) as TextChannel;
                 const { embeds, components } = await this.getPoll(interaction.message.id);
-                let message: DTypes.Message | undefined = undefined;
+                let message: DTypes.Message | undefined;
                 if (pollInfo.mid) {
                     // This means that we are editing the poll.
                     message = await channel.messages.fetch(pollInfo.mid).catch(() => undefined);

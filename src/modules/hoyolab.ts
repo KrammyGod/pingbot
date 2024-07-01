@@ -19,7 +19,7 @@ type GameAccountInfo = {
     region: string;             // eg. "os_usa"
     level: number;
     background_image: string;
-    is_public: boolean;         // Whether its currently displayed on profile
+    is_public: boolean;         // Whether it's currently displayed on profile
     data: GameStat[];
     region_name: string;        // eg. "America Server"
     url: string;                // brings to game profile
@@ -36,7 +36,7 @@ class HoyoAccountInfo {
 
     private infoString(game_id: number) {
         const gameInfo = this.list.find(g => g.game_id === game_id);
-        let game_name = '';
+        let game_name;
         switch (game_id) {
             case 1:
                 game_name = 'Honkai Impact 3rd';

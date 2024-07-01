@@ -6,7 +6,7 @@
 
 </div>
 
-A multi-purpose Discord Bot. Made with Discord.JS, TypeScript, and PostgreSQL. There are also other services for some of the bot's features, such as [Twitter Scraper](https://github.com/KrammyGod/twitter-scraper) or [AWS CDN Origin Server](https://github.com/KrammyGod/image-server) which are also hosted personally and used internally.
+A multipurpose Discord Bot. Made with Discord.JS, TypeScript, and PostgreSQL. There are other services for some of the bot's features, such as [Twitter Scraper](https://github.com/KrammyGod/twitter-scraper) or [AWS CDN Origin Server](https://github.com/KrammyGod/image-server) which are also hosted personally and used internally.
 
 [Invite me!](https://discord.com/api/oauth2/authorize?client_id=632641386772168714&permissions=1512670883152&scope=bot%20applications.commands)
 

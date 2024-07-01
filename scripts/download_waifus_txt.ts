@@ -106,12 +106,10 @@ if (require.main === module) {
         /* Used for imgur uploading purposes */
         // console.log([...waifus].sort((a, b) => {
         //     const ac = (a._img as string[]).filter(img => {
-        //         if (img.startsWith('https://i.imgur')) return true;
-        //         return false;
+        //         return img.startsWith('https://i.imgur');
         //     }).length;
         //     const bc = (b._img as string[]).filter(img => {
-        //         if (img.startsWith('https://i.imgur')) return true;
-        //         return false;
+        //         return img.startsWith('https://i.imgur');
         //     }).length;
         //     return bc - ac;
         // }).slice(0, 10).map(w => `${w.name} - ${w._img.length}`).join('\n'));
