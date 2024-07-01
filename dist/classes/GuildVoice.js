@@ -100,7 +100,7 @@ class GuildVoice {
             const host = members.get(this.host.id);
             if (!host) {
                 const newHost = members.at(Math.floor(Math.random() * members.size));
-                // No more members in channel, so get ready for me to be host.
+                // No more members in channel, so get ready for me to be hosted.
                 if (!newHost) {
                     this.host = me;
                     // If it hadn't started/finished, and then moved, then we can safely disconnect.
@@ -248,7 +248,7 @@ class GuildVoice {
         (0, voice_1.getVoiceConnection)(this.voiceChannel.guild.id)?.destroy();
         client_1.GuildVoices.delete(this.voiceChannel.guildId);
     }
-    // Give a unique id for the guild's songs so we dont
+    // Give a unique id for the guild's songs, so we don't
     // create massive ID numbers for songs in different guilds
     getUniqueId() { return this.IDCounter++; }
 }

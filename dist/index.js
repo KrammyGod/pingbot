@@ -147,7 +147,7 @@ async function sendCollectorResults(body) {
                     retEmoji = emoji;
                 }
             }
-            let val = '';
+            let val;
             if (acc.error) {
                 val = '> There was an error with your account.\n> Please contact the owner.';
             }

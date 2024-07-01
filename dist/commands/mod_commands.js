@@ -391,12 +391,10 @@ const welcome_menu = {
             default:
                 throw new Error(`/guild: welcome_menu menuReact invalid action: ${menuType}`);
         }
-        ;
         return menu;
     },
     textInput(guild, menu, fields) {
-        const msg = fields.getTextInputValue('guild/welcome_menu/msg');
-        guild.welcome_msg = msg;
+        guild.welcome_msg = fields.getTextInputValue('guild/welcome_menu/msg');
         return menu;
     },
 };

@@ -176,7 +176,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
     // Unknown interaction
     if (!commandName)
         return;
-    let command = undefined;
+    let command;
     if (interaction.isCommand() && _config_1.default.events) {
         // Special event reversed command; typescript doesn't like the hacky solutions
         command = client.commands.get(commandName.split('').reverse().join(''));
@@ -279,12 +279,12 @@ async function update_voice(oldState, newState) {
     // Ensure they are moving out of a voice channel
     else if (oldState.channelId === newState.channelId || !oldState.channelId)
         return;
-    // Ensure its the same ID
+    // Ensure it's the same ID
     else if (guildVoice.voiceChannel.id !== oldState.channelId)
         return;
     // OK They left for sure.
     // Set new host if possible:
-    const mems = oldState.channel.members.filter(m => m.user.bot === false);
+    const mems = oldState.channel.members.filter(m => !m.user.bot);
     const newHost = mems.at(Math.floor(Math.random() * mems.size));
     // No more members in channel, so leave the vc.
     if (!newHost) {
@@ -314,13 +314,13 @@ async function set_new_host(oldState, newState) {
     // Ensure they are moving
     else if (oldState.channelId === newState.channelId || !newState.channelId)
         return;
-    // Ensure its the same ID
+    // Ensure it's the same ID
     else if (guildVoice.voiceChannel.id !== newState.channelId)
         return;
     // OK They joined for sure.
     // Set new host if needed:
     if (guildVoice.host.id === client.user.id) {
-        const mems = newState.channel?.members.filter(m => m.user.bot === false) ?? new discord_js_1.Collection();
+        const mems = newState.channel?.members.filter(m => !m.user.bot) ?? new discord_js_1.Collection();
         const newHost = mems.at(Math.floor(Math.random() * mems.size));
         guildVoice.host = newHost ?? guildVoice.voiceChannel.guild.members.me;
     }
@@ -443,7 +443,7 @@ function handle_message_errors(message, commandName, err) {
 client.on(discord_js_1.Events.Error, handle_error);
 async function loading() {
     client.admin = await client.users.fetch(_config_1.default.admin);
-    // Ensure log channel is setup before we start the database.
+    // Ensure log channel is set up before we start the database.
     client.log_channel = await client.channels.fetch(_config_1.default.log, {
         allowUnknownGuild: true,
     });

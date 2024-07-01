@@ -141,7 +141,7 @@ exports.resetdb = {
     admin: true,
     desc: 'Performs emergency reset on whales and daily.',
     async execute(message) {
-        message.delete();
+        setTimeout(() => message.delete().catch(() => { }), 200);
         await message.channel.sendTyping();
         await (0, reset_db_1.default)();
         return message.channel.send({

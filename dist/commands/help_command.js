@@ -250,7 +250,7 @@ async function get_cog_page(client, authorID, page) {
             };
             // Don't ask me about the regex, it was way too long ago...
             // Shouldn't be that hard to figure out though...
-            const desc = await asyncReplace(command.desc, /{\/[\S]+(?: [\S]+)?}/g, replace_fn);
+            const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
             field += `> \`${client.prefix}${command.name}\` - ${desc}\n`;
         }
     }
@@ -319,7 +319,7 @@ async function get_cmd_page(client, authorID, command) {
     const replace_fn = (match) => Utils.get_rich_cmd(match.slice(2, -1));
     // Don't ask me about the regex, it was way too long ago...
     // Shouldn't be that hard to figure out though...
-    const desc = await asyncReplace(command.desc, /{\/[\S]+(?: [\S]+)?}/g, replace_fn);
+    const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
     embed.setDescription(desc);
     const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
         .setEmoji('📄')

@@ -35,7 +35,7 @@ class HoyoAccountInfo {
     }
     infoString(game_id) {
         const gameInfo = this.list.find(g => g.game_id === game_id);
-        let game_name = '';
+        let game_name;
         switch (game_id) {
             case 1:
                 game_name = 'Honkai Impact 3rd';

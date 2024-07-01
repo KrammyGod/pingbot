@@ -154,7 +154,7 @@ exports.getid = {
         .setDescription("The user's name to get the ID of")
         .setRequired(true))
         .setDescription('Get the discord ID of a user'),
-    desc: 'Get the discord ID of a user so you can use it for all the anime commands!\n' +
+    desc: 'Get the discord ID of a user, so you can use it for all the anime commands!\n' +
         'You can search for partial matches too!\n\n' +
         'Usage: `/getid user: <username>`\n\n' +
         '__**Options**__\n' +
@@ -299,7 +299,7 @@ exports.hoyolab = {
     async getAccount(interaction, pageOrIdx) {
         const max_pages = await DB.fetchAutocollectLength(interaction.user.id);
         let account = undefined;
-        // If there exists an account and we're getting a page #
+        // If there exists an account, and we're getting a page #
         if (typeof pageOrIdx === 'number' && max_pages !== 0) {
             if (pageOrIdx < 1)
                 pageOrIdx = 1;
@@ -651,7 +651,7 @@ exports.poll = {
                 await interaction.deferUpdate();
                 const channel = await client.channels.fetch(pollInfo.cid);
                 const { embeds, components } = await this.getPoll(interaction.message.id);
-                let message = undefined;
+                let message;
                 if (pollInfo.mid) {
                     // This means that we are editing the poll.
                     message = await channel.messages.fetch(pollInfo.mid).catch(() => undefined);
