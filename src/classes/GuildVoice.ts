@@ -143,7 +143,7 @@ export default class GuildVoice {
         this.player.on('error', async err => {
             await this.textChannel.send({
                 content:
-                    'Something bad happended while I was playing...\n' +
+                    'Something bad happened while I was playing...\n' +
                     'Sorry! I will continue to play the next song.',
             });
             throw err;
@@ -162,7 +162,7 @@ export default class GuildVoice {
             const host = members.get(this.host.id);
             if (!host) {
                 const newHost = members.at(Math.floor(Math.random() * members.size));
-                // No more members in channel, so get ready for me to be hosted.
+                // No more members in channel, so get ready for me to be host.
                 if (!newHost) {
                     this.host = me;
                     // If it hadn't started/finished, and then moved, then we can safely disconnect.
@@ -190,7 +190,7 @@ export default class GuildVoice {
                     entersState(connection, VoiceConnectionStatus.Signalling, 5000),
                     entersState(connection, VoiceConnectionStatus.Connecting, 5000),
                 ]);
-                // Seems to be reconecting to a new channel - ignore disconnect.
+                // Seems to be reconnecting to a new channel - ignore disconnect.
             } catch (err) {
                 // Seems to be a real disconnect which SHOULDN'T be recovered from
                 this.destroy();

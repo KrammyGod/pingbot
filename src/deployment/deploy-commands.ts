@@ -38,9 +38,9 @@ function reverse_command(cmd: { options?: APIApplicationCommandOption[] }) {
     const rest = new REST({ version: '10' }).setToken(token);
 
     for (const file of commandFiles) {
-        const fcommands = await import(file) as CommandFile;
+        const commandFile = await import(file) as CommandFile;
         // Do not deploy message commands.
-        Object.values(fcommands).forEach(command => {
+        Object.values(commandFile).forEach(command => {
             if (isInteractionCommand(command)) {
                 const commandData = command.data.toJSON();
                 if (config.events) {

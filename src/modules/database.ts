@@ -1136,7 +1136,7 @@ export function setGuild(settings: GuildSettings) {
     // The reason is that settings itself, may inherit from GuildSettings,
     // so it might have extra keys that we don't want to add to the query.
     for (const key in EMPTY_GUILD_SETTINGS) {
-        // We already added gid to the paramaters; it is required.
+        // We already added gid to the parameters; it is required.
         if (key === 'gid') continue;
         const setting: keyof GuildSettings = key as keyof GuildSettings;
         params.push(settings[setting]);

@@ -595,7 +595,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                 desc += `**This poll expires on ${Utils.timestamp(new Date(pollInfo!.expires))}**\n\n`;
             }
         }
-        const btns = [];
+        const buttons = [];
         for (const [i, choice] of pollInfo!.choices.entries()) {
             desc += `**${i + 1}.** ${choice.name}\n`;
             for (const user of choice.users) {
@@ -610,15 +610,15 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             if (choice.name.length > 80) {
                 label = `Choice ${i + 1}`;
             }
-            btns.push(new ButtonBuilder({
+            buttons.push(new ButtonBuilder({
                 label,
                 customId: `poll/0/${i}`,
                 style: ButtonStyle.Primary,
             }));
         }
         const components = [];
-        while (btns.length > 0) {
-            components.push(new ActionRowBuilder<DTypes.ButtonBuilder>({ components: btns.splice(0, 5) }));
+        while (buttons.length > 0) {
+            components.push(new ActionRowBuilder<DTypes.ButtonBuilder>({ components: buttons.splice(0, 5) }));
         }
         const embed = new EmbedBuilder({
             title: pollInfo!.title,

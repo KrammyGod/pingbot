@@ -13,12 +13,12 @@ export default async function load(client: CustomClient) {
     const commandFiles = glob.sync(path.resolve(__dirname, '../commands/*.js'));
 
     for (const file of commandFiles) {
-        const fcommands = await import(file) as CommandFile;
-        fcommands.commands = [];
-        fcommands.amt = 0;
-        Object.values(fcommands).forEach(command => {
+        const commandFile = await import(file) as CommandFile;
+        commandFile.commands = [];
+        commandFile.amt = 0;
+        Object.values(commandFile).forEach(command => {
             if (isSlashCommand(command) || (isMessageCommand(command) && !command.admin)) {
-                fcommands.commands.push(command);
+                commandFile.commands.push(command);
             }
             if (isInteractionCommand(command)) {
                 client.commands.set(command.data.name, command);
@@ -26,24 +26,24 @@ export default async function load(client: CustomClient) {
                 command.data.toJSON().options?.forEach(option => {
                     if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
                         // Subcommand groups must only have subcommands as options
-                        fcommands.amt += option.options!.length;
+                        commandFile.amt += option.options!.length;
                         has_subcommands = true;
                     } else if (option.type === ApplicationCommandOptionType.Subcommand) {
-                        ++fcommands.amt;
+                        ++commandFile.amt;
                         has_subcommands = true;
                     }
                 });
-                if (!has_subcommands) ++fcommands.amt;
+                if (!has_subcommands) ++commandFile.amt;
             } else if (isMessageCommand(command)) {
                 if (command.admin) {
                     client.admin_commands.set(`${client.prefix}${command.name}`, command);
                 } else {
                     client.message_commands.set(`${client.prefix}${command.name}`, command);
                 }
-                ++fcommands.amt;
+                ++commandFile.amt;
             }
         });
-        if (fcommands.commands.length) client.cogs.push(fcommands);
+        if (commandFile.commands.length) client.cogs.push(commandFile);
     }
     client.cogs.sort((a, b) => {
         if (a.amt === b.amt) {
