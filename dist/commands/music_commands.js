@@ -846,7 +846,7 @@ const prev = {
         guildVoice.songs.unshift(guildVoice.fullQueue[currIdx - 1]);
         guildVoice.started = false;
         guildVoice.player.stop();
-        await interaction.editReply({ content: '✅ Successfully rewinded to previous song.' });
+        await interaction.editReply({ content: '✅ Successfully rewound to previous song.' });
     },
 };
 const skip = {

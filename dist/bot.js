@@ -284,8 +284,8 @@ async function update_voice(oldState, newState) {
         return;
     // OK They left for sure.
     // Set new host if possible:
-    const mems = oldState.channel.members.filter(m => !m.user.bot);
-    const newHost = mems.at(Math.floor(Math.random() * mems.size));
+    const members = oldState.channel.members.filter(m => !m.user.bot);
+    const newHost = members.at(Math.floor(Math.random() * members.size));
     // No more members in channel, so leave the vc.
     if (!newHost) {
         // Set to myself as temporary host.
@@ -320,8 +320,8 @@ async function set_new_host(oldState, newState) {
     // OK They joined for sure.
     // Set new host if needed:
     if (guildVoice.host.id === client.user.id) {
-        const mems = newState.channel?.members.filter(m => !m.user.bot) ?? new discord_js_1.Collection();
-        const newHost = mems.at(Math.floor(Math.random() * mems.size));
+        const members = newState.channel?.members.filter(m => !m.user.bot) ?? new discord_js_1.Collection();
+        const newHost = members.at(Math.floor(Math.random() * members.size));
         guildVoice.host = newHost ?? guildVoice.voiceChannel.guild.members.me;
     }
 }
@@ -377,7 +377,7 @@ function handle_error(err, opts = {}) {
         if (nameCommand)
             error_str += `**Error in ${nameCommand}!**\n`;
         else
-            error_str += '**Error occured in bot!**\n';
+            error_str += '**Error occurred in bot!**\n';
         // From an interaction, lets also include that information
         if (interaction) {
             error_str += `__Invoked by:__ *@${interaction.user.tag} (${interaction.user.id})*\n`;
@@ -392,7 +392,7 @@ function handle_error(err, opts = {}) {
             }
         }
         else if (message) {
-            // Should be mutally exclusive, so if message is provided, interaction should be null
+            // Should be mutually exclusive, so if message is provided, interaction should be null
             error_str += `__Invoked by:__ *@${message.author.tag} (${message.author.id})*\n`;
             if (message.channel.isDMBased()) {
                 error_str += `__In:__ ${message.channel.recipient?.tag ?? 'DMs'} (${message.channel.id})\n`;
@@ -428,12 +428,12 @@ function handle_interaction_errors(interaction, commandName, err) {
     if (err.ignoreSend)
         return;
     // Reply to user with error
-    const ctnt = 'Apologies, an unexpected error occurred with that command. ' +
+    const content = 'Apologies, an unexpected error occurred with that command. ' +
         'Please send a message to the support server or try again later.';
-    interaction.reply({ content: ctnt, ephemeral: true })
+    interaction.reply({ content: content, ephemeral: true })
         // If the interaction has already been replied, still need to tell user got error
         .catch(() => interaction.followUp({
-        content: ctnt,
+        content: content,
         ephemeral: true,
     }).catch(() => { })); // If interaction webhook is invalid.
 }
@@ -489,12 +489,12 @@ function cleanup() {
     if (cleanedUp)
         return;
     cleanedUp = true;
-    const ctnt = '💨 My apologies, it appears my instruments are out of tune. ' +
+    const content = '💨 My apologies, it appears my instruments are out of tune. ' +
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
     const promises = [DB.end(), client.destroy()];
     for (const guildVoice of client_1.GuildVoices.values()) {
-        promises.push(guildVoice.textChannel.send({ content: ctnt }).then(() => { }, () => { }));
+        promises.push(guildVoice.textChannel.send({ content }).then(() => { }, () => { }));
         guildVoice.destroy();
     }
     Promise.all(promises).then(() => {

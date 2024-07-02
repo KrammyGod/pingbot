@@ -37,12 +37,12 @@ async function load(client) {
     client.message_commands = new Map();
     const commandFiles = glob_1.default.sync(path_1.default.resolve(__dirname, '../commands/*.js'));
     for (const file of commandFiles) {
-        const fcommands = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
-        fcommands.commands = [];
-        fcommands.amt = 0;
-        Object.values(fcommands).forEach(command => {
+        const commandFile = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
+        commandFile.commands = [];
+        commandFile.amt = 0;
+        Object.values(commandFile).forEach(command => {
             if ((0, client_1.isSlashCommand)(command) || ((0, client_1.isMessageCommand)(command) && !command.admin)) {
-                fcommands.commands.push(command);
+                commandFile.commands.push(command);
             }
             if ((0, client_1.isInteractionCommand)(command)) {
                 client.commands.set(command.data.name, command);
@@ -50,16 +50,16 @@ async function load(client) {
                 command.data.toJSON().options?.forEach(option => {
                     if (option.type === discord_js_1.ApplicationCommandOptionType.SubcommandGroup) {
                         // Subcommand groups must only have subcommands as options
-                        fcommands.amt += option.options.length;
+                        commandFile.amt += option.options.length;
                         has_subcommands = true;
                     }
                     else if (option.type === discord_js_1.ApplicationCommandOptionType.Subcommand) {
-                        ++fcommands.amt;
+                        ++commandFile.amt;
                         has_subcommands = true;
                     }
                 });
                 if (!has_subcommands)
-                    ++fcommands.amt;
+                    ++commandFile.amt;
             }
             else if ((0, client_1.isMessageCommand)(command)) {
                 if (command.admin) {
@@ -68,11 +68,11 @@ async function load(client) {
                 else {
                     client.message_commands.set(`${client.prefix}${command.name}`, command);
                 }
-                ++fcommands.amt;
+                ++commandFile.amt;
             }
         });
-        if (fcommands.commands.length)
-            client.cogs.push(fcommands);
+        if (commandFile.commands.length)
+            client.cogs.push(commandFile);
     }
     client.cogs.sort((a, b) => {
         if (a.amt === b.amt) {

@@ -543,7 +543,7 @@ exports.poll = {
                 desc += `**This poll expires on ${Utils.timestamp(new Date(pollInfo.expires))}**\n\n`;
             }
         }
-        const btns = [];
+        const buttons = [];
         for (const [i, choice] of pollInfo.choices.entries()) {
             desc += `**${i + 1}.** ${choice.name}\n`;
             for (const user of choice.users) {
@@ -559,15 +559,15 @@ exports.poll = {
             if (choice.name.length > 80) {
                 label = `Choice ${i + 1}`;
             }
-            btns.push(new discord_js_1.ButtonBuilder({
+            buttons.push(new discord_js_1.ButtonBuilder({
                 label,
                 customId: `poll/0/${i}`,
                 style: discord_js_1.ButtonStyle.Primary,
             }));
         }
         const components = [];
-        while (btns.length > 0) {
-            components.push(new discord_js_1.ActionRowBuilder({ components: btns.splice(0, 5) }));
+        while (buttons.length > 0) {
+            components.push(new discord_js_1.ActionRowBuilder({ components: buttons.splice(0, 5) }));
         }
         const embed = new discord_js_1.EmbedBuilder({
             title: pollInfo.title,
