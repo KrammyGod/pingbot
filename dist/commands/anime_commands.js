@@ -791,7 +791,9 @@ exports.profile = {
         if (user.id === me) {
             // Rig for self
             const nsfwSafe = Utils.channel_is_nsfw_safe(interaction.channel);
-            const link = nsfwSafe ? 'https://i.imgur.com/uH28ns7.jpg' : 'https://i.imgur.com/AaXkHIJ.jpg';
+            const link = nsfwSafe ?
+                'https://d1irvsiobt1r8d.cloudfront.net/images/bLwQU3.jpg' :
+                'https://d1irvsiobt1r8d.cloudfront.net/images/Rywo6C.jpg';
             const field = `> **${nsfwSafe ? '🔞' : '⭐'} Kamisato Ayaka ♀️` +
                 ' (Lvl ∞ 🔥)**\n' +
                 '> __From:__ *Genshin Impact*\n' +
@@ -1523,7 +1525,7 @@ provided that the character has enough images.
 > Starting from level 5, you unlock the lewd mode toggle, which will automatically unlock \
 lewd images if available.
 > 
-> Lewd images are also locked propotionally to your level, where level 5 corresponds to 1 image.
+> Lewd images are also locked proportional to your level, where level 5 corresponds to 1 image.
 > 
 > If the character has enough images, and you reach the level threshold, there will be a \
 message displayed when you roll the character.`;
@@ -1770,7 +1772,7 @@ exports.dall = {
             return Utils.delete_ephemeral_message(interaction, message);
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
-        embed.setDescription(`Succesfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
+        embed.setDescription(`Successfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
         await interaction.editReply({ embeds: [embed] });
     },
 };
@@ -2388,9 +2390,9 @@ exports.submit = {
         }
         else if (action === 'upload') {
             await interaction.update({ components: [] });
-            // Upload images asynchonously
+            // Upload images asynchronously
             const imgs = await Promise.all([...img, ...nimg].map(async (url) => {
-                // Do not reupload CDN images.
+                // Do not re-upload CDN images.
                 if (url.startsWith(_config_1.default.cdn)) {
                     return url;
                 }
@@ -2471,11 +2473,11 @@ exports.submit = {
             interaction.deleteReply();
         else
             interaction.followUp({ content: 'Received!', ephemeral: true });
-        const ctnt = waifu ?
+        const content = waifu ?
             'A wild **character update** has appeared!' :
             'A wild **new submission** has appeared!';
         const msg = await submission_log.send({
-            content: ctnt,
+            content: content,
             embeds: [embed],
             components: [this.secretButtons],
         });

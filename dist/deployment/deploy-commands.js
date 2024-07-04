@@ -54,9 +54,9 @@ function reverse_command(cmd) {
     const commandFiles = glob_1.default.sync(path_1.default.resolve(__dirname, '../commands/*.js'));
     const rest = new rest_1.REST({ version: '10' }).setToken(token);
     for (const file of commandFiles) {
-        const fcommands = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
+        const commandFile = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
         // Do not deploy message commands.
-        Object.values(fcommands).forEach(command => {
+        Object.values(commandFile).forEach(command => {
             if ((0, client_1.isInteractionCommand)(command)) {
                 const commandData = command.data.toJSON();
                 if (_config_1.default.events) {

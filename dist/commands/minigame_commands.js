@@ -135,7 +135,7 @@ __Prizes:__
 
 For the +5 brons prize, for example, if the number was 5, guessing 4 or 6 would award 5 brons.
 
-Protip: You have higher chances of winning guessing middle numbers.`;
+Pro tip: You have higher chances of winning guessing middle numbers.`;
 const guess_number = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
         .setName('number')
@@ -272,7 +272,7 @@ const flip_heads = {
         '__**Options**__\n' +
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip heads bet: 100`',
-    // Unneded function; defined for typing
+    // Unneeded function; defined for typing
     async execute() { },
 };
 const flip_tails = {
@@ -290,7 +290,7 @@ const flip_tails = {
         '__**Options**__\n' +
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip tails bet: 100`',
-    // Unneded function; defined for typing
+    // Unneeded function; defined for typing
     async execute() { },
 };
 exports.flip = {
