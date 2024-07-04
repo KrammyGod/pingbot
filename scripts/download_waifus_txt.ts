@@ -6,7 +6,6 @@ const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
 // The shared file path between upload_waifus_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
 const imgReplacer = (i: string) => {
-    if (i.startsWith('https://i.imgur')) return i;
     // Just to make it look prettier, include full link
     // Change this to change output
     return `${CDN_URL}/images/${i}`;
@@ -102,19 +101,6 @@ function center(str: string, size: number) {
 if (require.main === module) {
     (async () => {
         const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);
-
-        /* Used for imgur uploading purposes */
-        // console.log([...waifus].sort((a, b) => {
-        //     const ac = (a._img as string[]).filter(img => {
-        //         return img.startsWith('https://i.imgur');
-        //     }).length;
-        //     const bc = (b._img as string[]).filter(img => {
-        //         return img.startsWith('https://i.imgur');
-        //     }).length;
-        //     return bc - ac;
-        // }).slice(0, 10).map(w => `${w.name} - ${w._img.length}`).join('\n'));
-        // return pool.end();
-
         let loadedWaifus: Waifu[];
         try {
             loadedWaifus = loadFromFile();
