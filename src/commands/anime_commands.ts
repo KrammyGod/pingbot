@@ -852,7 +852,9 @@ export const profile: SlashCommand = {
         if (user.id === me) {
             // Rig for self
             const nsfwSafe = Utils.channel_is_nsfw_safe(interaction.channel!);
-            const link = nsfwSafe ? 'https://i.imgur.com/uH28ns7.jpg' : 'https://i.imgur.com/AaXkHIJ.jpg';
+            const link = nsfwSafe ?
+                'https://d1irvsiobt1r8d.cloudfront.net/images/bLwQU3.jpg' :
+                'https://d1irvsiobt1r8d.cloudfront.net/images/Rywo6C.jpg';
             const field = `> **${nsfwSafe ? '🔞' : '⭐'} Kamisato Ayaka ♀️` +
                 ' (Lvl ∞ 🔥)**\n' +
                 '> __From:__ *Genshin Impact*\n' +
