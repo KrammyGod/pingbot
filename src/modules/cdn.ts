@@ -1,7 +1,7 @@
 import config from '@config';
 import path from 'path';
 const headers = new Headers();
-headers.append('Authorization', `Bearer ${Buffer.from(config.secret ?? '').toString('base64')}`);
+headers.append('Authorization', `Bearer ${config.secret}`);
 
 type Metrics = {
     metrics: {
