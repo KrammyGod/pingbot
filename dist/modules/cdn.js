@@ -7,7 +7,7 @@ exports.getCDNId = exports.getImage = exports.deleteFromCDN = exports.updateCDN 
 const _config_1 = __importDefault(require("../classes/config.js"));
 const path_1 = __importDefault(require("path"));
 const headers = new Headers();
-headers.append('Authorization', `Bearer ${Buffer.from(_config_1.default.secret ?? '').toString('base64')}`);
+headers.append('Authorization', `Bearer ${_config_1.default.secret}`);
 async function getCDNMetrics() {
     const res = await fetch(`${_config_1.default.origin}/api/metrics`, {
         method: 'GET',
