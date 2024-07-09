@@ -63,6 +63,11 @@ class Waifu {
             this.nimg.join() === other.nimg.join();
     }
 }
+interface CompletedSeriesDetails {
+    uid: string;
+    origin: string;
+    count: number;
+}
 
 const pool = new Pool({
     host: process.env.PRODHOST, // Not included in .env.example, since for personal use only.
@@ -103,7 +108,7 @@ function loadFromFile() {
 }
 
 function findDiff(old: Waifu, updated: Waifu) {
-    let diff = `\x1b[96mID: ${old.iid}\x1b[0m\n`;
+    let diff = `\x1b[96mID: ${old.iid}\nWID: ${old.wid}\x1b[0m\n`;
     if (old.name !== updated.name) {
         diff += `\x1b[96mName:\x1b[0m \x1b[31m${old.name}\x1b[0m -> \x1b[92m${updated.name}\x1b[0m\n`;
     } else {
@@ -128,6 +133,12 @@ function findDiff(old: Waifu, updated: Waifu) {
 
 function imgDiff(rows: QueryResultRow[], img_type: string) {
     return `\x1b[96m${rows.map(row => row.uid).join(', ')} ${img_type}.\x1b[0m\n`;
+}
+
+function completedSeriesDiff(origins: CompletedSeriesDetails[]) {
+    return `\x1b[96m${origins.map(row => {
+        return `${row.uid}/${row.origin}: ${row.count + 1} -> ${row.count}`;
+    }).join('\n')}\x1b[0m\n`;
 }
 
 async function upload() {
@@ -158,6 +169,30 @@ async function upload() {
             updated.name, updated.gender, updated.origin,
             updated.img, updated.nimg, old.iid,
         ]);
+
+        // Changing origin name, update completed_series
+        if (old.origin !== updated.origin) {
+            // We only decrement the count of the old origin
+            // This means the user can collect the origin bonuses for the new origin
+            // for the same character, again. This is intentional.
+            const res = await query(
+                client,
+                'SELECT uid FROM user_chars WHERE wid = $1',
+                [old.wid],
+            );
+            const origins = await query<CompletedSeriesDetails>(
+                client,
+                `UPDATE completed_series
+                 SET count = GREATEST(count - 1, 0)
+                 WHERE uid = ANY($1) AND origin = $2
+                 RETURNING *`,
+                [res.map(row => row.uid), old.origin],
+            );
+            if (origins.length) {
+                console.log(completedSeriesDiff(origins));
+            }
+        }
+
         // Deleting imgs
         if (old.img.length > updated.img.length) {
             const res = await query(
