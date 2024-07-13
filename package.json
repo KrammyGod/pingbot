@@ -59,11 +59,10 @@
     "run-script-os": "^1.1.6",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.0.0-alpha.36"
+    "typescript-eslint": "^8.0.0-alpha.41"
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.614.0",
-    "@discordjs/opus": "^0.9.0",
     "@discordjs/voice": "^0.17.0",
     "cheerio": "^1.0.0-rc.12",
     "chrono-node": "^2.7.6",

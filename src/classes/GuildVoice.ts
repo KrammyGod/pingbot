@@ -18,7 +18,7 @@ export const enum LoopType {
 }
 
 // Because Play-DL does not export this type
-declare class PlayYoutubeThumbnail {
+interface PlayYoutubeThumbnail {
     url: string;
     width: number;
     height: number;

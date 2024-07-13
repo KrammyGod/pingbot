@@ -3,7 +3,6 @@ import type { SpotifyAlbum, SpotifyPlaylist, SpotifyTrack } from 'play-dl';
 import Play from 'play-dl';
 import GuildVoice, { GuildVoices, LoopType, Song } from '@classes/GuildVoice';
 import * as Utils from '@modules/utils';
-import type { SlashCommand, SlashSubcommand, SlashSubcommandGroup } from '@classes/command_types';
 import { AudioPlayerStatus } from '@discordjs/voice';
 import {
     ActionRowBuilder,
@@ -26,6 +25,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
+import type { SlashCommand, SlashSubcommand, SlashSubcommandGroup } from '@typings/commands';
 
 export const name = 'Music';
 export const desc = 'This category contains commands for playing music!';

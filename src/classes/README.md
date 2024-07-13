@@ -5,9 +5,6 @@ not be an updated list of files, however effort will be made to keep it updated.
 
 ## Files
 
-- [client.d.ts](client.d.ts): Custom typings for the discord.js client. This is used to extend the client with custom
-  properties and methods.
-- [command_types.ts](command_types.ts): Typings for slash commands, message commands, and helpers.
 - [config.ts](config.ts): Constant exported object that contains all the required environment variables for the bot to
   run properly in production. It is easier to view and maintain the configuration rather than editing .env.template
 - [exceptions.ts](exceptions.ts): Very simple type definitions of a couple of custom exception types we use to

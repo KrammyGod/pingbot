@@ -1,7 +1,6 @@
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
-import { CachedSlashCommand, SlashCommand } from '@classes/command_types';
 import { PermissionError } from '@classes/exceptions';
 import {
     ActionRowBuilder,
@@ -30,6 +29,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
+import type { CachedSlashCommand, SlashCommand } from '@typings/commands';
 
 export const name = 'Moderation';
 export const desc = 'Helpful bunch of commands for moderators who want an easier time.';

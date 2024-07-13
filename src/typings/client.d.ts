@@ -1,4 +1,4 @@
-import { CommandFile, InteractionCommand, MessageCommand } from '@classes/command_types';
+import type { CommandFile, InteractionCommand, MessageCommand } from '@typings/commands';
 
 declare module 'discord.js' {
     interface Client {

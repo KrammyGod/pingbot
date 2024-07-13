@@ -9,7 +9,7 @@ import {
     SlashCommandBuilder,
     SlashCommandSubcommandBuilder,
 } from 'discord.js';
-import type { SlashCommand, SlashSubcommand } from '@classes/command_types';
+import type { SlashCommand, SlashSubcommand } from '@typings/commands';
 
 export const name = 'Minigames';
 export const desc = 'This category is for commands that allow you to play fun games with your precious brons.';
