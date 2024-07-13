@@ -29,7 +29,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
-import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@classes/command_types';
+import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@typings/commands';
 
 export const name = 'Fun';
 export const desc = 'This category contains all the commands for fun, or are informational.';

@@ -15,8 +15,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
-import type { CommandFile, SlashCommand } from '@classes/command_types';
-import { isMessageCommand, isSlashCommand, isSlashSubcommandGroup } from '@classes/command_types';
+import type { CommandFile, SlashCommand } from '@typings/commands';
 
 export const name = 'Help';
 export const desc = 'This is a special category dedicated for you!';
@@ -93,16 +92,16 @@ type FullCommand = {
 async function get_results_cmd(interaction: RepliableInteraction, search: string) {
     let choices: FullCommand[] = [];
     for (const cmd of [...interaction.client.commands.values(), ...interaction.client.message_commands.values()]) {
-        if (isMessageCommand(cmd)) {
+        if (Utils.isMessageCommand(cmd)) {
             choices.push({
                 name: cmd.name,
                 desc: cmd.desc,
                 is_slash: false,
             });
-        } else if (isSlashCommand(cmd)) {
+        } else if (Utils.isSlashCommand(cmd)) {
             if (cmd.subcommands) {
                 for (const subcmd of cmd.subcommands.values()) {
-                    if (isSlashSubcommandGroup(subcmd)) {
+                    if (Utils.isSlashSubcommandGroup(subcmd)) {
                         for (const subsubcmd of subcmd.subcommands.values()) {
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
@@ -148,13 +147,13 @@ async function get_results_cmd(interaction: RepliableInteraction, search: string
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
-        if (isSlashCommand(choice)) {
+        if (Utils.isSlashCommand(choice)) {
             desc += `${idx + 1}. **${choice.data.name}**\n`;
         } else {
             desc += `${idx + 1}. **${choice.name}**\n`;
         }
         menu.addOptions({
-            label: `${idx + 1}. ${isSlashCommand(choice) ? choice.data.name : choice.name}`,
+            label: `${idx + 1}. ${Utils.isSlashCommand(choice) ? choice.data.name : choice.name}`,
             value: `${idx}`,
         });
     }
@@ -230,11 +229,11 @@ async function get_cog_page(client: Client<true>, authorID: string, page: number
     let field = '';
     const cog = client.cogs[page - 1];
     for (const command of cog.commands) {
-        if (isSlashCommand(command)) {
+        if (Utils.isSlashCommand(command)) {
             const commands: { name: string; description: string; }[] = [];
             // Try to add all subcommands to list
             for (const subcommand of command.subcommands?.values() ?? []) {
-                if (isSlashSubcommandGroup(subcommand)) {
+                if (Utils.isSlashSubcommandGroup(subcommand)) {
                     for (const subsubcommand of subcommand.subcommands.values()) {
                         commands.push({
                             name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
@@ -254,7 +253,7 @@ async function get_cog_page(client: Client<true>, authorID: string, page: number
                 const app_cmd = await Utils.get_rich_cmd(cmd.name, client);
                 field += `> ${app_cmd} - ${cmd.description}\n`;
             }
-        } else if (isMessageCommand(command)) {
+        } else if (Utils.isMessageCommand(command)) {
             // Replace all `/command` with new shiny command mention.
             const replace_fn = (match: string) => {
                 const full_name = match.slice(2, -1);

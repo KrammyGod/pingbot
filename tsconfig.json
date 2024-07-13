@@ -19,6 +19,9 @@
       "@modules/*": [
         "modules/*"
       ],
+      "@typings/*": [
+        "typings/*"
+      ],
       "@config": [
         "classes/config.ts"
       ]

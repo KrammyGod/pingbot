@@ -12,7 +12,8 @@ import type {
     RESTPostAPIContextMenuApplicationCommandsJSONBody,
 } from 'discord.js';
 import { ApplicationCommandOptionType } from 'discord.js';
-import { CommandFile, isInteractionCommand, isSlashCommand } from '@classes/command_types';
+import { isInteractionCommand, isSlashCommand } from '@modules/utils';
+import type { CommandFile } from '@typings/commands';
 
 const token = config.token ?? '';
 const clientId = config.client ?? '';

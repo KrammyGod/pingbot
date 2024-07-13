@@ -16,7 +16,7 @@ import {
     MessageMentions,
     PermissionsBitField,
 } from 'discord.js';
-import type { MessageCommand } from '@classes/command_types';
+import type { MessageCommand } from '@typings/commands';
 
 export const name = 'Admin Message Commands';
 export const desc = "You shouldn't be seeing this";

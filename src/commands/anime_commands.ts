@@ -2,7 +2,6 @@ import fs from 'fs';
 import config from '@config';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@classes/command_types';
 import { getRawImageLink } from '@modules/scraper';
 import { getImage, uploadToCDN } from '@modules/cdn';
 import {
@@ -29,6 +28,7 @@ import {
     TextInputStyle,
     User,
 } from 'discord.js';
+import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@typings/commands';
 
 export const name = 'Animes/Gacha';
 export const desc = 'This category is for commands that deal with the character gacha.';

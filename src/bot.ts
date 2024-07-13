@@ -5,9 +5,8 @@ import config from '@config';
 import * as DB from '@modules/database';
 import { inspect } from 'util';
 import { GuildVoices } from '@classes/GuildVoice';
-import { convert_emoji } from '@modules/utils';
+import { convert_emoji, isContextCommand, isSlashCommand } from '@modules/utils';
 import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
-import { InteractionCommand, isContextCommand, isSlashCommand } from '@classes/command_types';
 import {
     ActivitiesOptions,
     ActivityType,
@@ -25,6 +24,7 @@ import {
     VoiceState,
     Webhook,
 } from 'discord.js';
+import type { InteractionCommand } from '@typings/commands';
 
 function WELCOMEMESSAGEMAPPING(member: GuildMember) {
     return {

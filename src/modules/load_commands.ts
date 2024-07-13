@@ -1,7 +1,8 @@
 import glob from 'glob';
 import path from 'path';
-import { CommandFile, isInteractionCommand, isMessageCommand, isSlashCommand } from '@classes/command_types';
 import { ApplicationCommandOptionType, Client } from 'discord.js';
+import { isInteractionCommand, isMessageCommand, isSlashCommand } from '@modules/utils';
+import type { CommandFile } from '@typings/commands';
 
 export default async function load(client: Client) {
     client.cogs = [];
