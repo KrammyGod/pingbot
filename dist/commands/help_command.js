@@ -25,8 +25,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.help = exports.desc = exports.name = void 0;
 const Utils = __importStar(require("../modules/utils"));
+const utils_1 = require("../modules/utils");
 const discord_js_1 = require("discord.js");
-const command_types_1 = require("../classes/command_types");
 exports.name = 'Help';
 exports.desc = 'This is a special category dedicated for you!';
 // Helper to replace all `/command` with new shiny command mention.
@@ -89,17 +89,17 @@ async function get_results_category(interaction, choices) {
 async function get_results_cmd(interaction, search) {
     let choices = [];
     for (const cmd of [...interaction.client.commands.values(), ...interaction.client.message_commands.values()]) {
-        if ((0, command_types_1.isMessageCommand)(cmd)) {
+        if ((0, utils_1.isMessageCommand)(cmd)) {
             choices.push({
                 name: cmd.name,
                 desc: cmd.desc,
                 is_slash: false,
             });
         }
-        else if ((0, command_types_1.isSlashCommand)(cmd)) {
+        else if ((0, utils_1.isSlashCommand)(cmd)) {
             if (cmd.subcommands) {
                 for (const subcmd of cmd.subcommands.values()) {
-                    if ((0, command_types_1.isSlashSubcommandGroup)(subcmd)) {
+                    if ((0, utils_1.isSlashSubcommandGroup)(subcmd)) {
                         for (const subsubcmd of subcmd.subcommands.values()) {
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
@@ -147,14 +147,14 @@ async function get_results_cmd(interaction, search) {
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
-        if ((0, command_types_1.isSlashCommand)(choice)) {
+        if ((0, utils_1.isSlashCommand)(choice)) {
             desc += `${idx + 1}. **${choice.data.name}**\n`;
         }
         else {
             desc += `${idx + 1}. **${choice.name}**\n`;
         }
         menu.addOptions({
-            label: `${idx + 1}. ${(0, command_types_1.isSlashCommand)(choice) ? choice.data.name : choice.name}`,
+            label: `${idx + 1}. ${(0, utils_1.isSlashCommand)(choice) ? choice.data.name : choice.name}`,
             value: `${idx}`,
         });
     }
@@ -215,11 +215,11 @@ async function get_cog_page(client, authorID, page) {
     let field = '';
     const cog = client.cogs[page - 1];
     for (const command of cog.commands) {
-        if ((0, command_types_1.isSlashCommand)(command)) {
+        if ((0, utils_1.isSlashCommand)(command)) {
             const commands = [];
             // Try to add all subcommands to list
             for (const subcommand of command.subcommands?.values() ?? []) {
-                if ((0, command_types_1.isSlashSubcommandGroup)(subcommand)) {
+                if ((0, utils_1.isSlashSubcommandGroup)(subcommand)) {
                     for (const subsubcommand of subcommand.subcommands.values()) {
                         commands.push({
                             name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
@@ -242,7 +242,7 @@ async function get_cog_page(client, authorID, page) {
                 field += `> ${app_cmd} - ${cmd.description}\n`;
             }
         }
-        else if ((0, command_types_1.isMessageCommand)(command)) {
+        else if ((0, utils_1.isMessageCommand)(command)) {
             // Replace all `/command` with new shiny command mention.
             const replace_fn = (match) => {
                 const full_name = match.slice(2, -1);

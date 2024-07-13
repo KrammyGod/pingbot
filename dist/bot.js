@@ -35,7 +35,6 @@ const util_1 = require("util");
 const GuildVoice_1 = require("./classes/GuildVoice");
 const utils_1 = require("./modules/utils");
 const exceptions_1 = require("./classes/exceptions");
-const command_types_1 = require("./classes/command_types");
 const discord_js_1 = require("discord.js");
 function WELCOMEMESSAGEMAPPING(member) {
     return {
@@ -213,11 +212,11 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
     if (!command)
         return;
     if (interaction.isCommand()) {
-        if (interaction.isContextMenuCommand() && (0, command_types_1.isContextCommand)(command)) {
+        if (interaction.isContextMenuCommand() && (0, utils_1.isContextCommand)(command)) {
             // Error handling after command.
             return command.execute(interaction).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
         }
-        else if (interaction.isChatInputCommand() && (0, command_types_1.isSlashCommand)(command)) {
+        else if (interaction.isChatInputCommand() && (0, utils_1.isSlashCommand)(command)) {
             // Error handling after command.
             return command.execute(interaction).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
         }
@@ -225,7 +224,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
             throw new Error(`${interaction}\nis not a valid interaction for\n${command}.`);
         }
     }
-    else if (!(0, command_types_1.isSlashCommand)(command)) {
+    else if (!(0, utils_1.isSlashCommand)(command)) {
         return; // Not a slash command, ignore rest.
     }
     else if (interaction.isButton()) {

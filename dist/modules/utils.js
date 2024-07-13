@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.isMessageCommand = exports.isInteractionCommand = exports.isContextCommand = exports.isSlashCommand = exports.isSlashSubcommandGroup = exports.isSlashSubcommand = exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 function strip(text, char) {
@@ -258,4 +258,42 @@ async function* fetch_history(channel, amount, filter = () => true) {
     }
 }
 exports.fetch_history = fetch_history;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSlashSubcommand(obj) {
+    return obj && obj.data instanceof discord_js_1.SlashCommandSubcommandBuilder &&
+        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
+        obj.execute.length <= 2;
+}
+exports.isSlashSubcommand = isSlashSubcommand;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSlashSubcommandGroup(obj) {
+    return obj && obj.data instanceof discord_js_1.SlashCommandSubcommandGroupBuilder &&
+        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
+        obj.subcommands && obj.execute.length <= 2;
+}
+exports.isSlashSubcommandGroup = isSlashSubcommandGroup;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSlashCommand(obj) {
+    return obj && obj.data instanceof discord_js_1.SlashCommandBuilder &&
+        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
+        obj.execute.length <= 2;
+}
+exports.isSlashCommand = isSlashCommand;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isContextCommand(obj) {
+    return obj && obj.data instanceof discord_js_1.ContextMenuCommandBuilder &&
+        typeof obj.execute === 'function' && obj.execute.length <= 2;
+}
+exports.isContextCommand = isContextCommand;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isInteractionCommand(obj) {
+    return isSlashCommand(obj) || isContextCommand(obj);
+}
+exports.isInteractionCommand = isInteractionCommand;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isMessageCommand(obj) {
+    return obj && typeof obj.name === 'string' && typeof obj.admin === 'boolean' &&
+        typeof obj.desc === 'string' && typeof obj.execute === 'function' && obj.execute.length <= 3;
+}
+exports.isMessageCommand = isMessageCommand;
 //# sourceMappingURL=utils.js.map
