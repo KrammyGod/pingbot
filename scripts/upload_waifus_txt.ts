@@ -4,7 +4,7 @@
  */
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
-import { Pool, PoolClient, QueryResultRow, } from 'pg';
+import { Pool, PoolClient, QueryResultRow } from 'pg';
 
 // The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
@@ -29,6 +29,7 @@ type WaifuDetails = {
     img: string[];
     nimg: string[];
 };
+
 class Waifu {
     wid: string;
     iid: string;
@@ -37,14 +38,6 @@ class Waifu {
     origin: string;
     img: string[];
     nimg: string[];
-
-    static fromRows(rows: unknown[]) {
-        const rets: Waifu[] = [];
-        for (const row of rows) {
-            rets.push(new Waifu(row as WaifuDetails));
-        }
-        return rets;
-    }
 
     constructor(row: WaifuDetails) {
         if (!row) throw new Error('Waifu details partial');
@@ -57,12 +50,21 @@ class Waifu {
         this.nimg = row.nimg.map(imgReplacer);
     }
 
+    static fromRows(rows: unknown[]) {
+        const rets: Waifu[] = [];
+        for (const row of rows) {
+            rets.push(new Waifu(row as WaifuDetails));
+        }
+        return rets;
+    }
+
     equal(other: Waifu) {
         return this.name === other.name && this.gender === other.gender &&
             this.origin === other.origin && this.img.join() === other.img.join() &&
             this.nimg.join() === other.nimg.join();
     }
 }
+
 interface CompletedSeriesDetails {
     uid: string;
     origin: string;
@@ -72,11 +74,13 @@ interface CompletedSeriesDetails {
 const pool = new Pool({
     host: process.env.PRODHOST, // Not included in .env.example, since for personal use only.
 });
+
 function getClient() {
     return pool.connect().then(client => {
         return client.query('BEGIN').then(() => client);
     });
 }
+
 function releaseClient(client: PoolClient, revert: boolean) {
     const releaseClient = () => client.release();
     if (revert) {
@@ -84,6 +88,7 @@ function releaseClient(client: PoolClient, revert: boolean) {
     }
     return client.query('COMMIT').then(releaseClient, releaseClient);
 }
+
 function query<R extends QueryResultRow = QueryResultRow, I = unknown>(
     client: PoolClient,
     query: string,
@@ -145,11 +150,12 @@ async function upload() {
     const client = await getClient();
 
     const database_waifus = await query(client, `
-        SELECT * FROM
-            waifus
-            NATURAL JOIN
-            char_mapping
-        WHERE fc = TRUE ORDER BY waifus.iid
+        SELECT *
+        FROM waifus
+                 NATURAL JOIN
+             char_mapping
+        WHERE fc = TRUE
+        ORDER BY waifus.iid
     `).then(Waifu.fromRows);
     const file_waifus = loadFromFile();
     const modified: { old: Waifu, updated: Waifu }[] = [];
@@ -163,7 +169,12 @@ async function upload() {
     for (const { old, updated } of modified) {
         console.log(findDiff(old, updated));
         await query(client, `
-            UPDATE waifus SET name = $1, gender = $2, origin = $3, img = $4, nimg = $5
+            UPDATE waifus
+            SET name   = $1,
+                gender = $2,
+                origin = $3,
+                img    = $4,
+                nimg   = $5
             WHERE iid = $6
         `, [
             updated.name, updated.gender, updated.origin,
@@ -184,7 +195,8 @@ async function upload() {
                 client,
                 `UPDATE completed_series
                  SET count = GREATEST(count - 1, 0)
-                 WHERE uid = ANY($1) AND origin = $2
+                 WHERE uid = ANY ($1)
+                   AND origin = $2
                  RETURNING *`,
                 [res.map(row => row.uid), old.origin],
             );
@@ -210,9 +222,11 @@ async function upload() {
             const res = await query(
                 client,
                 `UPDATE user_chars
-                SET _nimg = 1, nsfw = FALSE
-                WHERE wid = $1 AND
-                (nsfw OR _nimg > 1) RETURNING *`,
+                 SET _nimg = 1,
+                     nsfw  = FALSE
+                 WHERE wid = $1
+                   AND (nsfw OR _nimg > 1)
+                 RETURNING *`,
                 [old.wid],
             );
             if (res.length) {

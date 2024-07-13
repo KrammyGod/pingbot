@@ -2,19 +2,33 @@ import fs from 'fs';
 import config from '@config';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { CustomClient, } from '@classes/client';
-import { getRawImageLink, } from '@modules/scraper';
-import { getImage, uploadToCDN, } from '@modules/cdn';
+import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@classes/command_types';
+import { getRawImageLink } from '@modules/scraper';
+import { getImage, uploadToCDN } from '@modules/cdn';
 import {
-    ActionRowBuilder, ButtonStyle,
-    ButtonBuilder, ComponentType, Colors,
-    EmbedBuilder, ModalBuilder, SlashCommandBuilder,
-    StringSelectMenuBuilder, TextInputBuilder,
-    TextInputStyle, ContextMenuCommandBuilder,
+    ActionRowBuilder,
+    AnySelectMenuInteraction,
     ApplicationCommandType,
+    ButtonBuilder,
+    ButtonInteraction,
+    ButtonStyle,
+    ChatInputCommandInteraction,
+    Client,
+    Colors,
+    ComponentType,
+    ContextMenuCommandBuilder,
+    EmbedBuilder,
+    InteractionReplyOptions,
+    ModalBuilder,
+    ModalSubmitInteraction,
+    RepliableInteraction,
+    SlashCommandBuilder,
+    StringSelectMenuBuilder,
+    TextBasedChannel,
+    TextInputBuilder,
+    TextInputStyle,
+    User,
 } from 'discord.js';
-import type DTypes from 'discord.js';
-import type { CachedSlashCommand, ContextCommand, SlashCommand, } from '@classes/client';
 
 export const name = 'Animes/Gacha';
 export const desc = 'This category is for commands that deal with the character gacha.';
@@ -44,14 +58,17 @@ const GLOBAL_BUTTONS2 = [
         .setEmoji('📄')
         .setStyle(ButtonStyle.Primary),
 ];
+
 function getGlobalButtons() {
     return GLOBAL_BUTTONS.map(b => ButtonBuilder.from(b));
 }
+
 function getGlobalButtons2() {
     return GLOBAL_BUTTONS2.map(b => ButtonBuilder.from(b));
 }
+
 const GLOBAL_HELP =
-`
+    `
 ⏪: First page
 ⬅️: Previous page
 ➡️: Next page
@@ -62,7 +79,7 @@ const GLOBAL_HELP =
 
 // Global helper for searching for waifus using name
 async function search_waifu(
-    interaction: DTypes.RepliableInteraction,
+    interaction: RepliableInteraction,
     name: string,
 ) {
     // Search waifu by name
@@ -80,7 +97,7 @@ async function search_waifu(
 
 // Global helper for searching for user characters using number/name
 async function search_character(
-    interaction: DTypes.RepliableInteraction,
+    interaction: RepliableInteraction,
     userID: string,
     number_or_name: string,
     high: boolean,
@@ -116,14 +133,16 @@ async function search_character(
 function totalPages(pages: number) {
     return Math.floor(pages / 10) + (pages % 10 ? 1 : 0);
 }
+
 function getPage(idx: number) {
     return Math.floor(idx / 10) + (idx % 10 ? 1 : 0);
 }
+
 function getStart(page: number) {
     return (page - 1) * 10 + 1;
 }
 
-type HelperRetVal = DTypes.InteractionReplyOptions & { followUp?: DTypes.InteractionReplyOptions };
+type HelperRetVal = InteractionReplyOptions & { followUp?: InteractionReplyOptions };
 
 async function collect_anime(userID: string, anime: string) {
     const completed = await DB.getCompleted(userID, anime);
@@ -138,7 +157,7 @@ async function collect_anime(userID: string, anime: string) {
 type AnimesPrivates = {
     getPage: (
         authorID: string,
-        target: DTypes.User,
+        target: User,
         page: number
     ) => Promise<HelperRetVal>;
 };
@@ -157,11 +176,11 @@ export const animes: SlashCommand & AnimesPrivates = {
         .setDescription('Find all available anime series.'),
 
     desc: 'Show all anime available in the custom database.\n\n' +
-          'Usage: `/animes page: [page] user: [user]`\n\n' +
-          '__**Options:**__\n' +
-          '*page:* The page number to jump to. (Default: 1)\n' +
-          "*user:* Check a different user's list. (Default: You)\n\n" +
-          'Examples: `/animes page: 2` `/animes page: 5 user: @krammygod`',
+        'Usage: `/animes page: [page] user: [user]`\n\n' +
+        '__**Options:**__\n' +
+        '*page:* The page number to jump to. (Default: 1)\n' +
+        "*user:* Check a different user's list. (Default: You)\n\n" +
+        'Examples: `/animes page: 2` `/animes page: 5 user: @krammygod`',
 
     async getPage(authorID, target, page) {
         const max_pages = totalPages(await DB.getAnimesCount());
@@ -243,7 +262,7 @@ export const animes: SlashCommand & AnimesPrivates = {
         if (field.length <= 1024) {
             embed.addFields({
                 name: `Listing ${authorID === target.id ? 'your' : "someone's"} animes ` +
-                    `${start + 1}-${start + allAnimes.length}:`,
+                                    `${start + 1}-${start + allAnimes.length}:`,
                 value: field,
             });
             // Otherwise add as description
@@ -281,9 +300,9 @@ export const animes: SlashCommand & AnimesPrivates = {
         const retval: HelperRetVal = {
             embeds: [embed],
             components: [
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons),
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons2),
-                new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons2),
+                new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
             ],
         };
         if (followUp.embeds.length > 0) {
@@ -292,26 +311,28 @@ export const animes: SlashCommand & AnimesPrivates = {
         return retval;
     },
 
-    async textInput(interaction, client) {
+    async textInput(interaction) {
         const [userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
-        const user = await client.users.fetch(userID).catch(() => null);
-        if (!user) return interaction.deleteReply().then(() => { });
+        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        if (!user) return interaction.deleteReply().then(() => {
+        });
         const page = parseInt(value);
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         const { embeds, components, followUp } = await this.getPage(interaction.user.id, user, page);
         await interaction.editReply({ embeds, components });
         if (followUp) await interaction.followUp(followUp);
     },
 
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const [page, userID] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -320,51 +341,57 @@ export const animes: SlashCommand & AnimesPrivates = {
                     title: 'Jump to page',
                     customId: `animes/${userID}`,
                     components: [
-                        new ActionRowBuilder<DTypes.TextInputBuilder>({
+                        new ActionRowBuilder<TextInputBuilder>({
                             components: [
-                                new TextInputBuilder({
-                                    label: 'Page #',
-                                    customId: 'value',
-                                    placeholder: 'Enter the page number to jump to...',
-                                    style: TextInputStyle.Short,
-                                    maxLength: 100,
-                                    required: true,
-                                }),
+                                new TextInputBuilder(
+                                    {
+                                        label: 'Page #',
+                                        customId: 'value',
+                                        placeholder: 'Enter the page number to jump to...',
+                                        style: TextInputStyle.Short,
+                                        maxLength: 100,
+                                        required: true,
+                                    }),
                             ],
                         }),
                     ],
                 });
                 return interaction.showModal(input);
             } else if (page === 'help') {
-                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true }).then(() => { });
+                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true }).then(() => {
+                });
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const user = await client.users.fetch(userID).catch(() => null);
-        if (!user) return interaction.deleteReply().then(() => { });
+        const user = await interaction.client.users.fetch(userID).catch(() => null);
+        if (!user) return interaction.deleteReply().then(() => {
+        });
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
         await interaction.editReply({ embeds, components });
     },
 
-    async menuReact(interaction, client) {
+    async menuReact(interaction) {
         await interaction.deferUpdate();
         const [userID, page] = interaction.customId.split('/').splice(1);
         let gain = 0;
         for (const anime of interaction.values) {
             gain += await collect_anime(userID, anime);
         }
-        const user = await client.users.fetch(userID).catch(() => null);
+        const user = await interaction.client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
         await interaction.editReply({ embeds, components });
         if (gain) {
-            await interaction.followUp({
-                content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
-                    `and gained +${gain} ${client.bot_emojis.brons}!`,
-                ephemeral: true,
-            }).catch(() => { });
+            await interaction.followUp(
+                {
+                    content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
+                        `and gained +${gain} ${interaction.client.bot_emojis.brons}!`,
+                    ephemeral: true,
+                },
+            ).catch(() => {
+            });
         }
     },
 
@@ -396,15 +423,15 @@ export const anime: SlashCommand = {
         .setDescription('Show all characters available to obtain from an anime.'),
 
     desc: 'Show all characters collected from an anime.\n' +
-          'If there are multiple results, selection times out in 60 seconds.\n' +
-          'This command is case-insensitive.\n\n' +
-          'Usage: `/anime anime: <anime_name> user: [user]`\n\n' +
-          '__**Options**__\n' +
-          '*anime:* The name of the anime to search for. (Required)\n' +
-          "*user:* Check a different user's list. (Default: You)\n\n" +
-          'Examples: `/anime anime: COTE`, `/anime anime: Genshin user: @krammygod`',
+        'If there are multiple results, selection times out in 60 seconds.\n' +
+        'This command is case-insensitive.\n\n' +
+        'Usage: `/anime anime: <anime_name> user: [user]`\n\n' +
+        '__**Options**__\n' +
+        '*anime:* The name of the anime to search for. (Required)\n' +
+        "*user:* Check a different user's list. (Default: You)\n\n" +
+        'Examples: `/anime anime: COTE`, `/anime anime: Genshin user: @krammygod`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const name = interaction.options.getString('anime');
         const user = interaction.options.getUser('user') ?? interaction.user;
         const embed = new EmbedBuilder({ title: 'Waiting for selection...' }).setColor('Gold');
@@ -418,7 +445,8 @@ export const anime: SlashCommand = {
             return interaction.deleteReply();
         } else if (!series) {
             embed.setTitle(`No anime found with name \`${name}\`.`).setColor(Colors.Red);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         embed.setTitle('Search results:');
         const anime_chars = await DB.getAnime(series);
@@ -428,7 +456,8 @@ export const anime: SlashCommand = {
             let obtained = '🟩';
             let uStatus = '';
             let wFC = char.fc ? '⭐ ' : '';
-            const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(() => { });
+            const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(() => {
+            });
             if (user_char) {
                 obtained = '✅';
                 await user_char.loadWaifu();
@@ -450,11 +479,13 @@ export const anime: SlashCommand = {
             if (cnt === anime_chars.length) {
                 const gain = await collect_anime(user.id, series);
                 if (gain) {
-                    await interaction.followUp({
-                        content: `You collected bonuses for \`${series}\`! ` +
-                            `+${gain} ${client.bot_emojis.brons}`,
-                        ephemeral: true,
-                    });
+                    await interaction.followUp(
+                        {
+                            content: `You collected bonuses for \`${series}\`! ` +
+                                `+${gain} ${interaction.client.bot_emojis.brons}`,
+                            ephemeral: true,
+                        },
+                    );
                 }
             }
         }
@@ -471,38 +502,42 @@ export const bal: SlashCommand = {
         .setDescription('Show your current balance.'),
 
     desc: "Check anyone's current balance of brons!\n\n" +
-          'Usage: `/bal user: [user]`\n\n' +
-          '__**Options**__\n' +
-          '*user:* The user to stalk. (Default: You)\n\n' +
-          'Examples: `/bal`, `/bal user: @krammygod`',
+        'Usage: `/bal user: [user]`\n\n' +
+        '__**Options**__\n' +
+        '*user:* The user to stalk. (Default: You)\n\n' +
+        'Examples: `/bal`, `/bal user: @krammygod`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const user = interaction.options.getUser('user') ?? interaction.user;
         await interaction.deferReply();
         const brons = await DB.getBrons(user.id);
         if (brons === undefined) {
-            const dailyCmd = await Utils.get_rich_cmd('daily');
+            const dailyCmd = await Utils.get_rich_cmd('daily', interaction.client);
             if (user.id === interaction.user.id) {
                 return interaction.editReply({
                     content: `You don't have an account. Create one by using ${dailyCmd}`,
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             return interaction.editReply({
                 content: `${user} does not have an account. Tell them to join by using ${dailyCmd}`,
                 allowedMentions: { users: [] },
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         if (user.id === interaction.user.id) {
             return interaction.editReply({
-                content: `You currently have ${brons} ${client.bot_emojis.brons}.`,
-            }).then(() => { });
-        } else if (user.id === client.user.id) {
+                content: `You currently have ${brons} ${interaction.client.bot_emojis.brons}.`,
+            }).then(() => {
+            });
+        } else if (user.id === interaction.client.user.id) {
             return interaction.editReply({
-                content: `I have ∞ ${client.bot_emojis.brons}.`,
-            }).then(() => { });
+                content: `I have ∞ ${interaction.client.bot_emojis.brons}.`,
+            }).then(() => {
+            });
         }
         await interaction.editReply({
-            content: `${user} has ${brons} ${client.bot_emojis.brons}.`,
+            content: `${user} has ${brons} ${interaction.client.bot_emojis.brons}.`,
             allowedMentions: { users: [] },
         });
     },
@@ -510,7 +545,7 @@ export const bal: SlashCommand = {
 
 type LbPrivates = {
     getPage: (
-        client: CustomClient,
+        client: Client,
         authorID: string,
         page: number
     ) => Promise<HelperRetVal>;
@@ -526,10 +561,10 @@ export const lb: SlashCommand & LbPrivates = {
         .setDescription('Show leaderboards for brons.'),
 
     desc: 'Shows the top x users with the highest brons!\n\n' +
-          'Usage: `/lb page: [page]`\n\n' +
-          '__**Options**__\n' +
-          '*page:* The page number to jump to. (Default: 1)\n\n' +
-          'Examples: `/lb`, `/lb page: 2`',
+        'Usage: `/lb page: [page]`\n\n' +
+        '__**Options**__\n' +
+        '*page:* The page number to jump to. (Default: 1)\n\n' +
+        'Examples: `/lb`, `/lb page: 2`',
 
     async getPage(client, authorID, page) {
         const max_pages = totalPages(await DB.getUserCount());
@@ -540,7 +575,7 @@ export const lb: SlashCommand & LbPrivates = {
         });
         // This represents any followup messages that should be sent
         const followUp: {
-            embeds: DTypes.EmbedBuilder[],
+            embeds: EmbedBuilder[],
             ephemeral: true
         } = {
             embeds: [],
@@ -574,7 +609,7 @@ export const lb: SlashCommand & LbPrivates = {
 
         let field = '';
         for (const data of users) {
-            const displayName = await Utils.fetch_user_fast(data.uid, u => u?.displayName);
+            const displayName = await Utils.fetch_user_fast(client, data.uid, u => u?.displayName);
             field += `${data.idx}. __${displayName ?? data.uid}` +
                 `:__ **${data.brons}** ${client.bot_emojis.brons} *(${data.waifus} ` +
                 `${data.waifus === 1 ? 'waifu' : 'waifus'})*`;
@@ -643,8 +678,8 @@ export const lb: SlashCommand & LbPrivates = {
         const retval: HelperRetVal = {
             embeds: [embed],
             components: [
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons),
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons2),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons2),
             ],
         };
         if (followUp.embeds.length > 0) {
@@ -653,7 +688,7 @@ export const lb: SlashCommand & LbPrivates = {
         return retval;
     },
 
-    async textInput(interaction, client) {
+    async textInput(interaction) {
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
@@ -662,14 +697,15 @@ export const lb: SlashCommand & LbPrivates = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
-        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) await interaction.followUp(followUp);
     },
 
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const [page] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -678,16 +714,17 @@ export const lb: SlashCommand & LbPrivates = {
                     title: 'Jump to page',
                     customId: 'lb',
                     components: [
-                        new ActionRowBuilder<DTypes.TextInputBuilder>({
+                        new ActionRowBuilder<TextInputBuilder>({
                             components: [
-                                new TextInputBuilder({
-                                    label: 'Page #',
-                                    customId: 'value',
-                                    placeholder: 'Enter the page number to jump to...',
-                                    style: TextInputStyle.Short,
-                                    maxLength: 100,
-                                    required: true,
-                                }),
+                                new TextInputBuilder(
+                                    {
+                                        label: 'Page #',
+                                        customId: 'value',
+                                        placeholder: 'Enter the page number to jump to...',
+                                        style: TextInputStyle.Short,
+                                        maxLength: 100,
+                                        required: true,
+                                    }),
                             ],
                         }),
                     ],
@@ -697,20 +734,21 @@ export const lb: SlashCommand & LbPrivates = {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by stars',
                     ephemeral: true,
-                }).then(() => { });
+                }).then(() => {
+                });
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(client, interaction.user.id, val);
+        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, val);
         await interaction.editReply({ embeds, components });
     },
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(client, interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) await interaction.followUp(followUp);
     },
@@ -722,17 +760,17 @@ export const daily: SlashCommand = {
         .setDescription('Get your daily brons.'),
 
     desc: 'What is {/daily} you ask?  Well, here you will learn\n' +
-          'That once in a day, 200 bron you may earn.\n\n' +
-          'And if a waifu is at level 5 or more,\n' +
-          "Then there's a chance extra bron is in store!\n\n" +
-          'But if you are new, use {/daily} to start,\n' +
-          "And 1000 bron just this once I'll impart.\n\n" +
-          'So when does your next {/daily} go live?\n' +
-          'The answer is midnight, UTC -5!\n' +
-          '\\- *A prose by @ryu_minoru*\n\n' +
-          'Usage: `/daily`',
+        'That once in a day, 200 bron you may earn.\n\n' +
+        'And if a waifu is at level 5 or more,\n' +
+        "Then there's a chance extra bron is in store!\n\n" +
+        'But if you are new, use {/daily} to start,\n' +
+        "And 1000 bron just this once I'll impart.\n\n" +
+        'So when does your next {/daily} go live?\n' +
+        'The answer is midnight, UTC -5!\n' +
+        '\\- *A prose by @ryu_minoru*\n\n' +
+        'Usage: `/daily`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const { collect_success, amt } = await DB.getAndSetDaily(interaction.user.id);
         const embed = new EmbedBuilder({ color: Colors.Yellow });
@@ -741,11 +779,12 @@ export const daily: SlashCommand = {
             if (amt === 1000) {
                 // First sign up
                 embed.setColor(Colors.Gold).setTitle(
-                    `You have collected your first daily! +1000 ${client.bot_emojis.brons}!`,
+                    `You have collected your first daily! +1000 ${interaction.client.bot_emojis.brons}!`,
                 );
-                return interaction.editReply({ embeds: [embed] }).then(() => { });
+                return interaction.editReply({ embeds: [embed] }).then(() => {
+                });
             }
-            embed.setTitle(`You have collected your daily! +200 ${client.bot_emojis.brons}!`);
+            embed.setTitle(`You have collected your daily! +200 ${interaction.client.bot_emojis.brons}!`);
             const chosen = await DB.fetchRandomStarred(interaction.user.id);
             let bonus_brons = 0;
             if (chosen) {
@@ -755,11 +794,12 @@ export const daily: SlashCommand = {
                     `Congrats on level ${chosen.lvl}!`;
                 embed.setColor(Colors.Gold).setTitle(
                     `${embed.data.title}\naaaaand ${chosen.name} gave you another +` +
-                    `${bonus_brons} ${client.bot_emojis.brons}! ${level_str}`,
+                    `${bonus_brons} ${interaction.client.bot_emojis.brons}! ${level_str}`,
                 );
                 DB.addBrons(interaction.user.id, bonus_brons);
             }
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         // Otherwise already collected
         // Hack I figured out a long time ago. Something about 5am UTC.
@@ -781,14 +821,14 @@ export const profile: SlashCommand = {
         .setDescription('View statistics of a user.'),
 
     desc: 'All stats combined into one simple and clean display!\n\n' +
-          'Usage: `/profile user: [user]`\n\n' +
-          '__**Options**__\n' +
-          "*user:* The user's profile to see. (Default: You)\n\n" +
-          'Examples: `/profile`, `/profile user: @krammygod`',
+        'Usage: `/profile user: [user]`\n\n' +
+        '__**Options**__\n' +
+        "*user:* The user's profile to see. (Default: You)\n\n" +
+        'Examples: `/profile`, `/profile user: @krammygod`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const me = client.user.id;
+        const me = interaction.client.user.id;
         await interaction.deferReply();
         const promises = [
             DB.getCollected(user.id),
@@ -805,10 +845,13 @@ export const profile: SlashCommand = {
         if ((user.bot || collected === undefined) && user.id !== me) {
             const embed = new EmbedBuilder({
                 title: `${user.displayName}'s Profile`,
-                description: `**${user.bot ? 'Bots have no accounts :(' : 'No info :('}**`,
+                description: `**${user.bot ?
+                    'Bots have no accounts :(' :
+                    'No info :('}**`,
                 color: Colors.Gold,
             }).setThumbnail(user.displayAvatarURL());
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         const brons = (lbs as { brons: number } | undefined)?.brons ?? -1;
 
@@ -829,24 +872,58 @@ export const profile: SlashCommand = {
         const scount_str = user.id === me ? '∞ 🌟' :
             // I'm too lazy to fix this typescript weirdness
             `${(star_lb as unknown as { stars: number }).stars}` +
-            `${stars === (star_lb as unknown as { stars: number }).stars ? '🌟' : '⭐'}`;
+                               `${stars === (star_lb as unknown as { stars: number }).stars ? '🌟' : '⭐'}`;
         const pos = user.id === me ? 0 : (lbs as { idx: number }).idx;
         const spos = user.id === me ? 0 : (star_lb as { idx: number }).idx;
         /* End fields for embed */
 
         const embed = new EmbedBuilder({
             title: `${user.displayName}'s Profile`,
-            description: `**「${brons < 0 ? '∞' : brons} ${client.bot_emojis.brons}」**`,
+            description: `**「${brons < 0 ?
+                '∞' :
+                brons} ${interaction.client.bot_emojis.brons}」**`,
             color: Colors.Gold,
         }).addFields([
-            { name: '__Daily Check-in:__ ', value: `**${c_str}**`, inline: true },
-            { name: '__Daily Whale:__ ', value: `**${w_str}**`, inline: true },
-            { name: '__Custom database:__ ', value: `**${cus_str}**`, inline: true },
-            { name: '__Animes collected:__', value: `> **${a_str}**`, inline: true },
-            { name: '__Number of waifus:__ ', value: `> **${wai_str}**`, inline: true },
-            { name: '__Number of stars:__ ', value: `> **${scount_str}**`, inline: true },
-            { name: '__Leaderboard Position:__', value: `> **#${pos}**`, inline: true },
-            { name: '__Most Stars Position:__', value: `> **#${spos}**`, inline: true },
+            {
+                name: '__Daily Check-in:__ ',
+                value: `**${c_str}**`,
+                inline: true,
+            },
+            {
+                name: '__Daily Whale:__ ',
+                value: `**${w_str}**`,
+                inline: true,
+            },
+            {
+                name: '__Custom database:__ ',
+                value: `**${cus_str}**`,
+                inline: true,
+            },
+            {
+                name: '__Animes collected:__',
+                value: `> **${a_str}**`,
+                inline: true,
+            },
+            {
+                name: '__Number of waifus:__ ',
+                value: `> **${wai_str}**`,
+                inline: true,
+            },
+            {
+                name: '__Number of stars:__ ',
+                value: `> **${scount_str}**`,
+                inline: true,
+            },
+            {
+                name: '__Leaderboard Position:__',
+                value: `> **#${pos}**`,
+                inline: true,
+            },
+            {
+                name: '__Most Stars Position:__',
+                value: `> **#${spos}**`,
+                inline: true,
+            },
         ]).setThumbnail(user.displayAvatarURL());
 
         if (user.id === me) {
@@ -896,16 +973,16 @@ export const profile_menu: ContextCommand = {
         .setName('Profile')
         .setType(ApplicationCommandType.User),
 
-    execute(interaction, client) {
-        return profile.execute(interaction as unknown as DTypes.ChatInputCommandInteraction, client);
+    execute(interaction) {
+        return profile.execute(interaction as unknown as ChatInputCommandInteraction);
     },
 };
 
 // Helper that gets a list as an embed
 async function get_list_as_embed(
-    channel: DTypes.TextBasedChannel,
+    channel: TextBasedChannel,
     authorID: string,
-    target: DTypes.User,
+    target: User,
     page: number,
     high: boolean,
 ): Promise<HelperRetVal> {
@@ -920,7 +997,7 @@ async function get_list_as_embed(
     }).setThumbnail(target.displayAvatarURL());
     // This represents any followup messages that should be sent
     const followUp: {
-        embeds: DTypes.EmbedBuilder[],
+        embeds: EmbedBuilder[],
         ephemeral: true
     } = {
         embeds: [],
@@ -1008,8 +1085,8 @@ async function get_list_as_embed(
     const retval: HelperRetVal = {
         embeds: [embed],
         components: [
-            new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons),
-            new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons2),
+            new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
+            new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons2),
         ],
     };
     if (followUp.embeds.length > 0) {
@@ -1020,23 +1097,23 @@ async function get_list_as_embed(
 
 // Helper that gets a character as an embed
 async function get_char_as_embed(
-    channel: DTypes.TextBasedChannel,
+    channel: TextBasedChannel,
     authorID: string,
-    target: DTypes.User,
+    target: User,
     idx: number,
     high: boolean
 ): Promise<HelperRetVal>;
 async function get_char_as_embed(
-    channel: DTypes.TextBasedChannel,
+    channel: TextBasedChannel,
     authorID: string,
-    target: DTypes.User,
+    target: User,
     wid: string,
     high: boolean
 ): Promise<HelperRetVal>;
 async function get_char_as_embed(
-    channel: DTypes.TextBasedChannel,
+    channel: TextBasedChannel,
     authorID: string,
-    target: DTypes.User,
+    target: User,
     idx_or_wid: number | string,
     high: boolean,
 ): Promise<HelperRetVal> {
@@ -1056,7 +1133,7 @@ async function get_char_as_embed(
     }
     // This represents any followup messages that should be sent
     const followUp: {
-        embeds: DTypes.EmbedBuilder[],
+        embeds: EmbedBuilder[],
         ephemeral: true
     } = {
         embeds: [],
@@ -1189,9 +1266,9 @@ async function get_char_as_embed(
     const retval: HelperRetVal = {
         embeds: [embed],
         components: [
-            new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons),
-            new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons2),
-            new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu),
+            new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
+            new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons2),
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
         ],
     };
     if (followUp.embeds.length > 0) {
@@ -1206,13 +1283,10 @@ const fnMappings = {
     'delete_char': delete_char,
 };
 
-async function switch_char_image(
-    client: CustomClient,
-    interaction: DTypes.AnySelectMenuInteraction,
-    char: DB.Character,
-) {
+async function switch_char_image(interaction: AnySelectMenuInteraction, char: DB.Character) {
     const is_nsfw = Utils.channel_is_nsfw_safe(interaction.channel!) && char.nsfw;
-    async function get_char_images_embed(start: number): Promise<DTypes.InteractionReplyOptions> {
+
+    async function get_char_images_embed(start: number): Promise<InteractionReplyOptions> {
         const embed = new EmbedBuilder({ color: Colors.Gold });
         const buttons = [];
         // Assuming char is switchable
@@ -1251,9 +1325,9 @@ async function switch_char_image(
                 .setStyle(ButtonStyle.Danger)
                 .setCustomId('select_char/cancel'),
         ];
-        const components = [new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(toggle_buttons)];
+        const components = [new ActionRowBuilder<ButtonBuilder>().addComponents(toggle_buttons)];
         while (buttons.length > 0) {
-            components.push(new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(buttons.splice(0, 5)));
+            components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.splice(0, 5)));
         }
         return {
             embeds,
@@ -1261,6 +1335,7 @@ async function switch_char_image(
             ephemeral: true,
         };
     }
+
     const opts = await get_char_images_embed(0);
     const message = await interaction.followUp(opts);
 
@@ -1295,7 +1370,8 @@ async function switch_char_image(
         if (val === 'cancel') return;
         return parseInt(val);
     }).catch(() => undefined);
-    Utils.delete_ephemeral_message(interaction, message).catch(() => { });
+    Utils.delete_ephemeral_message(interaction, message).catch(() => {
+    });
 
     let success = true;
     if (selected === undefined) {
@@ -1314,17 +1390,13 @@ async function switch_char_image(
     }
 }
 
-async function toggle_char_nsfw(
-    client: CustomClient,
-    interaction: DTypes.AnySelectMenuInteraction,
-    char: DB.Character,
-) {
+async function toggle_char_nsfw(interaction: AnySelectMenuInteraction, char: DB.Character) {
     const res = await char.toggleNsfw();
     // We only return stuff on failure
     if (res) {
         const embed = new EmbedBuilder({
             title: `Failed to toggle ${char.name}'s lewd status.` +
-                "Either you don't own the character anymore, or there is an error.",
+                                               "Either you don't own the character anymore, or there is an error.",
             color: Colors.Red,
         });
         return { embeds: [embed], ephemeral: true };
@@ -1332,17 +1404,19 @@ async function toggle_char_nsfw(
 }
 
 // TODO: Rewrite
-async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMenuInteraction, char: DB.Character) {
+async function delete_char(interaction: AnySelectMenuInteraction, char: DB.Character) {
     await char.loadWaifu();
-    const embed = new EmbedBuilder({
-        description:
-            '## Are you sure you want to delete ' +
-            `${char.getWFC(interaction.channel!)} **[${char.name}]` +
-            `(${DB.getSource(char.getImage(interaction.channel!))}) ` +
-            `(Lvl ${char.displayLvl}${char.getUStatus(' ')})** from ` +
-            `*${char.origin}*?\n# **This action cannot be undone.**`,
-        color: Colors.Red,
-    });
+    const embed = new EmbedBuilder(
+        {
+            description:
+                '## Are you sure you want to delete ' +
+                `${char.getWFC(interaction.channel!)} **[${char.name}]` +
+                `(${DB.getSource(char.getImage(interaction.channel!))}) ` +
+                `(Lvl ${char.displayLvl}${char.getUStatus(' ')})** from ` +
+                `*${char.origin}*?\n# **This action cannot be undone.**`,
+            color: Colors.Red,
+        },
+    );
     const buttons = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
@@ -1373,14 +1447,14 @@ async function delete_char(client: CustomClient, interaction: DTypes.AnySelectMe
     DB.addBrons(interaction.user.id, refund);
     embed.setTitle(
         `Successfully deleted ${char.getWFC(interaction.channel!)}${char.name} ` +
-        `${char.gender}! +${refund} ${client.bot_emojis.brons}`,
+        `${char.gender}! +${refund} ${interaction.client.bot_emojis.brons}`,
     );
     return { embeds: [embed], ephemeral: true };
 }
 
 // This collection of helpers is because list and high are identical, with one parameter difference
 const listHelpers = {
-    async buttonReact(interaction: DTypes.ButtonInteraction, high: boolean, client: CustomClient) {
+    async buttonReact(interaction: ButtonInteraction, high: boolean) {
         const [cmdName, page, userID] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -1391,16 +1465,17 @@ const listHelpers = {
                         title: 'Jump to page',
                         customId: `${fn}/list/${userID}`,
                         components: [
-                            new ActionRowBuilder<DTypes.TextInputBuilder>({
+                            new ActionRowBuilder<TextInputBuilder>({
                                 components: [
-                                    new TextInputBuilder({
-                                        label: 'Page #',
-                                        customId: 'value',
-                                        placeholder: 'Enter the page number to jump to...',
-                                        style: TextInputStyle.Short,
-                                        maxLength: 100,
-                                        required: true,
-                                    }),
+                                    new TextInputBuilder(
+                                        {
+                                            label: 'Page #',
+                                            customId: 'value',
+                                            placeholder: 'Enter the page number to jump to...',
+                                            style: TextInputStyle.Short,
+                                            maxLength: 100,
+                                            required: true,
+                                        }),
                                 ],
                             }),
                         ],
@@ -1409,37 +1484,42 @@ const listHelpers = {
                         title: 'Search for Waifu',
                         customId: `${fn}/find/${userID}`,
                         components: [
-                            new ActionRowBuilder<DTypes.TextInputBuilder>({
+                            new ActionRowBuilder<TextInputBuilder>({
                                 components: [
-                                    new TextInputBuilder({
-                                        label: 'Name/Index #',
-                                        customId: 'value',
-                                        placeholder: 'Enter name of waifu or index in your list...',
-                                        style: TextInputStyle.Short,
-                                        maxLength: 100,
-                                        required: true,
-                                    }),
+                                    new TextInputBuilder(
+                                        {
+                                            label: 'Name/Index #',
+                                            customId: 'value',
+                                            placeholder: 'Enter name of waifu or index in your list...',
+                                            style: TextInputStyle.Short,
+                                            maxLength: 100,
+                                            required: true,
+                                        }),
                                 ],
                             }),
                         ],
                     });
                 return interaction.showModal(input);
             } else if (page === 'help') {
-                await interaction.reply({
-                    content:
-                        GLOBAL_HELP +
-                        '🔍: Search and jump to a specific waifu by name or index\n' +
-                        '⬆️: Selects the first waifu on the current page\n' +
-                        `🔄: ${high ? 'Swap to normal list' : 'Swap to list sorted by highest upgradable waifus'}`,
-                    ephemeral: true,
-                });
+                await interaction.reply(
+                    {
+                        content:
+                            GLOBAL_HELP +
+                            '🔍: Search and jump to a specific waifu by name or index\n' +
+                            '⬆️: Selects the first waifu on the current page\n' +
+                            `🔄: ${high ?
+                                'Swap to normal list' :
+                                'Swap to list sorted by highest upgradable waifus'}`,
+                        ephemeral: true,
+                    },
+                );
                 return;
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const user = await client.users.fetch(userID).catch(() => null);
+        const user = await interaction.client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         const { embeds, components } = cmdName === 'list' ?
             await get_list_as_embed(
@@ -1452,7 +1532,7 @@ const listHelpers = {
             );
         await interaction.editReply({ embeds, components });
     },
-    async menuReact(interaction: DTypes.AnySelectMenuInteraction, high: boolean, client: CustomClient) {
+    async menuReact(interaction: AnySelectMenuInteraction, high: boolean) {
         const [fn, wid] = interaction.values[0].split('/').splice(2);
         const startDate = new Date();
         await interaction.deferUpdate();
@@ -1461,7 +1541,7 @@ const listHelpers = {
             await DB.fetchUserCharacter(interaction.user.id, wid);
         const callFn = fnMappings[fn as keyof typeof fnMappings];
         if (callFn) {
-            const res = await callFn(client, interaction, char!);
+            const res = await callFn(interaction, char!);
             if (res) {
                 await interaction.followUp(res);
             }
@@ -1495,12 +1575,12 @@ const listHelpers = {
         const { embeds, components } = await res;
         await interaction.editReply({ embeds, components });
     },
-    async textInput(interaction: DTypes.ModalSubmitInteraction, high: boolean, client: CustomClient) {
+    async textInput(interaction: ModalSubmitInteraction, high: boolean) {
         const [cmdName, userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
 
         await interaction.deferUpdate();
-        const user = await client.users.fetch(userID).catch(() => null);
+        const user = await interaction.client.users.fetch(userID).catch(() => null);
         if (!user) return interaction.deleteReply();
         if (cmdName === 'list') {
             const page = parseInt(value);
@@ -1508,7 +1588,8 @@ const listHelpers = {
                 return interaction.followUp({
                     content: 'Invalid page number.',
                     ephemeral: true,
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             const { embeds, components, followUp } = await get_list_as_embed(
                 interaction.channel!,
@@ -1528,10 +1609,12 @@ const listHelpers = {
                 return;
             } else if (!char) {
                 error_embed.setTitle(`No character found with name \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
+                });
             } else if (char === NO_NUM) {
                 error_embed.setTitle(`No character found with index \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
+                });
             }
             const { embeds, components, followUp } = await get_char_as_embed(
                 interaction.channel!,
@@ -1546,7 +1629,7 @@ const listHelpers = {
             throw new Error(`Command type: ${cmdName} not found.`);
         }
     },
-    async execute(interaction: DTypes.ChatInputCommandInteraction, high: boolean) {
+    async execute(interaction: ChatInputCommandInteraction, high: boolean) {
         const user = interaction.options.getUser('user') ?? interaction.user;
         const page = interaction.options.getInteger('page') ?? 1;
         await interaction.deferReply();
@@ -1577,22 +1660,22 @@ export const list: SlashCommand = {
         .setDescription("View a user's waifu list."),
 
     desc: 'Reveal the waifus a user collected in a beautiful embed.\n\n' +
-          'Usage: `/list user: [user] page: [page]`\n\n' +
-          '__**Options**__\n' +
-          '*user:* The user you want to stalk. (Default: You)\n' +
-          '*page:* The page number you want to jump to. (Default: 1)\n\n' +
-          'Examples: `/list`, `/list user: @krammygod`, `/list page: 2`',
+        'Usage: `/list user: [user] page: [page]`\n\n' +
+        '__**Options**__\n' +
+        '*user:* The user you want to stalk. (Default: You)\n' +
+        '*page:* The page number you want to jump to. (Default: 1)\n\n' +
+        'Examples: `/list`, `/list user: @krammygod`, `/list page: 2`',
 
-    async buttonReact(interaction, client) {
-        return listHelpers.buttonReact(interaction, false, client);
+    async buttonReact(interaction) {
+        return listHelpers.buttonReact(interaction, false);
     },
 
-    async menuReact(interaction, client) {
-        return listHelpers.menuReact(interaction, false, client);
+    async menuReact(interaction) {
+        return listHelpers.menuReact(interaction, false);
     },
 
-    async textInput(interaction, client) {
-        return listHelpers.textInput(interaction, false, client);
+    async textInput(interaction) {
+        return listHelpers.textInput(interaction, false);
     },
 
     async execute(interaction) {
@@ -1605,8 +1688,8 @@ export const list_menu: ContextCommand = {
         .setName('Character List')
         .setType(ApplicationCommandType.User),
 
-    execute(interaction, client) {
-        return list.execute(interaction as unknown as DTypes.ChatInputCommandInteraction, client);
+    execute(interaction) {
+        return list.execute(interaction as unknown as ChatInputCommandInteraction);
     },
 };
 
@@ -1625,24 +1708,24 @@ export const high: SlashCommand = {
         .setDescription("View a user's waifu list sorted by level."),
 
     desc: 'Get your highest characters now! ~~Limited time offer.~~\n' +
-          'Only shows characters that are upgradable (see {/uplist})!\n' +
-          'Suggested by: @ryu_minoru\n\n' +
-          'Usage: `/high user: [user] page: [page]`\n\n' +
-          '__**Options**__\n' +
-          '*user:* The user to stalk. (Default: You)\n' +
-          '*page:* The page number to jump to. (Default: 1)\n\n' +
-          'Examples: `/high`, `/high user: @krammygod`, `/high page: 2`',
+        'Only shows characters that are upgradable (see {/uplist})!\n' +
+        'Suggested by: @ryu_minoru\n\n' +
+        'Usage: `/high user: [user] page: [page]`\n\n' +
+        '__**Options**__\n' +
+        '*user:* The user to stalk. (Default: You)\n' +
+        '*page:* The page number to jump to. (Default: 1)\n\n' +
+        'Examples: `/high`, `/high user: @krammygod`, `/high page: 2`',
 
-    async buttonReact(interaction, client) {
-        return listHelpers.buttonReact(interaction, true, client);
+    async buttonReact(interaction) {
+        return listHelpers.buttonReact(interaction, true);
     },
 
-    async menuReact(interaction, client) {
-        return listHelpers.menuReact(interaction, true, client);
+    async menuReact(interaction) {
+        return listHelpers.menuReact(interaction, true);
     },
 
-    async textInput(interaction, client) {
-        return listHelpers.textInput(interaction, true, client);
+    async textInput(interaction) {
+        return listHelpers.textInput(interaction, true);
     },
 
     async execute(interaction) {
@@ -1652,7 +1735,7 @@ export const high: SlashCommand = {
 
 // NOTE: Update docs if/when level threshold for images change
 const gacha_docs =
-`1% Chance to roll from custom database.
+    `1% Chance to roll from custom database.
 Custom database courtesy of: @snypintyme
 Thanks to @iridescent114514, @spud5r, @resenkonepshire, @synxxmodz, and @ryu_minoru for helping expand.
 
@@ -1691,10 +1774,10 @@ message displayed when you roll the character.`;
 
 // Helper to generate new character display
 async function generateCharacterDisplay(
-    client: CustomClient,
+    client: Client,
     character: DB.CharacterInsert,
-    channel: DTypes.TextBasedChannel,
-    user: DTypes.User,
+    channel: TextBasedChannel,
+    user: User,
 ) {
     await character.loadWaifu();
     const img = character.getImage(channel);
@@ -1718,22 +1801,24 @@ async function generateCharacterDisplay(
             if (character.unlockedNMode) {
                 add_on += 'You unlocked a new mode! 🎉\n';
                 add_on += 'Find the character to switch to lewd mode!\n';
-            // Unlocked new nimg
+                // Unlocked new nimg
             } else if (character.max_nimg <= character.waifu!.nimg.length) {
                 add_on += 'You unlocked a new lewd image! 🎉\n';
                 add_on += 'Use lewd mode on the character to switch the image!\n';
             }
         }
     }
-    const embed = new EmbedBuilder({
-        description:
-            `## ${character.getWFC(channel)}${character.name}${character.getGender()}${add_emoji}\n` +
-            `**__From:__ *${character.origin.replace('*', '\\*')}***\n` +
-            `${add_on}` +
-            `[Source](${DB.getSource(img)})\n` +
-            `[Raw Image](${img})`,
-        color: character.fc ? Colors.Gold : Colors.LightGrey,
-    }).setAuthor({
+    const embed = new EmbedBuilder(
+        {
+            description:
+                `## ${character.getWFC(channel)}${character.name}${character.getGender()}${add_emoji}\n` +
+                `**__From:__ *${character.origin.replace('*', '\\*')}***\n` +
+                `${add_on}` +
+                `[Source](${DB.getSource(img)})\n` +
+                `[Raw Image](${img})`,
+            color: character.fc ? Colors.Gold : Colors.LightGrey,
+        },
+    ).setAuthor({
         name: `@${user.tag}`,
         iconURL: user.displayAvatarURL(),
     }).setImage(img);
@@ -1750,25 +1835,27 @@ export const roll: SlashCommand = {
         .setDescription('Roll a random waifu.'),
 
     desc: 'Randomly gives you an anime character. Each roll costs 2 brons.\n' +
-          `${gacha_docs}\n\n` +
-          'Usage: `/roll ephemeral: [ephemeral]`\n\n' +
-          '__**Options**__\n' +
-          '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
-          'Examples: `/roll`, `/roll ephemeral: True`',
+        `${gacha_docs}\n\n` +
+        'Usage: `/roll ephemeral: [ephemeral]`\n\n' +
+        '__**Options**__\n' +
+        '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
+        'Examples: `/roll`, `/roll ephemeral: True`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
-        await interaction.deferReply({ ephemeral: eph }).catch(() => { });
+        await interaction.deferReply({ ephemeral: eph }).catch(() => {
+        });
         const amtTaken = { amt: 0 };
         const res = await DB.generateAndAddCharacter(interaction.user.id, amtTaken);
         const error_embed = new EmbedBuilder({ color: Colors.Red });
         if (typeof res === 'string') {
             error_embed.setTitle(`Roll failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [error_embed] }).then(() => { });
+            return interaction.editReply({ embeds: [error_embed] }).then(() => {
+            });
         }
         let total_refund = 0;
         const { embed, refund } = await generateCharacterDisplay(
-            client,
+            interaction.client,
             res,
             interaction.channel!,
             interaction.user,
@@ -1776,7 +1863,7 @@ export const roll: SlashCommand = {
         total_refund += refund;
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = client.bot_emojis.brons;
+        const brons = interaction.client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         // Reusing error_embed
         error_embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
@@ -1794,27 +1881,29 @@ export const multi: SlashCommand = {
         .setDescription('Roll 11 characters.'),
 
     desc: 'Randomly gives you 11 anime characters. Special deal of 11x for the price of 10x (20 brons).\n' +
-          `${gacha_docs}\n\n` +
-          'Usage: `/multi ephemeral: [ephemeral]`\n\n' +
-          '__**Options**__\n' +
-          '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
-          'Examples: `/multi`, `/multi ephemeral: True`',
+        `${gacha_docs}\n\n` +
+        'Usage: `/multi ephemeral: [ephemeral]`\n\n' +
+        '__**Options**__\n' +
+        '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
+        'Examples: `/multi`, `/multi ephemeral: True`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
-        await interaction.deferReply({ ephemeral: eph }).catch(() => { });
+        await interaction.deferReply({ ephemeral: eph }).catch(() => {
+        });
         const amtTaken = { amt: 0 };
         const res = await DB.generateAndAddCharacters(interaction.user.id, false, amtTaken);
         const embed = new EmbedBuilder({ color: Colors.Red });
         if (typeof res === 'string') {
             embed.setTitle(`Multi failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         let total_refund = 0;
         const embeds = [];
         for (const character of res) {
             const { embed, refund } = await generateCharacterDisplay(
-                client,
+                interaction.client,
                 character,
                 interaction.channel!,
                 interaction.user,
@@ -1824,7 +1913,7 @@ export const multi: SlashCommand = {
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = client.bot_emojis.brons;
+        const brons = interaction.client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1842,31 +1931,33 @@ export const whale: SlashCommand = {
         .setDescription('Roll 11 special anime characters.'),
 
     desc: 'Randomly gives you 11 starred waifus. Each whale costs 100 brons. Can only be done once a day.\n' +
-          'Guaranteed to roll from custom database.\n' +
-          'The last character is guaranteed to be a character that has multiple images (lewd or normal).\n' +
-          `${gacha_docs}\n\n` +
-          'Command suggested by Ryu Minoru#5834. Unlike multi, it will only give you 11 ' +
-          'starred characters (with one guaranteed special character) for a higher price.\n\n' +
-          'Usage: `/whale ephemeral: [ephemeral]`\n\n' +
-          '__**Options**__\n' +
-          '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
-          'Examples: `/whale`, `/whale ephemeral: True`',
+        'Guaranteed to roll from custom database.\n' +
+        'The last character is guaranteed to be a character that has multiple images (lewd or normal).\n' +
+        `${gacha_docs}\n\n` +
+        'Command suggested by Ryu Minoru#5834. Unlike multi, it will only give you 11 ' +
+        'starred characters (with one guaranteed special character) for a higher price.\n\n' +
+        'Usage: `/whale ephemeral: [ephemeral]`\n\n' +
+        '__**Options**__\n' +
+        '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
+        'Examples: `/whale`, `/whale ephemeral: True`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
-        await interaction.deferReply({ ephemeral: eph }).catch(() => { });
+        await interaction.deferReply({ ephemeral: eph }).catch(() => {
+        });
         const amtTaken = { amt: 0 };
         const res = await DB.generateAndAddCharacters(interaction.user.id, true, amtTaken);
         const embed = new EmbedBuilder({ color: Colors.Red });
         if (typeof res === 'string') {
             embed.setTitle(`Whale failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         let total_refund = 0;
         const embeds = [];
         for (const character of res) {
             const { embed, refund } = await generateCharacterDisplay(
-                client,
+                interaction.client,
                 character,
                 interaction.channel!,
                 interaction.user,
@@ -1876,7 +1967,7 @@ export const whale: SlashCommand = {
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = client.bot_emojis.brons;
+        const brons = interaction.client.bot_emojis.brons;
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1898,15 +1989,15 @@ export const dall: SlashCommand = {
         .setDescription('Deletes all common characters.'),
 
     desc: 'WARNING! DANGEROUS COMMAND! This command will delete ALL of the characters that are ' +
-          'not starred from your list.\n' +
-          'Provide ranges to start/end with that character. (Suggestion by BluThunder1406#4598)\n\n' +
-          'Usage: `/trade start: [start_waifu] end: [end_waifu]`\n\n' +
-          '__**Options**__\n' +
-          '*start_waifu:* The waifu to start deleting from. (Default: 1)\n' +
-          '*end_waifu:* The waifu to stop deleting from. (Default: last)\n\n' +
-          'Examples: `/dall`, `/dall start: 5`',
+        'not starred from your list.\n' +
+        'Provide ranges to start/end with that character. (Suggestion by BluThunder1406#4598)\n\n' +
+        'Usage: `/trade start: [start_waifu] end: [end_waifu]`\n\n' +
+        '__**Options**__\n' +
+        '*start_waifu:* The waifu to start deleting from. (Default: 1)\n' +
+        '*end_waifu:* The waifu to stop deleting from. (Default: last)\n\n' +
+        'Examples: `/dall`, `/dall start: 5`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const begin = interaction.options.getString('start');
         const finish = interaction.options.getString('end');
         const embed = new EmbedBuilder({
@@ -1942,15 +2033,16 @@ export const dall: SlashCommand = {
         const commons = await DB.fetchUserCommonCount(interaction.user.id, { start, end });
         if (commons === 0) {
             embed.setTitle('No common characters found.').setColor(Colors.Red);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         embed.setTitle('Confirm delete?').setDescription(
             `## Found ${commons} common(s).\n` +
             `## Total refund: +${commons} ` +
-            `${client.bot_emojis.brons}\n` +
+            `${interaction.client.bot_emojis.brons}\n` +
             '# **This action cannot be undone.**',
         );
-        const buttons = new ActionRowBuilder<DTypes.ButtonBuilder>()
+        const buttons = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('dall/confirm')
@@ -1971,7 +2063,10 @@ export const dall: SlashCommand = {
 
         const deleted = await DB.deleteUserCommonCharacters(interaction.user.id, { start, end });
         await DB.addBrons(interaction.user.id, deleted);
-        embed.setDescription(`Successfully deleted ${deleted} common(s)! +${deleted} ${client.bot_emojis.brons}`);
+        embed.setDescription(
+            `Successfully deleted ${deleted} common(s)! ` +
+            `+${deleted} ${interaction.client.bot_emojis.brons}`,
+        );
         await interaction.editReply({ embeds: [embed] });
     },
 };
@@ -1986,15 +2081,15 @@ export const stars: SlashCommand = {
         .setDescription('Shows the number of stars someone has.'),
 
     desc: 'Check how many starred characters you or a user has!\n\n' +
-          'Usage: `/stars user: [user]`\n\n' +
-          '__**Options**__\n' +
-          '*user:* The user you want to find the number of stars for. (Default: You)\n\n' +
-          'Examples: `/stars`, `/stars user: @krammygod`',
+        'Usage: `/stars user: [user]`\n\n' +
+        '__**Options**__\n' +
+        '*user:* The user you want to find the number of stars for. (Default: You)\n\n' +
+        'Examples: `/stars`, `/stars user: @krammygod`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user') ?? interaction.user;
-        const starsString = user.id === client.user.id ? '∞' :
+        const starsString = user.id === interaction.client.user.id ? '∞' :
             await DB.fetchUserStarredCount(user.id);
         const stars = await DB.fetchWaifuCount();
         let starSymbol = '⭐';
@@ -2004,7 +2099,7 @@ export const stars: SlashCommand = {
         let whoHas = '';
         if (interaction.user.id === user.id) {
             whoHas += 'You have';
-        } else if (client.user.id === user.id) {
+        } else if (interaction.client.user.id === user.id) {
             whoHas += 'I have';
         } else {
             whoHas += `${user} has`;
@@ -2018,7 +2113,7 @@ export const stars: SlashCommand = {
 };
 
 type TopPrivates = {
-    getPage: (authorID: string, page: number) => Promise<HelperRetVal>;
+    getPage: (client: Client, authorID: string, page: number) => Promise<HelperRetVal>;
 };
 export const top: SlashCommand & TopPrivates = {
     data: new SlashCommandBuilder()
@@ -2031,12 +2126,12 @@ export const top: SlashCommand & TopPrivates = {
         .setDescription('Show top users with most starred waifus.'),
 
     desc: 'Shows the top users with the most amount of stars!\n\n' +
-          'Usage: `/top page: [page]`\n\n' +
-          '__**Options**__\n' +
-          '*page:* The page number to jump to. (Default: 1)\n\n' +
-          'Examples: `/top`, `/top page: 2`',
+        'Usage: `/top page: [page]`\n\n' +
+        '__**Options**__\n' +
+        '*page:* The page number to jump to. (Default: 1)\n\n' +
+        'Examples: `/top`, `/top page: 2`',
 
-    async getPage(authorID, page) {
+    async getPage(client: Client, authorID, page) {
         const max_pages = totalPages(await DB.getUserCount());
 
         const embed = new EmbedBuilder({
@@ -2045,7 +2140,7 @@ export const top: SlashCommand & TopPrivates = {
         });
         // This represents any followup messages that should be sent
         const followUp: {
-            embeds: DTypes.EmbedBuilder[],
+            embeds: EmbedBuilder[],
             ephemeral: true
         } = {
             embeds: [],
@@ -2079,7 +2174,7 @@ export const top: SlashCommand & TopPrivates = {
 
         let field = '';
         for (const data of users) {
-            const displayName = await Utils.fetch_user_fast(data.uid, u => u?.displayName);
+            const displayName = await Utils.fetch_user_fast(client, data.uid, u => u?.displayName);
             field += `${data.idx}. __${displayName ?? data.uid}` +
                 `:__ **${data.stars}** ${data.stars === stars ? '🌟' : '⭐'}`;
             if (authorID === data.uid) {
@@ -2127,8 +2222,8 @@ export const top: SlashCommand & TopPrivates = {
         const retval: HelperRetVal = {
             embeds: [embed],
             components: [
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons),
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons2),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons2),
             ],
         };
         if (followUp.embeds.length > 0) {
@@ -2146,9 +2241,10 @@ export const top: SlashCommand & TopPrivates = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) await interaction.followUp(followUp);
     },
@@ -2162,16 +2258,17 @@ export const top: SlashCommand & TopPrivates = {
                     title: 'Jump to page',
                     customId: 'top',
                     components: [
-                        new ActionRowBuilder<DTypes.TextInputBuilder>({
+                        new ActionRowBuilder<TextInputBuilder>({
                             components: [
-                                new TextInputBuilder({
-                                    label: 'Page #',
-                                    customId: 'value',
-                                    placeholder: 'Enter the page number to jump to...',
-                                    style: TextInputStyle.Short,
-                                    maxLength: 100,
-                                    required: true,
-                                }),
+                                new TextInputBuilder(
+                                    {
+                                        label: 'Page #',
+                                        customId: 'value',
+                                        placeholder: 'Enter the page number to jump to...',
+                                        style: TextInputStyle.Short,
+                                        maxLength: 100,
+                                        required: true,
+                                    }),
                             ],
                         }),
                     ],
@@ -2181,20 +2278,21 @@ export const top: SlashCommand & TopPrivates = {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by brons',
                     ephemeral: true,
-                }).then(() => { });
+                }).then(() => {
+                });
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.user.id, parseInt(page));
+        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, parseInt(page));
         await interaction.editReply({ embeds, components });
     },
 
     async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.user.id, page);
+        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp) await interaction.followUp(followUp);
     },
@@ -2211,15 +2309,15 @@ export const users: SlashCommand = {
         .setDescription('Get a list of all users that have a certain character.'),
 
     desc: 'Find all the users that own that character. This will give the waifu number too so\n' +
-          'you can trade with them. The waifu name is case-insensitive, and will prioritize\n' +
-          'names equal to the given name.\n\n' +
-          'This command also shows all the details about the waifu!\n\n' +
-          'Usage: `/users waifu_name: <waifu_name>`\n\n' +
-          '__**Options**__\n' +
-          '*waifu_name:* The name of the waifu you want details of. (Required)\n\n' +
-          'Examples: `/users waifu_name: Kamisato Ayaka`',
+        'you can trade with them. The waifu name is case-insensitive, and will prioritize\n' +
+        'names equal to the given name.\n\n' +
+        'This command also shows all the details about the waifu!\n\n' +
+        'Usage: `/users waifu_name: <waifu_name>`\n\n' +
+        '__**Options**__\n' +
+        '*waifu_name:* The name of the waifu you want details of. (Required)\n\n' +
+        'Examples: `/users waifu_name: Kamisato Ayaka`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const waifu_name = interaction.options.getString('waifu_name')!;
         // If anything goes wrong with replying, don't do anything
         const embed = new EmbedBuilder({
@@ -2233,10 +2331,12 @@ export const users: SlashCommand = {
         const waifu = await search_waifu(interaction, waifu_name);
         if (waifu === null) {
             error_embed.setTitle('No character selected.');
-            return interaction.editReply({ embeds: [error_embed] }).then(() => { });
+            return interaction.editReply({ embeds: [error_embed] }).then(() => {
+            });
         } else if (waifu === undefined) {
             error_embed.setTitle(`No character found with name \`${waifu_name}\`.`);
-            return interaction.editReply({ embeds: [error_embed] }).then(() => { });
+            return interaction.editReply({ embeds: [error_embed] }).then(() => {
+            });
         }
 
         const users = await DB.fetchAllUsers(waifu.wid);
@@ -2256,7 +2356,7 @@ export const users: SlashCommand = {
         //           'and then use /trade to trade with them!'
         // });
         for (const [i, char] of users.entries()) {
-            const user = await client.users.fetch(char.uid).catch(() => null);
+            const user = await interaction.client.users.fetch(char.uid).catch(() => null);
             if (!user) return interaction.deleteReply();
             desc +=
                 `${i + 1}. **@${user?.tag ?? char.uid}** ` +
@@ -2284,11 +2384,11 @@ export const swap: SlashCommand = {
         .setDescription('Swap two characters in your list.'),
 
     desc: 'Changes a characters position with another for simple sorting.\n\n' +
-          'Usage: `/swap char1: <char1> char2: <char2>`\n\n' +
-          '__**Options**__\n' +
-          '*char1:* One character you want to change positions. (Required)\n' +
-          '*char2:* The other character you would like to switch with. (Required)\n\n' +
-          'Examples: `/swap char1: 1 char2: 2` <- Swaps characters at position 1 with 2.',
+        'Usage: `/swap char1: <char1> char2: <char2>`\n\n' +
+        '__**Options**__\n' +
+        '*char1:* One character you want to change positions. (Required)\n' +
+        '*char2:* The other character you would like to switch with. (Required)\n\n' +
+        'Examples: `/swap char1: 1 char2: 2` <- Swaps characters at position 1 with 2.',
 
     async execute(interaction) {
         const c1 = interaction.options.getString('char1')!;
@@ -2304,24 +2404,29 @@ export const swap: SlashCommand = {
             return interaction.deleteReply();
         } else if (!char1) {
             embed.setTitle(`First character not found with name \`${c1}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         } else if (char1 === NO_NUM) {
             embed.setTitle(`First character not found with index \`${c1}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         const char2 = await search_character(interaction, interaction.user.id, c2, false);
         if (char2 === null) {
             return;
         } else if (!char2) {
             embed.setTitle(`Second character not found with name \`${c2}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         } else if (char2 === NO_NUM) {
             embed.setTitle(`Second character not found with index \`${c2}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         if (char1.idx === char2.idx) {
             embed.setTitle('Why are you swapping the same character?');
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         await DB.swapUserCharacters(char1, char2);
         embed.setTitle(
@@ -2351,11 +2456,11 @@ export const move: SlashCommand = {
         .setDescription('Moves a character from one position to another in your list.'),
 
     desc: 'Moves a character from one position to another in your list.\n\n' +
-          '**Usage:** `/move char: <char> position: <position>`\n\n' +
-          '__**Options:**__\n' +
-          '*char:* The character to move. Can be an index or position. (Required)\n' +
-          '*position:* The position to move the character to. (Required)\n\n' +
-          'Examples: `/move char: 1 position: 2`',
+        '**Usage:** `/move char: <char> position: <position>`\n\n' +
+        '__**Options:**__\n' +
+        '*char:* The character to move. Can be an index or position. (Required)\n' +
+        '*position:* The position to move the character to. (Required)\n\n' +
+        'Examples: `/move char: 1 position: 2`',
 
     async execute(interaction) {
         const c = interaction.options.getString('char')!;
@@ -2371,21 +2476,25 @@ export const move: SlashCommand = {
             return interaction.deleteReply();
         } else if (!char) {
             embed.setTitle(`Character not found with name \`${c}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         } else if (char === NO_NUM) {
             embed.setTitle(`Character not found with index \`${c}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         } else if (char.idx === pos) {
             embed.setTitle(`${char.name} is already at that position.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         const success = await DB.moveUserCharacter(char, pos);
         if (!success) {
             embed.setTitle('Position is out of range.');
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         embed.setTitle(`${char.getWFC(interaction.channel!)} ${char.name} ` +
-            `${char.getGender()} is now at position ${pos}`)
+                           `${char.getGender()} is now at position ${pos}`)
             .setColor(Colors.Gold);
         await interaction.editReply({ embeds: [embed] });
     },
@@ -2406,18 +2515,12 @@ type ImpartialWaifu = {
 };
 type SubmitPrivates = {
     uniqueFileName: (ext: string) => string;
-    secretButtons: ActionRowBuilder<DTypes.ButtonBuilder>;
+    secretButtons: ActionRowBuilder<ButtonBuilder>;
     input: ModalBuilder;
-    getWaifuInfoEmbed: (submission: SubmissionCache) => Promise<DTypes.EmbedBuilder>;
-    searchWaifu: (
-        interaction: DTypes.ModalSubmitInteraction,
-        embed: DTypes.EmbedBuilder
-    ) => Promise<ImpartialWaifu | undefined>;
-    searchAnime: (
-        interaction: DTypes.ModalSubmitInteraction,
-        embed: DTypes.EmbedBuilder
-    ) => Promise<ImpartialWaifu | undefined>;
-    startSubmit: (interaction: DTypes.ButtonInteraction, data: ImpartialWaifu, uid: string) => Promise<void>;
+    getWaifuInfoEmbed: (client: Client, submission: SubmissionCache) => Promise<EmbedBuilder>;
+    searchWaifu: (interaction: ModalSubmitInteraction, embed: EmbedBuilder) => Promise<ImpartialWaifu | undefined>;
+    searchAnime: (interaction: ModalSubmitInteraction, embed: EmbedBuilder) => Promise<ImpartialWaifu | undefined>;
+    startSubmit: (interaction: ButtonInteraction, data: ImpartialWaifu, uid: string) => Promise<void>;
 };
 export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
     data: new SlashCommandBuilder()
@@ -2425,16 +2528,16 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         .setDescription('Create a submission request to add a character.'),
 
     desc: 'Want to add a character that is not currently in the starred database?\n' +
-          'You came to the right command!\n' +
-          'Simply just follow these rules:\n\n' +
-          '__**Character Submission Rules:**__\n' +
-          '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
-          '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
-          "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
-          '4. If its a new character, the character must have at least **one normal image**.\n' +
-          'When using submit character or anime, values will be prepopulated in the modal. ' +
-          '**DO NOT CHANGE THESE.**\n\n' +
-          'Usage: `/submit`',
+        'You came to the right command!\n' +
+        'Simply just follow these rules:\n\n' +
+        '__**Character Submission Rules:**__\n' +
+        '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
+        '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
+        "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
+        '4. If its a new character, the character must have at least **one normal image**.\n' +
+        'When using submit character or anime, values will be prepopulated in the modal. ' +
+        '**DO NOT CHANGE THESE.**\n\n' +
+        'Usage: `/submit`',
 
     // We can't use this.data.name
     cache: new DB.Cache('submit'),
@@ -2479,61 +2582,65 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         title: 'Add new character',
         customId: 'submit',
         components: [
-            new ActionRowBuilder<DTypes.TextInputBuilder>({
-                components: [new TextInputBuilder({
-                    label: "Character's name",
-                    customId: 'name',
-                    placeholder: "Enter the character's name",
-                    style: TextInputStyle.Short,
-                    maxLength: 100,
-                    required: true,
-                })],
+            new ActionRowBuilder<TextInputBuilder>({
+                components: [new TextInputBuilder(
+                    {
+                        label: "Character's name",
+                        customId: 'name',
+                        placeholder: "Enter the character's name",
+                        style: TextInputStyle.Short,
+                        maxLength: 100,
+                        required: true,
+                    })],
             }),
-            new ActionRowBuilder<DTypes.TextInputBuilder>({
-                components: [new TextInputBuilder({
-                    label: "Character's gender",
-                    customId: 'gender',
-                    placeholder: 'Female, Male, or Unknown',
-                    style: TextInputStyle.Short,
-                    maxLength: 7, // Length of "Unknown"
-                    required: true,
-                })],
+            new ActionRowBuilder<TextInputBuilder>({
+                components: [new TextInputBuilder(
+                    {
+                        label: "Character's gender",
+                        customId: 'gender',
+                        placeholder: 'Female, Male, or Unknown',
+                        style: TextInputStyle.Short,
+                        maxLength: 7, // Length of "Unknown"
+                        required: true,
+                    })],
             }),
-            new ActionRowBuilder<DTypes.TextInputBuilder>({
-                components: [new TextInputBuilder({
-                    label: 'Anime name',
-                    customId: 'origin',
-                    placeholder: "Enter the anime's name",
-                    style: TextInputStyle.Short,
-                    maxLength: 100,
-                    required: true,
-                })],
+            new ActionRowBuilder<TextInputBuilder>({
+                components: [new TextInputBuilder(
+                    {
+                        label: 'Anime name',
+                        customId: 'origin',
+                        placeholder: "Enter the anime's name",
+                        style: TextInputStyle.Short,
+                        maxLength: 100,
+                        required: true,
+                    })],
             }),
-            new ActionRowBuilder<DTypes.TextInputBuilder>({
-                components: [new TextInputBuilder({
-                    label: 'Normal image',
-                    customId: 'img',
-                    placeholder: 'Separate images by lines.',
-                    style: TextInputStyle.Paragraph,
-                    maxLength: 2000,
-                    required: false,
-                })],
+            new ActionRowBuilder<TextInputBuilder>({
+                components: [new TextInputBuilder(
+                    {
+                        label: 'Normal image',
+                        customId: 'img',
+                        placeholder: 'Separate images by lines.',
+                        style: TextInputStyle.Paragraph,
+                        maxLength: 2000,
+                        required: false,
+                    })],
             }),
-            new ActionRowBuilder<DTypes.TextInputBuilder>({
-                components: [new TextInputBuilder({
-                    label: 'Lewd image',
-                    customId: 'nimg',
-                    placeholder: 'Separate images by lines.',
-                    style: TextInputStyle.Paragraph,
-                    maxLength: 2000,
-                    required: false,
-                })],
+            new ActionRowBuilder<TextInputBuilder>({
+                components: [new TextInputBuilder(
+                    {
+                        label: 'Lewd image',
+                        customId: 'nimg',
+                        placeholder: 'Separate images by lines.',
+                        style: TextInputStyle.Paragraph,
+                        maxLength: 2000,
+                        required: false,
+                    })],
             }),
         ],
     }),
 
-    async getWaifuInfoEmbed(submission) {
-        const client = new CustomClient();
+    async getWaifuInfoEmbed(client: Client, submission) {
         const user = await client.users.fetch(submission.uid);
         const waifu = await DB.fetchWaifuByDetails(submission.data);
         const is_new_origin = await DB.fetchCompleteOrigin(submission.data.origin);
@@ -2550,21 +2657,23 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             `**Origin:** __${submission.data.origin}__${is_new_origin ? ' (existing anime)' : ''}\n` +
             `**\\# of img:** ${waifu ? `${waifu.img.length + submission.data.img.length} ` +
                 `(+${submission.data.img.length})` : submission.data.img.length}\n\n` +
-                `${submission.data.img.join('\n\n')}\n\n` +
+            `${submission.data.img.join('\n\n')}\n\n` +
             `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + submission.data.nimg.length} ` +
                 `(+${submission.data.nimg.length})` : submission.data.nimg.length}\n\n` +
-                `${submission.data.nimg.join('\n\n')}`,
+            `${submission.data.nimg.join('\n\n')}`,
         );
     },
 
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         // This handles the button presses from me, the owner that will approve/reject submissions
         const msg = interaction.message;
         if (!msg) return interaction.update({ content: 'Removed.' }).then(m => m.delete());
         const submission = await this.cache.get(msg.id);
         if (!submission) return interaction.update({ content: 'Cache lost.' }).then(m => m.delete());
-        const user = await client.users.fetch(submission.uid).catch(() => { });
-        if (!user) return msg.delete().then(() => { });
+        const user = await interaction.client.users.fetch(submission.uid).catch(() => {
+        });
+        if (!user) return msg.delete().then(() => {
+        });
         const action = interaction.customId.split('/')[2];
         const { name, gender, origin, img, nimg } = submission.data;
         const characterInfo = '```' + `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
@@ -2575,16 +2684,17 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 title: 'Add new character',
                 customId: 'submitRejectReason',
                 components: [
-                    new ActionRowBuilder<DTypes.TextInputBuilder>({
-                        components: [new TextInputBuilder({
-                            label: 'Reason',
-                            customId: 'reason',
-                            placeholder: 'Enter the reason for rejection:',
-                            style: TextInputStyle.Paragraph,
-                            value: 'Invalid character provided.',
-                            maxLength: 2000,
-                            required: true,
-                        })],
+                    new ActionRowBuilder<TextInputBuilder>({
+                        components: [new TextInputBuilder(
+                            {
+                                label: 'Reason',
+                                customId: 'reason',
+                                placeholder: 'Enter the reason for rejection:',
+                                style: TextInputStyle.Paragraph,
+                                value: 'Invalid character provided.',
+                                maxLength: 2000,
+                                required: true,
+                            })],
                     }),
                 ],
             });
@@ -2597,10 +2707,12 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 const reason = i.fields.getTextInputValue('reason');
                 await user.send({
                     content: `__Your submission for:__ ${characterInfo}` +
-                        `Has been **rejected**!\n**Reason**: ${reason}`,
-                }).catch(() => { });
+                                        `Has been **rejected**!\n**Reason**: ${reason}`,
+                }).catch(() => {
+                });
                 return i.deleteReply();
-            }).catch(() => { });
+            }).catch(() => {
+            });
         } else if (action === 'approve') {
             await interaction.update({ components: [] });
             if (img.some(i => !i.startsWith(config.cdn)) ||
@@ -2632,19 +2744,20 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 '```';
             await user.send({
                 content: `__Your submission for:__ ${newCharacterInfo}Has been **accepted**!`,
-            }).catch(() => { });
-            const new_characters_log = await client.channels.fetch(
+            }).catch(() => {
+            });
+            const new_characters_log = await interaction.client.channels.fetch(
                 new_characters_log_id,
-            ) as DTypes.TextBasedChannel;
+            ) as TextBasedChannel;
             if (waifu) {
                 await new_characters_log.send({
                     content: `Images added to character by ${user} ` +
-                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
+                                                      `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
                 });
             } else {
                 await new_characters_log.send({
                     content: `New character added by ${user} ` +
-                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
+                                                      `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
                 });
             }
             await msg.delete();
@@ -2659,7 +2772,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 // Use our helper to get the image data.
                 const { images, source } = await getRawImageLink(url).catch(() => ({ images: [url], source: url }));
                 const { ext, blob } = await getImage(images[0]);
-                
+
                 const formdata = new FormData();
                 formdata.append('images', blob, `tmp.${ext}`);
                 // Won't automatically add url as source
@@ -2678,7 +2791,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             submission.data.img = imgs.splice(0, img.length);
             submission.data.nimg = imgs.splice(0, nimg.length);
             await this.cache.set(msg.id, submission);
-            const embed = await this.getWaifuInfoEmbed(submission);
+            const embed = await this.getWaifuInfoEmbed(interaction.client, submission);
             await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
         } else if (action === 'edit') {
             return this.startSubmit(interaction, { name, gender, origin, img, nimg }, submission.uid);
@@ -2687,7 +2800,7 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         }
     },
 
-    async textInput(interaction, client) {
+    async textInput(interaction) {
         // This handles the actual submission from the user
         await interaction.deferUpdate();
         const submission = await this.cache.get(interaction.message?.id);
@@ -2705,7 +2818,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             return interaction.followUp({
                 content: 'Gender must be one of `Female`, `Male` or `Unknown`!',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         // Ensure that they meant to add to the anime, rather than creating a new one.
         const complete_origin = await DB.fetchCompleteOrigin(origin);
@@ -2717,16 +2831,18 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             return interaction.followUp({
                 content: 'You must submit at least 1 image!',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         } else if (!waifu && img.length === 0) {
             return interaction.followUp({
                 content: 'New waifus must have at least 1 normal image!',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
-        const submission_log = await client.channels.fetch(submission_log_id) as DTypes.TextBasedChannel;
+        const submission_log = await interaction.client.channels.fetch(submission_log_id) as TextBasedChannel;
         const new_submission = { mid: '', uid, data };
-        const embed = await this.getWaifuInfoEmbed(new_submission);
+        const embed = await this.getWaifuInfoEmbed(interaction.client, new_submission);
 
         if (submission) interaction.deleteReply();
         else interaction.followUp({ content: 'Received!', ephemeral: true });
@@ -2830,23 +2946,24 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
         return interaction.showModal(modalInput);
     },
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         let uid = interaction.user.id;
         // Admins can submit on behalf of other users.
-        if (uid === client.admin.id) {
+        if (uid === interaction.client.admin.id) {
             const modal = new ModalBuilder({
                 title: 'Admin Submission',
                 customId: 'submitAdmin',
                 components: [
-                    new ActionRowBuilder<DTypes.TextInputBuilder>({
-                        components: [new TextInputBuilder({
-                            label: 'User ID',
-                            customId: 'uid',
-                            value: uid,
-                            style: TextInputStyle.Short,
-                            maxLength: 100,
-                            required: true,
-                        })],
+                    new ActionRowBuilder<TextInputBuilder>({
+                        components: [new TextInputBuilder(
+                            {
+                                label: 'User ID',
+                                customId: 'uid',
+                                value: uid,
+                                style: TextInputStyle.Short,
+                                maxLength: 100,
+                                required: true,
+                            })],
                     }),
                 ],
             });
@@ -2854,10 +2971,11 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
             const res = await interaction.awaitModalSubmit({
                 filter: s => s.customId === modal.data.custom_id,
                 time: 15 * 60 * 1_000, // Wait for 15 mins max
-            }).catch(() => { });
+            }).catch(() => {
+            });
             if (!res) return;
             uid = res.fields.getTextInputValue('uid');
-            interaction = res as unknown as DTypes.ChatInputCommandInteraction;
+            interaction = res as unknown as ChatInputCommandInteraction;
         }
         await interaction.deferReply({ ephemeral: true });
         const embed = new EmbedBuilder({
@@ -2918,14 +3036,15 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                     title: 'Waifu Search',
                     customId: `submitSearchWaifu${id++}`, // Fixes a very specific bug
                     components: [new ActionRowBuilder<TextInputBuilder>({
-                        components: [new TextInputBuilder({
-                            label: "Character's name",
-                            customId: 'name',
-                            placeholder: 'Enter the name of the character',
-                            style: TextInputStyle.Short,
-                            maxLength: 100,
-                            required: true,
-                        })],
+                        components: [new TextInputBuilder(
+                            {
+                                label: "Character's name",
+                                customId: 'name',
+                                placeholder: 'Enter the name of the character',
+                                style: TextInputStyle.Short,
+                                maxLength: 100,
+                                required: true,
+                            })],
                     })],
                 });
                 // Create modal to let user input.
@@ -2933,7 +3052,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
                     time: 10 * 60 * 1_000, // Wait for 10 mins max to ensure interaction doesn't expire
-                }).catch(() => { });
+                }).catch(() => {
+                });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
                 waifu = await this.searchWaifu(res, embed).then(w => {
@@ -2955,14 +3075,15 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                     title: 'Anime Search',
                     customId: `submitSearchOrigin${id++}`, // Fixes a very specific bug
                     components: [new ActionRowBuilder<TextInputBuilder>({
-                        components: [new TextInputBuilder({
-                            label: 'Anime name',
-                            customId: 'name',
-                            placeholder: 'Enter the name of the anime',
-                            style: TextInputStyle.Short,
-                            maxLength: 200,
-                            required: true,
-                        })],
+                        components: [new TextInputBuilder(
+                            {
+                                label: 'Anime name',
+                                customId: 'name',
+                                placeholder: 'Enter the name of the anime',
+                                style: TextInputStyle.Short,
+                                maxLength: 200,
+                                required: true,
+                            })],
                     })],
                 });
                 // Create modal to let user input.
@@ -2970,7 +3091,8 @@ export const submit: CachedSlashCommand<SubmissionCache> & SubmitPrivates = {
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
                     time: 10 * 60 * 1_000, // Wait for 10 mins max
-                }).catch(() => { });
+                }).catch(() => {
+                });
                 if (!res) return i.deleteReply(); // Timed out, took too long
                 // Anime submit search
                 waifu = await this.searchAnime(res, embed).then(w => {

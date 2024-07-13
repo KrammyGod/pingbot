@@ -1,7 +1,7 @@
 import config from '@config';
-import { getUID, } from '@modules/hoyolab';
-import { Client, } from 'pg';
-import { inspect, } from 'util';
+import { getUID } from '@modules/hoyolab';
+import { Client } from 'pg';
+import { inspect } from 'util';
 
 const client = new Client({ connectionTimeoutMillis: 2000 });
 
@@ -44,6 +44,7 @@ const LOGGER = {
 };
 
 const ret = [''];
+
 function add(msg: string) {
     if (msg.length >= 2000) throw new Error(`Message too big!\n${msg}`);
     // Discord message limitation
@@ -52,6 +53,7 @@ function add(msg: string) {
     }
     ret[ret.length - 1] += msg;
 }
+
 function on_account_error(err: object, aid: string, uid: string) {
     let msg = `\nAccount ID: ${aid}`;
     msg += `\nUser ID: ${uid}`;
@@ -161,7 +163,9 @@ export type SendMessage = {
 };
 
 class Sign {
-    constructor(private readonly cookie: string, private readonly notify: boolean, private readonly uid: string) {}
+    constructor(private readonly cookie: string, private readonly notify: boolean, private readonly uid: string) {
+    }
+
     get header() {
         return {
             'Accept': 'application/json, text/plain, */*',
@@ -175,6 +179,7 @@ class Sign {
             'Cookie': this.cookie,
         };
     }
+
     async getAwards() {
         return fetch(CONFIG.rewardURL, { headers: this.header })
             .then(res => res.json())
@@ -184,6 +189,7 @@ class Sign {
                 throw err;
             });
     }
+
     async getInfo() {
         const res = await fetch(CONFIG.infoURL, { headers: this.header })
             .then(res => res.json() as Promise<InfoAPIResponse>)
@@ -197,6 +203,7 @@ class Sign {
         }
         return res.data!;
     }
+
     async getRegion(): Promise<[string, string]> {
         const res = await fetch(CONFIG.roleURL, { headers: this.header })
             .then(res => res.json() as Promise<RoleAPIResponse>)
@@ -211,6 +218,7 @@ class Sign {
         const characterList = res.data!.list[0];
         return [characterList.region_name, characterList.nickname];
     }
+
     async run(): Promise<CollectResult | undefined> {
         LOGGER.log('Running sign in...');
         if (!this.notify) {
@@ -284,9 +292,12 @@ type HoyolabAccount = {
     readonly honkai: CheckinType;
     readonly star_rail: CheckinType;
 };
+
 async function collect() {
     const accounts = await client.query<HoyolabAccount>(
-        `SELECT * FROM hoyolab_cookies_list WHERE ${process.env.type} <> $1`,
+        `SELECT *
+         FROM hoyolab_cookies_list
+         WHERE ${process.env.type} <> $1`,
         ['none'],
     ).then(res => res.rows);
     const message: SendMessage = {
@@ -329,7 +340,8 @@ async function collect() {
         LOGGER.error(e);
         add('I encountered a really bad error... save me...\n```\n' + inspect(e) + '```');
     } finally {
-        await client.end().catch(() => { });
+        await client.end().catch(() => {
+        });
         LOGGER.end();
     }
 })();

@@ -2,10 +2,8 @@
 import glob from 'glob';
 import path from 'path';
 import config from '@config';
-import { REST, } from '@discordjs/rest';
-import { Routes, } from 'discord-api-types/v10';
-import { ApplicationCommandOptionType, } from 'discord.js';
-import { CommandFile, isInteractionCommand, isSlashCommand, } from '@classes/client';
+import { REST } from '@discordjs/rest';
+import { Routes } from 'discord-api-types/v10';
 import type {
     APIApplicationCommand,
     APIApplicationCommandOption,
@@ -13,6 +11,8 @@ import type {
     RESTPostAPIChatInputApplicationCommandsJSONBody,
     RESTPostAPIContextMenuApplicationCommandsJSONBody,
 } from 'discord.js';
+import { ApplicationCommandOptionType } from 'discord.js';
+import { CommandFile, isInteractionCommand, isSlashCommand } from '@classes/command_types';
 
 const token = config.token ?? '';
 const clientId = config.client ?? '';

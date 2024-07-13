@@ -1,4 +1,4 @@
-import { parse, } from 'cookie';
+import { parse } from 'cookie';
 
 const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) ' +
     'AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150';
@@ -32,6 +32,33 @@ class HoyoAccountInfo {
     constructor(uid: string, list: GameAccountInfo[]) {
         this.uid = uid;
         this.list = list;
+    }
+
+    loadAllGames({
+        honkaiStatus, genshinStatus, starrailStatus,
+    }: {
+        honkaiStatus?: string,
+        genshinStatus?: string,
+        starrailStatus?: string
+    } = {}) {
+        let retval = '';
+        let infoStr = this.infoString(1);
+        const games: { HI3?: boolean, GI?: boolean, HSR?: boolean } = {};
+        if (infoStr) {
+            retval += infoStr + (honkaiStatus ?? '');
+            games.HI3 = true;
+        }
+        infoStr = this.infoString(2);
+        if (infoStr) {
+            retval += infoStr + (genshinStatus ?? '');
+            games.GI = true;
+        }
+        infoStr = this.infoString(6);
+        if (infoStr) {
+            retval += infoStr + (starrailStatus ?? '');
+            games.HSR = true;
+        }
+        return { retval, games };
     }
 
     private infoString(game_id: number) {
@@ -73,33 +100,6 @@ class HoyoAccountInfo {
             `**[${nickname}](${gameInfo.url})**\n` +
             `> **UID:** ${gameInfo.game_role_id}\n` +
             `> **Level:** ${gameInfo.level}\n`;
-    }
-
-    loadAllGames({
-        honkaiStatus, genshinStatus, starrailStatus,
-    }: {
-        honkaiStatus?: string,
-        genshinStatus?: string,
-        starrailStatus?: string
-    } = {}) {
-        let retval = '';
-        let infoStr = this.infoString(1);
-        const games: { HI3?: boolean, GI?: boolean, HSR?: boolean }  = {};
-        if (infoStr) {
-            retval += infoStr + (honkaiStatus ?? '');
-            games.HI3 = true;
-        }
-        infoStr = this.infoString(2);
-        if (infoStr) {
-            retval += infoStr + (genshinStatus ?? '');
-            games.GI = true;
-        }
-        infoStr = this.infoString(6);
-        if (infoStr) {
-            retval += infoStr + (starrailStatus ?? '');
-            games.HSR = true;
-        }
-        return { retval, games };
     }
 }
 

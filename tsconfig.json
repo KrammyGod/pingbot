@@ -7,15 +7,24 @@
     "outDir": "dist",
     "baseUrl": "src",
     "strict": true,
-    "esModuleInterop": true, // @discordjs/voice uses CommonJS
+    "esModuleInterop": true,
+    // @discordjs/voice uses CommonJS
     "paths": {
-      "@files/*": ["../files/*"],
-      "@classes/*": ["classes/*"],
-      "@modules/*": ["modules/*"],
-      "@config": ["classes/config.ts"],
-    },
+      "@files/*": [
+        "../files/*"
+      ],
+      "@classes/*": [
+        "classes/*"
+      ],
+      "@modules/*": [
+        "modules/*"
+      ],
+      "@config": [
+        "classes/config.ts"
+      ]
+    }
   },
   "include": [
-    "src/**/*",
-  ],
+    "src/**/*"
+  ]
 }

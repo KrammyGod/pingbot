@@ -1,11 +1,11 @@
 import * as Utils from '@modules/utils';
-import type DTypes from 'discord.js';
+import { DMChannel, GuildTextBasedChannel, Message, PartialDMChannel, ThreadChannel } from 'discord.js';
 
 /**
  * Assumes that you have `Manage Channels` permission.
  * WILL THROW IF NOT!
  */
-export async function purge_clean_channel(channel: Exclude<DTypes.GuildTextBasedChannel, DTypes.ThreadChannel>) {
+export async function purge_clean_channel(channel: Exclude<GuildTextBasedChannel, ThreadChannel>) {
     const new_channel = await channel.clone({
         position: channel.rawPosition,
     });
@@ -18,12 +18,12 @@ export async function purge_clean_channel(channel: Exclude<DTypes.GuildTextBased
  * WILL THROW IF NOT!
  */
 export async function purge_from_channel(
-    channel: DTypes.GuildTextBasedChannel,
+    channel: GuildTextBasedChannel,
     amount: number,
-    filter: (message: DTypes.Message) => boolean = () => true,
+    filter: (message: Message) => boolean = () => true,
 ) {
     // Keep async to keep Promise<number> signature
-    const bulk_delete = (messages: DTypes.Message[]) => {
+    const bulk_delete = (messages: Message[]) => {
         // Discord bulk delete doesn't like single messages.
         if (messages.length <= 1) {
             return messages.at(0)?.delete().then(() => 1, () => 0) ?? 0;
@@ -32,7 +32,7 @@ export async function purge_from_channel(
     };
     // Inspired by discord.py's internal structure, delete messages one at a time
     // Useful for DMs/messages older than 14 days.
-    const single_delete = async (messages: DTypes.Message[]) => {
+    const single_delete = async (messages: Message[]) => {
         let deleted = 0;
         for (const msg of messages) {
             // Ignore deleting errors
@@ -46,7 +46,7 @@ export async function purge_from_channel(
     // This is the minimum date when messages can be bulk deleted
     // It is exactly 14 days ago.
     const min_date = new Date().getTime() - 14 * 24 * 60 * 60 * 1000;
-    let to_delete: DTypes.Message[] = [];
+    let to_delete: Message[] = [];
     let deleted = 0;
     for await (const msg of Utils.fetch_history(channel, amount, filter)) {
         // Delete every 100 since Discord's bulk delete is limited to 100 at a time.
@@ -76,9 +76,9 @@ export async function purge_from_channel(
 }
 
 export async function purge_from_dm(
-    channel: DTypes.DMChannel | DTypes.PartialDMChannel,
+    channel: DMChannel | PartialDMChannel,
     amount: number,
-    filter: (message: DTypes.Message) => boolean = m => m.author.id === channel.client.user.id,
+    filter: (message: Message) => boolean = m => m.author.id === channel.client.user.id,
 ) {
     let deleted = 0;
     for await (const msg of Utils.fetch_history(channel, amount, filter)) {

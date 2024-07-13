@@ -1,20 +1,23 @@
 import util from 'util';
-import type * as PlayTypes from 'play-dl';
+import type { SpotifyAlbum, SpotifyPlaylist, SpotifyTrack } from 'play-dl';
 import Play from 'play-dl';
-import GuildVoice, {LoopType, Song,} from '@classes/GuildVoice';
+import GuildVoice, { GuildVoices, LoopType, Song } from '@classes/GuildVoice';
 import * as Utils from '@modules/utils';
-import type {SlashCommand, SlashSubcommand, SlashSubcommandGroup,} from '@classes/client';
-import {CustomClient, GuildVoices,} from '@classes/client';
-import {AudioPlayerStatus,} from '@discordjs/voice';
-import type DTypes from 'discord.js';
+import type { SlashCommand, SlashSubcommand, SlashSubcommandGroup } from '@classes/command_types';
+import { AudioPlayerStatus } from '@discordjs/voice';
 import {
     ActionRowBuilder,
+    BaseInteraction,
     ButtonBuilder,
     ButtonStyle,
+    ChatInputCommandInteraction,
+    Client,
     Colors,
+    CommandInteraction,
     ComponentType,
     EmbedBuilder,
     GuildMember,
+    InteractionReplyOptions,
     ModalBuilder,
     PermissionsBitField,
     SlashCommandBuilder,
@@ -39,7 +42,7 @@ function number_to_date_string(num: number) {
     return date.toISOString().slice(11, 19).replace(/^00:/, '');
 }
 
-async function get_member(interaction: DTypes.BaseInteraction) {
+async function get_member(interaction: BaseInteraction) {
     let member = interaction.member;
     if (!(member instanceof GuildMember)) {
         member = await interaction.guild!.members.fetch(member?.user.id ?? '0').catch(() => null);
@@ -60,7 +63,7 @@ async function get_member(interaction: DTypes.BaseInteraction) {
 
 // This function will pretty much always be called to validate
 // if music commands can be used.
-async function member_voice_valid(interaction: DTypes.ChatInputCommandInteraction) {
+async function member_voice_valid(interaction: ChatInputCommandInteraction) {
     const member = await get_member(interaction);
     if (!member) return null;
     if (!member.voice.channel) {
@@ -72,8 +75,8 @@ async function member_voice_valid(interaction: DTypes.ChatInputCommandInteractio
     return member;
 }
 
-function check_host(member: DTypes.GuildMember, guildVoice: GuildVoice, rich_cmd: string):
-    DTypes.InteractionReplyOptions | null {
+function check_host(member: GuildMember, guildVoice: GuildVoice, rich_cmd: string):
+    InteractionReplyOptions | null {
     if (member.id !== guildVoice.host.id) {
         const host = guildVoice.host.id === member.client.user.id ? 'me' : guildVoice.host.toString();
         return {
@@ -84,8 +87,8 @@ function check_host(member: DTypes.GuildMember, guildVoice: GuildVoice, rich_cmd
     return null;
 }
 
-function check_move_permission(member: DTypes.GuildMember, guildVoice: GuildVoice, rich_cmd: string):
-    DTypes.InteractionReplyOptions | null {
+function check_move_permission(member: GuildMember, guildVoice: GuildVoice, rich_cmd: string):
+    InteractionReplyOptions | null {
     // Either they have move members permission or they are host
     if (member.permissionsIn(guildVoice.voiceChannel).has(PermissionsBitField.Flags.MoveMembers)) return null;
     return check_host(member, guildVoice, rich_cmd);
@@ -93,10 +96,9 @@ function check_move_permission(member: DTypes.GuildMember, guildVoice: GuildVoic
 
 // Tried, tested, and true.
 const barLength = 13;
+
 // This function will display the current playing stats in a pretty embed
-async function nowPlaying(guildId: string) {
-    // Really this is bad, but what can I do?
-    const client = new CustomClient();
+async function nowPlaying(client: Client, guildId: string) {
     const guildVoice = GuildVoices.get(guildId);
     // This happens if the user immediately disconnects exactly when this is called.
     if (!guildVoice) return;
@@ -110,13 +112,15 @@ async function nowPlaying(guildId: string) {
     const bar =
         client.bot_emojis.barfull.repeat(barLength - emptyBars) +
         client.bot_emojis.barempty.repeat(emptyBars);
-    return new EmbedBuilder({
-        title: '🎶 Now Playing:',
-        description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
-            `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
-            `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
-        color: Colors.Blue,
-    }).setAuthor({
+    return new EmbedBuilder(
+        {
+            title: '🎶 Now Playing:',
+            description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
+                `${number_to_date_string(durationLeft)} left\n\n${bar} ` +
+                `${number_to_date_string(playbackTime)} / ${number_to_date_string(song.duration)}`,
+            color: Colors.Blue,
+        },
+    ).setAuthor({
         name: `Added by: @${song.user.username}`,
         url: song.albumUrl,
         iconURL: song.user.displayAvatarURL(),
@@ -126,6 +130,7 @@ async function nowPlaying(guildId: string) {
 }
 
 const playNextLock = new Map<string, boolean>();
+
 function getPlayNextLock(guildId: string) {
     if (!playNextLock.has(guildId)) {
         playNextLock.set(guildId, false);
@@ -135,11 +140,13 @@ function getPlayNextLock(guildId: string) {
     playNextLock.set(guildId, false);
     return lock;
 }
+
 function releasePlayNextLock(guildId: string) {
     playNextLock.delete(guildId);
 }
+
 // This function will help play the next song in a guild
-async function playNext(guildId: string) {
+async function playNext(client: Client, guildId: string) {
     if (!getPlayNextLock(guildId)) return;
     const guildVoice = GuildVoices.get(guildId);
     if (!guildVoice) return;
@@ -151,9 +158,10 @@ async function playNext(guildId: string) {
         return;
     }
     // Send now playing stats
-    const embed = await nowPlaying(guildId);
+    const embed = await nowPlaying(client, guildId);
     if (embed) {
-        await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+        await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => {
+        });
     }
 }
 
@@ -163,9 +171,9 @@ const join: SlashSubcommand = {
         .setDescription('Joins the voice channel you are in.'),
 
     desc: 'Joins the voice channel. Use this command to move me if I am already in a channel!\n' +
-          'Note: You can only move me if you have the `MOVE_MEMBERS` permission!\n\n' +
-          'Usage: `/music join`\n\n' +
-          'Examples: `/music join`',
+        'Note: You can only move me if you have the `MOVE_MEMBERS` permission!\n\n' +
+        'Usage: `/music join`\n\n' +
+        'Examples: `/music join`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -183,16 +191,19 @@ const join: SlashSubcommand = {
         if (!permissions.has(PermissionsBitField.Flags.Connect) || !permissions.has(PermissionsBitField.Flags.Speak)) {
             return interaction.editReply({
                 content: `I need the permissions to join and speak in ${voiceChannel}!`,
-            }).then(() => { });
+            }).then(() => {
+            });
         } else if (!channel.permissionsFor(me).has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.editReply({
                 content: `I need the permissions to send messages in ${channel}!`,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
 
         if (guildVoice) {
             // Fix later
-            return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` }).then(() => { });
+            return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` }).then(() => {
+            });
         } else {
             guildVoice = new GuildVoice(channel, voiceChannel, member);
             GuildVoices.set(guildID, guildVoice);
@@ -206,9 +217,10 @@ const join: SlashSubcommand = {
                     guildVoice.destroy();
                     return guildVoice.textChannel.send({
                         content: `No one wants to listen to me in ${guildVoice.voiceChannel} so I'm leaving... 😭`,
-                    }).then(() => { });
+                    }).then(() => {
+                    });
                 }
-                return playNext(guildVoice.voiceChannel.guildId);
+                return playNext(interaction.client, guildVoice.voiceChannel.guildId);
             }).on('error', console.error);
         }
 
@@ -222,21 +234,23 @@ const leave: SlashSubcommand = {
         .setDescription('Disconnects me from the voice channel. MUST BE HOST/MOD'),
 
     desc: 'Leaves the voice channel. You can only disconnect me if you are the host/you have ' +
-          '`MOVE_MEMBERS` permission!\n\n' +
-          'Usage: `/music leave`\n\n' +
-          'Examples: `/music leave`',
-    
+        '`MOVE_MEMBERS` permission!\n\n' +
+        'Usage: `/music leave`\n\n' +
+        'Examples: `/music leave`',
+
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_move_permission(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         guildVoice.destroy();
         await interaction.editReply({ content: `💨 Leaving ${guildVoice.voiceChannel} bye!` });
     },
@@ -248,18 +262,20 @@ const np: SlashSubcommand = {
         .setDescription('Shows the currently playing song.'),
 
     desc: 'Shows the currently playing song in a pretty embed.\n\n' +
-          'Usage: `/music np`\n\n' +
-          'Examples: `/music np`',
+        'Usage: `/music np`\n\n' +
+        'Examples: `/music np`',
 
     async execute(interaction) {
         await interaction.deferReply();
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         } else if (!guildVoice.getCurrentSong()) {
-            return interaction.editReply({ content: 'I am not playing anything.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not playing anything.' }).then(() => {
+            });
         }
-        const embed = await nowPlaying(interaction.guildId!);
+        const embed = await nowPlaying(interaction.client, interaction.guildId!);
         if (embed) {
             await interaction.editReply({ embeds: [embed] });
         }
@@ -268,9 +284,9 @@ const np: SlashSubcommand = {
 
 type PlayPrivates = {
     shuffle(arr: unknown[]): void;
-    validate_song(song: Song, member: DTypes.GuildMember): boolean;
+    validate_song(song: Song, member: GuildMember): boolean;
     on_partial_error(
-        interaction: DTypes.CommandInteraction,
+        interaction: CommandInteraction,
         err: { invalid?: boolean, notFound?: boolean }
     ): void;
 };
@@ -298,13 +314,13 @@ const play: SlashSubcommand & PlayPrivates = {
                 .setDescription('Whether to shuffle the playlist before playing.')),
 
     desc: 'Plays a query in the voice channel! I will automatically join if I am not with you.\n\n' +
-          'Usage: `/music play query: <query> loop: [loop] shuffle: [shuffle]`\n\n' +
-          '__**Options**__\n' +
-          '*query:* The youtube, spotify, or search query to add. (Required)\n' +
-          '*loop:* Set a loop option for the playlist. (Default: None)\n' +
-          '*shuffle:* Whether to shuffle the playlist before adding. Only affects playlists. (Default: False) \n\n' +
-          'Examples: `/music play query: Rick Astley loop: 🔁 All`, ' +
-          '`/music play query: https://www.twitch.tv/videos/404860573 shuffle: True`',
+        'Usage: `/music play query: <query> loop: [loop] shuffle: [shuffle]`\n\n' +
+        '__**Options**__\n' +
+        '*query:* The youtube, spotify, or search query to add. (Required)\n' +
+        '*loop:* Set a loop option for the playlist. (Default: None)\n' +
+        '*shuffle:* Whether to shuffle the playlist before adding. Only affects playlists. (Default: False) \n\n' +
+        'Examples: `/music play query: Rick Astley loop: 🔁 All`, ' +
+        '`/music play query: https://www.twitch.tv/videos/404860573 shuffle: True`',
 
     shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -315,16 +331,20 @@ const play: SlashSubcommand & PlayPrivates = {
 
     on_partial_error(interaction, err) {
         if (err.notFound) {
-            return interaction.followUp({
-                content: 'Data could not be found. Perhaps the video/playlist is private.\n' +
-                    'If you believe this is an error, please report it to the support server.',
-            });
+            return interaction.followUp(
+                {
+                    content: 'Data could not be found. Perhaps the video/playlist is private.\n' +
+                        'If you believe this is an error, please report it to the support server.',
+                },
+            );
         } else if (err.invalid) {
-            return interaction.followUp({
-                content: 'This video is NSFW and you are not in an NSFW enabled text channel ' +
-                    "AND voice channel (due to discord's policies).\n" +
-                    'If you believe this is an error, please report it to the support server.',
-            });
+            return interaction.followUp(
+                {
+                    content: 'This video is NSFW and you are not in an NSFW enabled text channel ' +
+                        "AND voice channel (due to discord's policies).\n" +
+                        'If you believe this is an error, please report it to the support server.',
+                },
+            );
         } else {
             throw new Error(`Error ${util.inspect(err)} does not have what I expect`);
         }
@@ -336,10 +356,10 @@ const play: SlashSubcommand & PlayPrivates = {
         return true;
     },
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         let guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            await join.execute(interaction, client);
+            await join.execute(interaction);
             guildVoice = GuildVoices.get(interaction.guildId!);
             if (!guildVoice) return;
         } else {
@@ -348,7 +368,8 @@ const play: SlashSubcommand & PlayPrivates = {
         const member = await member_voice_valid(interaction);
         if (!member) return;
         if (member.voice.channelId !== guildVoice.voiceChannel.id) {
-            return interaction.editReply({ content: 'I am not with you, b-baka.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not with you, b-baka.' }).then(() => {
+            });
         }
 
         const link = interaction.options.getString('query')!.trim();
@@ -411,14 +432,14 @@ const play: SlashSubcommand & PlayPrivates = {
             showLink = spotify.url;
             showThumbnail = spotify.thumbnail?.url ?? null;
             if (spotify.type === 'track') {
-                const song = new Song(spotify as PlayTypes.SpotifyTrack, guildVoice.getUniqueId(), isNsfw);
+                const song = new Song(spotify as SpotifyTrack, guildVoice.getUniqueId(), isNsfw);
                 if (!this.validate_song(song, member)) {
                     return this.on_partial_error(interaction, song);
                 }
                 songs.push(song);
             } else {
                 // Else its multiple songs
-                const all_tracks = await (spotify as PlayTypes.SpotifyPlaylist | PlayTypes.SpotifyAlbum).all_tracks();
+                const all_tracks = await (spotify as SpotifyPlaylist | SpotifyAlbum).all_tracks();
                 for (const track of all_tracks) {
                     const song = new Song(track, guildVoice.getUniqueId(), isNsfw, spotify.url);
                     if (!this.validate_song(song, member)) {
@@ -467,7 +488,7 @@ const play: SlashSubcommand & PlayPrivates = {
         }).setThumbnail(showThumbnail);
         await interaction.followUp({ embeds: [embed] });
         if (!guildVoice.started) {
-            return playNext(interaction.guildId!);
+            return playNext(interaction.client, interaction.guildId!);
         }
     },
 };
@@ -478,17 +499,18 @@ const host: SlashSubcommand = {
         .setDescription('Views the current host of the music channel.'),
 
     desc: 'Views the current host of the music channel.\n\n' +
-          'Usage: `/music host`\n\n' +
-          'Examples: `/music host`',
+        'Usage: `/music host`\n\n' +
+        'Examples: `/music host`',
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         let host = guildVoice.host.toString() as string;
-        if (guildVoice.host.id === client.user.id) {
+        if (guildVoice.host.id === interaction.client.user.id) {
             host = 'me';
         } else if (guildVoice.host.id === interaction.user.id) {
             host = 'you';
@@ -503,8 +525,8 @@ const clear: SlashSubcommand = {
         .setDescription('Clears the playlist. MUST BE HOST'),
 
     desc: 'Clears the playlist. Only hosts may use this command.\n\n' +
-          'Usage: `/music clear`\n\n' +
-          'Examples: `/music clear`',
+        'Usage: `/music clear`\n\n' +
+        'Examples: `/music clear`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -512,11 +534,13 @@ const clear: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         guildVoice.fullReset();
         await interaction.editReply({ content: '🚮 **RIP Queue.**' });
     },
@@ -537,10 +561,10 @@ const loop: SlashSubcommand = {
                 ).setRequired(true)),
 
     desc: 'Sets a new loop type. Only hosts may use this command.\n\n' +
-          'Usage: `/music loop type: <type>`\n\n' +
-          '__**Options**__\n' +
-          '*type:* The type of loop to add. Please select one. (Required)\n\n' +
-          'Examples: `/music loop type: `🔀 None',
+        'Usage: `/music loop type: <type>`\n\n' +
+        '__**Options**__\n' +
+        '*type:* The type of loop to add. Please select one. (Required)\n\n' +
+        'Examples: `/music loop type: `🔀 None',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -548,11 +572,13 @@ const loop: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         guildVoice.loop = interaction.options.getString('type') as LoopType;
         await interaction.editReply({ content: `✅ Loop type set to ${guildVoice.loop}` });
     },
@@ -564,8 +590,8 @@ const pause: SlashSubcommand = {
         .setDescription('Pauses the current song. MUST BE HOST'),
 
     desc: 'Pauses the current song. Only hosts may use this command.\n\n' +
-          'Usage: `/music pause`\n\n' +
-          'Examples: `/music pause`',
+        'Usage: `/music pause`\n\n' +
+        'Examples: `/music pause`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -573,11 +599,13 @@ const pause: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         if (guildVoice.paused) {
             guildVoice.player.unpause();
             guildVoice.paused = false;
@@ -596,8 +624,8 @@ const resume: SlashSubcommand = {
         .setDescription('Resumes the current song. MUST BE HOST'),
 
     desc: 'Resumes the current song. Only hosts may use this command.\n\n' +
-          'Usage: `/music resume`\n\n' +
-          'Examples: `/music resume`',
+        'Usage: `/music resume`\n\n' +
+        'Examples: `/music resume`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -605,11 +633,13 @@ const resume: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         if (guildVoice.paused) {
             guildVoice.player.unpause();
             guildVoice.paused = false;
@@ -620,7 +650,7 @@ const resume: SlashSubcommand = {
     },
 };
 
-type HelperRetVal = DTypes.InteractionReplyOptions & { followUp?: DTypes.InteractionReplyOptions };
+type HelperRetVal = InteractionReplyOptions & { followUp?: InteractionReplyOptions };
 type QueuePrivates = {
     getPage(userID: string, guildVoice: GuildVoice, page: number): HelperRetVal;
 };
@@ -635,8 +665,8 @@ const queue: SlashSubcommand & QueuePrivates = {
                 .setMinValue(1)),
 
     desc: 'Shows the current queue.\n\n' +
-          'Usage: `/music queue`\n\n' +
-          'Examples: `/music queue`',
+        'Usage: `/music queue`\n\n' +
+        'Examples: `/music queue`',
 
     getPage(userID, guildVoice, page) {
         const embed = new EmbedBuilder({
@@ -692,11 +722,14 @@ const queue: SlashSubcommand & QueuePrivates = {
             }
         }
         if (songsLeft > 0) desc += `etc (${songsLeft} more)...`;
-        embed.setDescription(desc).setThumbnail(currentQueue[0].thumbnail).setAuthor({
-            name: `Added by: @${currentQueue[0].user.username}`,
-            url: currentQueue[0].albumUrl,
-            iconURL: currentQueue[0].user.displayAvatarURL(),
-        }).setFooter({ text: `Loop type: ${guildVoice.loop}` });
+        embed.setDescription(desc)
+            .setThumbnail(currentQueue[0].thumbnail)
+            .setAuthor({
+                name: `Added by: @${currentQueue[0].user.username}`,
+                url: currentQueue[0].albumUrl,
+                iconURL: currentQueue[0].user.displayAvatarURL(),
+            })
+            .setFooter({ text: `Loop type: ${guildVoice.loop}` });
         const jumpPage = Math.floor(idx / 10) + (idx % 10 ? 1 : 0);
         const buttons = [
             new ButtonBuilder()
@@ -727,7 +760,7 @@ const queue: SlashSubcommand & QueuePrivates = {
         const retval: HelperRetVal = {
             embeds: [embed],
             components: [
-                new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(...buttons),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
             ],
         };
         if (followUp.embeds.length > 0) {
@@ -746,7 +779,8 @@ const queue: SlashSubcommand & QueuePrivates = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
@@ -762,16 +796,17 @@ const queue: SlashSubcommand & QueuePrivates = {
                     title: 'Jump to page',
                     customId: 'music/queue',
                     components: [
-                        new ActionRowBuilder<DTypes.TextInputBuilder>({
+                        new ActionRowBuilder<TextInputBuilder>({
                             components: [
-                                new TextInputBuilder({
-                                    label: 'Page #',
-                                    customId: 'value',
-                                    placeholder: 'Enter the page number to jump to...',
-                                    style: TextInputStyle.Short,
-                                    maxLength: 100,
-                                    required: true,
-                                }),
+                                new TextInputBuilder(
+                                    {
+                                        label: 'Page #',
+                                        customId: 'value',
+                                        placeholder: 'Enter the page number to jump to...',
+                                        style: TextInputStyle.Short,
+                                        maxLength: 100,
+                                        required: true,
+                                    }),
                             ],
                         }),
                     ],
@@ -793,7 +828,8 @@ const queue: SlashSubcommand & QueuePrivates = {
         const page = interaction.options.getInteger('page') ?? 1;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
@@ -807,8 +843,8 @@ const shuffle: SlashSubcommand = {
         .setDescription('Shuffles the current queue. MUST BE HOST'),
 
     desc: 'Shuffles the entire queue. Only hosts may use this command.\n\n' +
-          'Usage: `/music shuffle`\n\n' +
-          'Example: `/music shuffle`',
+        'Usage: `/music shuffle`\n\n' +
+        'Example: `/music shuffle`',
 
     async buttonReact(interaction) {
         await interaction.deferUpdate();
@@ -817,7 +853,8 @@ const shuffle: SlashSubcommand = {
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) return interaction.deleteReply();
         const reply = check_host(member, guildVoice, 'this button');
-        if (reply) return interaction.followUp({ ...reply, ephemeral: true }).then(() => { });
+        if (reply) return interaction.followUp({ ...reply, ephemeral: true }).then(() => {
+        });
         guildVoice.shuffle();
         const page = parseInt(interaction.customId.split('/').slice(3)[0]);
         const { embeds, components } = queue.getPage(interaction.user.id, guildVoice, page);
@@ -831,11 +868,13 @@ const shuffle: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         guildVoice.shuffle();
         await interaction.editReply({ content: '🔀 Successfully shuffled the queue.' });
     },
@@ -847,8 +886,8 @@ const prev: SlashSubcommand = {
         .setDescription('Plays the previous song. MUST BE HOST'),
 
     desc: 'Plays the previous song. Only hosts may use this command.\n\n' +
-          'Usage: `/music prev`\n\n' +
-          'Example: `/music prev`',
+        'Usage: `/music prev`\n\n' +
+        'Example: `/music prev`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -856,14 +895,17 @@ const prev: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         // Using lower-level access, however more efficient.
         const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs.at(0)?.id);
-        if (currIdx === 0) return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => { });
+        if (currIdx === 0) return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => {
+        });
 
         // Hack we do, pretend we just started playing, so it doesn't skip the new song we added.
         guildVoice.songs.unshift(guildVoice.fullQueue[currIdx - 1]);
@@ -879,8 +921,8 @@ const skip: SlashSubcommand = {
         .setDescription('Skips the current song. MUST BE HOST'),
 
     desc: 'Skips the current song. Only hosts may use this command.\n\n' +
-          'Usage: `/music skip`\n\n' +
-          'Example: `/music skip`',
+        'Usage: `/music skip`\n\n' +
+        'Example: `/music skip`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -888,11 +930,13 @@ const skip: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         // A bit of outside handling, but its minor
         // Shift the internal queue to force next song when loop type is One.
         if (guildVoice.loop === LoopType.one) guildVoice.songs.shift();
@@ -913,11 +957,11 @@ const remove_song: SlashSubcommand = {
                 .setRequired(true)),
 
     desc: 'Removes a song at a certain index. Cannot be used to skip the current playing song\n' +
-          'Use {/skip} to skip the current song instead. Only hosts may use this command.\n\n' +
-          'Usage: `/music remove song index: <index>`\n\n' +
-          '__**Options**__\n' +
-          '*index:* The index of the song in the queue. See {/music queue} (Required)\n\n' +
-          'Examples: `/music remove song index: 1`',
+        'Use {/skip} to skip the current song instead. Only hosts may use this command.\n\n' +
+        'Usage: `/music remove song index: <index>`\n\n' +
+        '__**Options**__\n' +
+        '*index:* The index of the song in the queue. See {/music queue} (Required)\n\n' +
+        'Examples: `/music remove song index: 1`',
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -925,22 +969,26 @@ const remove_song: SlashSubcommand = {
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         const idx = interaction.options.getInteger('index')! - 1;
         const res = guildVoice.removeSong(idx);
         if (res === -1) {
             return interaction.editReply({
                 content: `There are only ${guildVoice.fullQueue.length} songs.`,
-            }).then(() => { });
+            }).then(() => {
+            });
         } else if (res === 0) {
-            const skip_cmd = await Utils.get_rich_cmd('skip');
+            const skip_cmd = await Utils.get_rich_cmd('skip', interaction.client);
             return interaction.editReply({
                 content: `Song at index ${idx + 1} is currently playing. Use ${skip_cmd} instead.`,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         await interaction.editReply({ content: `✅ Successfully removed song at index ${idx + 1}.` });
     },
@@ -956,14 +1004,14 @@ const remove: SlashSubcommandGroup = {
     subcommands: new Map()
         .set(remove_song.data.name, remove_song),
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const subcmd = this.subcommands!.get(interaction.options.getSubcommand());
-        return subcmd!.execute(interaction, client);
+        return subcmd!.execute(interaction);
     },
 };
 
 type SkipPrivates = {
-    setEmbed(embed: DTypes.EmbedBuilder, guildVoice: GuildVoice, requiredVotes: number): DTypes.EmbedBuilder;
+    setEmbed(embed: EmbedBuilder, guildVoice: GuildVoice, requiredVotes: number): EmbedBuilder;
 };
 const vote_skip: SlashSubcommand & SkipPrivates = {
     data: new SlashCommandSubcommandBuilder()
@@ -976,10 +1024,10 @@ const vote_skip: SlashSubcommand & SkipPrivates = {
                 .setRequired(true)),
 
     desc: 'Votes to skip the current song.\n\n' +
-          'Usage: `/music vote skip skip: <vote>`\n\n' +
-          '__**Options**__\n' +
-          '*skip:* Whether to vote skip or not. (Required)\n\n' +
-          'Examples: `/music vote skip skip: True`',
+        'Usage: `/music vote skip skip: <vote>`\n\n' +
+        '__**Options**__\n' +
+        '*skip:* Whether to vote skip or not. (Required)\n\n' +
+        'Examples: `/music vote skip skip: True`',
 
     setEmbed(embed, guildVoice, requiredVotes) {
         let desc = '';
@@ -993,11 +1041,13 @@ const vote_skip: SlashSubcommand & SkipPrivates = {
         // const vote = interaction.options.getBoolean('skip')!;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const song = guildVoice.getCurrentSong();
         if (!song) {
-            return interaction.editReply({ content: 'There is no song playing.' }).then(() => { });
+            return interaction.editReply({ content: 'There is no song playing.' }).then(() => {
+            });
         }
         await interaction.editReply({ content: 'This command is not implemented yet.' });
     },
@@ -1014,9 +1064,9 @@ const vote: SlashSubcommandGroup = {
     subcommands: new Map()
         .set(vote_skip.data.name, vote_skip),
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const subcmd = this.subcommands!.get(interaction.options.getSubcommand());
-        return subcmd!.execute(interaction, client);
+        return subcmd!.execute(interaction);
     },
 };
 
@@ -1026,26 +1076,29 @@ const restart: SlashSubcommand = {
         .setDescription('Restarts the queue. MUST BE HOST'),
 
     desc: 'Restarts the queue (start from the beginning). Only hosts may use this command.\n\n' +
-          'Usage: `/music restart`' +
-          'Examples: `/music restart`',
-    
+        'Usage: `/music restart`' +
+        'Examples: `/music restart`',
+
     async execute(interaction) {
         await interaction.deferReply();
         const member = await get_member(interaction);
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
-        if (reply) return interaction.editReply(reply).then(() => { });
+        if (reply) return interaction.editReply(reply).then(() => {
+        });
         if (!guildVoice.fullQueue.length) {
-            return interaction.editReply({ content: 'There is no queue.' }).then(() => { });
+            return interaction.editReply({ content: 'There is no queue.' }).then(() => {
+            });
         }
         const message = await interaction.editReply({
             content: '# Are you sure you want to restart the queue?',
-            components: [new ActionRowBuilder<DTypes.ButtonBuilder>().addComponents(
+            components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                     .setLabel('Yes!')
                     .setCustomId('restart/confirm')
@@ -1067,7 +1120,7 @@ const restart: SlashSubcommand = {
             // Low level access to guildVoice private fields
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
-                playNext(interaction.guildId!);
+                playNext(interaction.client, interaction.guildId!);
                 await i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             } else {
                 await i.editReply({ content: 'There is no queue.', components: [] });
@@ -1100,7 +1153,7 @@ export const music: SlashCommand = {
         .addSubcommandGroup(vote.data)
         .addSubcommand(restart.data)
         .setDMPermission(false),
-    
+
     subcommands: new Map()
         .set(join.data.name, join)
         .set(leave.data.name, leave)
@@ -1120,27 +1173,27 @@ export const music: SlashCommand = {
         .set(restart.data.name, restart),
 
     desc: 'Music base command',
-    
-    async textInput(interaction, client) {
+
+    async textInput(interaction) {
         const subcommand = this.subcommands!.get(interaction.customId.split('/')[1]);
-        return subcommand!.textInput!(interaction, client);
+        return subcommand!.textInput!(interaction);
     },
 
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const subcommand = this.subcommands!.get(interaction.customId.split('/')[2]);
-        return subcommand!.buttonReact!(interaction, client);
+        return subcommand!.buttonReact!(interaction);
     },
 
-    async menuReact(interaction, client) {
+    async menuReact(interaction) {
         const subcommand = this.subcommands!.get(interaction.customId.split('/')[2]);
-        return subcommand!.menuReact!(interaction, client);
+        return subcommand!.menuReact!(interaction);
     },
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const subcmd = this.subcommands!.get(
             interaction.options.getSubcommandGroup(false) ??
             interaction.options.getSubcommand()!,
         );
-        return subcmd!.execute(interaction, client);
+        return subcmd!.execute(interaction);
     },
 };

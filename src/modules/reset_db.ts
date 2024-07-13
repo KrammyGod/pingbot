@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { from, } from 'pg-copy-streams';
-import { inspect, } from 'util';
-import { pipeline, } from 'stream/promises';
-import { Pool, QueryResultRow, } from 'pg';
+import { from } from 'pg-copy-streams';
+import { inspect } from 'util';
+import { pipeline } from 'stream/promises';
+import { Pool, QueryResultRow } from 'pg';
 
 const LOGGER = {
     today: new Date().toLocaleDateString(),
@@ -46,6 +46,7 @@ const LOGGER = {
 const pool = new Pool({
     connectionTimeoutMillis: 2000,
 });
+
 async function query<R extends QueryResultRow = object, I = unknown>(query: string, values?: I[]) {
     const client = await pool.connect();
     let res: R[] = [];
@@ -94,7 +95,8 @@ async function copy() {
     while (chars <= 100_000_000) {
         let res: CommonData | void = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
             .then(res => res.json())
-            .catch(() => { });
+            .catch(() => {
+            });
         // Rate limits/maintenance.
         if (!res) continue;
         // Bad unicode
@@ -121,7 +123,7 @@ async function copy() {
     const dumpFile = path.resolve(__dirname, 'update.dump');
     await fs.promises.writeFile(dumpFile, s);
     LOGGER.log(`Retrieved up to id ${i}`);
-    
+
     LOGGER.log('Starting file dump...');
     const client = await pool.connect();
     try {
@@ -130,7 +132,8 @@ async function copy() {
         await pipeline(fileStream, stream);
     } finally {
         client.release();
-        await fs.promises.unlink(dumpFile).catch(() => { });
+        await fs.promises.unlink(dumpFile).catch(() => {
+        });
     }
     return chars;
 }
