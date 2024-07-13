@@ -71,13 +71,6 @@ function transformImage(img) {
     return `${config_1.default.cdn}/images/${img}`;
 }
 class Waifu {
-    static fromRows(rows) {
-        const rets = [];
-        for (const row of rows) {
-            rets.push(new Waifu(row));
-        }
-        return rets;
-    }
     constructor(row) {
         if (!row)
             throw new Error('Waifu details partial');
@@ -88,6 +81,13 @@ class Waifu {
         this.img = row.img.map(transformImage);
         this.nimg = row.nimg.map(transformImage);
         this.fc = row.fc;
+    }
+    static fromRows(rows) {
+        const rets = [];
+        for (const row of rows) {
+            rets.push(new Waifu(row));
+        }
+        return rets;
     }
     getGender() {
         return ' ' + this.gender;
@@ -100,17 +100,6 @@ class Waifu {
     }
 }
 class Character {
-    static fromRows(rows) {
-        const rets = [];
-        for (const row of rows) {
-            rets.push(new Character(row));
-        }
-        return rets;
-    }
-    getWaifu(cb) {
-        // Get the waifu object of this character.
-        return fetchWaifu(this.wid).then(waifu => cb ? cb(waifu) : waifu);
-    }
     constructor(row) {
         // This is sanity check, typescript can only do so much for us.
         if (!row)
@@ -142,12 +131,23 @@ class Character {
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get unlockedNMode() { return this.lvl === Character.ntoggleThreshold && this.thisIsNToggleable(); }
+    get unlockedNMode() {
+        return this.lvl === Character.ntoggleThreshold && this.thisIsNToggleable();
+    }
     /**
      * Only available if {@link loadWaifu} is called.
      * @throws {Error} If waifu is not loaded
      */
-    get isNToggleable() { return this.lvl >= Character.ntoggleThreshold && this.thisIsNToggleable(); }
+    get isNToggleable() {
+        return this.lvl >= Character.ntoggleThreshold && this.thisIsNToggleable();
+    }
+    static fromRows(rows) {
+        const rets = [];
+        for (const row of rows) {
+            rets.push(new Character(row));
+        }
+        return rets;
+    }
     async setImg(new_img) {
         const { _img, img } = await setUserCharacterImage(this.uid, this.wid, new_img);
         this._img = _img ?? this._img;
@@ -228,6 +228,10 @@ class Character {
             ],
             color: this.fc ? discord_js_1.Colors.Gold : discord_js_1.Colors.LightGrey,
         }).setImage(img);
+    }
+    getWaifu(cb) {
+        // Get the waifu object of this character.
+        return fetchWaifu(this.wid).then(waifu => cb ? cb(waifu) : waifu);
     }
 }
 Character.ntoggleThreshold = 5;
@@ -329,21 +333,21 @@ function start() {
 }
 exports.start = start;
 function end() {
-    return pool.end().catch(() => { });
+    return pool.end().catch(() => {
+    });
 }
 exports.end = end;
 function getUidsList(shardId, totalShards) {
-    return query(`WITH uids AS (
-            SELECT uid FROM (
-                SELECT uid FROM user_info
-                UNION
-                SELECT uid FROM guess_info
-            ) A
-        )
-        
-        SELECT uid FROM uids
-        LIMIT (SELECT COUNT(*) FROM uids) / $1
-        OFFSET (SELECT COUNT(*) FROM uids) / $1 * $2`, [totalShards, shardId]).then(res => res.map(row => row.uid));
+    return query(`WITH uids AS (SELECT uid
+                       FROM (SELECT uid
+                             FROM user_info
+                             UNION
+                             SELECT uid
+                             FROM guess_info) A)
+
+         SELECT uid
+         FROM uids
+         LIMIT (SELECT COUNT(*) FROM uids) / $1 OFFSET (SELECT COUNT(*) FROM uids) / $1 * $2`, [totalShards, shardId]).then(res => res.map(row => row.uid));
 }
 exports.getUidsList = getUidsList;
 /* END DATABASE SETUP */
@@ -366,11 +370,13 @@ function getAndSetDaily(userID) {
     const firstSignUp = 1000;
     return multi_query([
         'SELECT collected FROM user_info WHERE uid = $1',
-        `INSERT INTO user_info(uid, brons) VALUES ($1, $2)
-            ON CONFLICT (uid) DO UPDATE
-            SET brons = user_info.brons + $3, collected = TRUE
-            WHERE user_info.collected = FALSE
-            RETURNING collected`,
+        `INSERT INTO user_info(uid, brons)
+             VALUES ($1, $2)
+             ON CONFLICT (uid) DO UPDATE
+                 SET brons     = user_info.brons + $3,
+                     collected = TRUE
+             WHERE user_info.collected = FALSE
+             RETURNING collected`,
     ], [[userID], [userID, firstSignUp, dailyAmt]]).then(res => {
         const collect_success = res[1].at(0)?.collected ?? false;
         // User would exist if res[0][0] exists
@@ -398,9 +404,9 @@ function getCompleted(userID, origin) {
 exports.getCompleted = getCompleted;
 function setCompleted(userID, origin, count) {
     return query(`INSERT INTO completed_series(uid, origin, count)
-            VALUES ($1, $2, $3)
-        ON CONFLICT (uid, origin)
-        DO UPDATE SET count = EXCLUDED.count`, [userID, origin, count]).then(() => true).catch(err => {
+         VALUES ($1, $2, $3)
+         ON CONFLICT (uid, origin)
+             DO UPDATE SET count = EXCLUDED.count`, [userID, origin, count]).then(() => true).catch(err => {
         if (err instanceof exceptions_1.DatabaseMaintenanceError)
             throw err;
         return false;
@@ -447,20 +453,23 @@ function insertWaifu(waifu) {
     // if the waifu's images goes out of bounds (due to our check constraint)
     return multi_query([
         `INSERT INTO waifus(name, gender, origin, img, nimg)
-                VALUES ($1, $2, $3, $4, $5) 
-            ON CONFLICT (name, gender, origin)
-            DO UPDATE SET
-                img = waifus.img || EXCLUDED.img,
-                nimg = waifus.nimg || EXCLUDED.nimg
-            RETURNING *`,
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (name, gender, origin)
+                 DO UPDATE SET img  = waifus.img || EXCLUDED.img,
+                               nimg = waifus.nimg || EXCLUDED.nimg
+             RETURNING *`,
         'REFRESH MATERIALIZED VIEW chars',
     ], [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]).then(res => new Waifu(res[0][0]));
 }
 exports.insertWaifu = insertWaifu;
 function fetchWaifuByDetails(details) {
-    return query(`SELECT * FROM chars
-        WHERE name = $1 AND gender = $2 AND origin = $3
-        AND fc = TRUE LIMIT 1`, [details.name, details.gender, details.origin]).then(res => res.at(0) ? new Waifu(res[0]) : undefined);
+    return query(`SELECT *
+         FROM chars
+         WHERE name = $1
+           AND gender = $2
+           AND origin = $3
+           AND fc = TRUE
+         LIMIT 1`, [details.name, details.gender, details.origin]).then(res => res.at(0) ? new Waifu(res[0]) : undefined);
 }
 exports.fetchWaifuByDetails = fetchWaifuByDetails;
 function fetchWaifu(wid) {
@@ -473,20 +482,22 @@ function fetchWaifuCount() {
 exports.fetchWaifuCount = fetchWaifuCount;
 function searchWaifuByName(name) {
     const params = [defaultLimit.toString()];
-    return query(`SELECT * FROM (
-            SELECT * FROM chars WHERE fc = TRUE
-        ) A
-        ${sortQueryAndParams('name', params, name)}
-        LIMIT $1`, params).then(Waifu.fromRows);
+    return query(`SELECT *
+         FROM (SELECT *
+               FROM chars
+               WHERE fc = TRUE) A
+             ${sortQueryAndParams('name', params, name)}
+         LIMIT $1`, params).then(Waifu.fromRows);
 }
 exports.searchWaifuByName = searchWaifuByName;
 function searchOriginByName(name) {
     const params = [defaultLimit.toString()];
-    return query(`SELECT origin FROM (
-            SELECT DISTINCT origin FROM chars WHERE fc = TRUE
-        ) A
-        ${sortQueryAndParams('origin', params, name)}
-        LIMIT $1`, params).then(res => res.map(row => row.origin));
+    return query(`SELECT origin
+         FROM (SELECT DISTINCT origin
+               FROM chars
+               WHERE fc = TRUE) A
+             ${sortQueryAndParams('origin', params, name)}
+         LIMIT $1`, params).then(res => res.map(row => row.origin));
 }
 exports.searchOriginByName = searchOriginByName;
 function fetchCompleteOrigin(origin) {
@@ -502,37 +513,52 @@ function getAnimesCount() {
 }
 exports.getAnimesCount = getAnimesCount;
 function getAnimes(start) {
-    return query(`SELECT origin, COUNT(*) FROM waifus GROUP BY origin
-        ORDER BY origin LIMIT $1 OFFSET $2`, [defaultLimit, start]);
+    return query(`SELECT origin, COUNT(*)
+         FROM waifus
+         GROUP BY origin
+         ORDER BY origin
+         LIMIT $1 OFFSET $2`, [defaultLimit, start]);
 }
 exports.getAnimes = getAnimes;
 function getAnime(anime) {
-    return query(`SELECT * FROM chars
-        WHERE origin = $1 AND fc = TRUE
-        ORDER BY name`, [anime]).then(Waifu.fromRows);
+    return query(`SELECT *
+         FROM chars
+         WHERE origin = $1
+           AND fc = TRUE
+         ORDER BY name`, [anime]).then(Waifu.fromRows);
 }
 exports.getAnime = getAnime;
 function fetchRandomWaifu(amt, level) {
     switch (level) {
         case "easy" /* Levels.EASY */:
             return query(`SELECT name, gender, origin, img, nimg
-                    FROM waifus ORDER BY RANDOM() LIMIT $1`, [amt]).then(Waifu.fromRows);
+                 FROM waifus
+                 ORDER BY RANDOM()
+                 LIMIT $1`, [amt]).then(Waifu.fromRows);
         case "medium" /* Levels.MEDIUM */:
-            return query(`SELECT A.* FROM (
-                    SELECT name, gender, origin,
-                        img[FLOOR(RANDOM() * array_length(img, 1)) + 1] 
-                        FROM waifus UNION ALL 
-                    SELECT B.* FROM (
-                        SELECT name, gender, origin, img FROM commons
-                        ORDER BY RANDOM() LIMIT (
-                            SELECT COUNT(*) FROM waifus
-                        )
-                    ) B
-                ) A ORDER BY RANDOM() LIMIT $1`, [amt]).then(Waifu.fromRows);
+            return query(`SELECT A.*
+                 FROM (SELECT name,
+                              gender,
+                              origin,
+                              img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
+                       FROM waifus
+                       UNION ALL
+                       SELECT B.*
+                       FROM (SELECT name, gender, origin, img
+                             FROM commons
+                             ORDER BY RANDOM()
+                             LIMIT (SELECT COUNT(*)
+                                    FROM waifus)) B) A
+                 ORDER BY RANDOM()
+                 LIMIT $1`, [amt]).then(Waifu.fromRows);
         case "hard" /* Levels.HARD */:
-            return query(`SELECT name, gender, origin,
-                    img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
-                FROM chars ORDER BY RANDOM() LIMIT $1`, [amt]).then(Waifu.fromRows);
+            return query(`SELECT name,
+                        gender,
+                        origin,
+                        img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
+                 FROM chars
+                 ORDER BY RANDOM()
+                 LIMIT $1`, [amt]).then(Waifu.fromRows);
     }
     // Says unreachable, however if an invalid level is provided,
     // will be reached.
@@ -540,30 +566,37 @@ function fetchRandomWaifu(amt, level) {
 }
 exports.fetchRandomWaifu = fetchRandomWaifu;
 function fetchAutocollectByIdx(userID, idx) {
-    return query(`SELECT * FROM (
-            SELECT *, row_number() OVER(
-                PARTITION BY id
-                ORDER BY idx
-            ) AS page
-            FROM hoyolab_cookies_list
-        ) A WHERE id = $1 AND idx = $2`, [userID, idx]).then(res => res.at(0));
+    return query(`SELECT *
+         FROM (SELECT *,
+                      row_number() OVER (
+                          PARTITION BY id
+                          ORDER BY idx
+                          ) AS page
+               FROM hoyolab_cookies_list) A
+         WHERE id = $1
+           AND idx = $2`, [userID, idx]).then(res => res.at(0));
 }
 exports.fetchAutocollectByIdx = fetchAutocollectByIdx;
 function fetchAutocollectByPage(userID, page) {
-    return query(`SELECT *, $2::int + 1 AS page FROM hoyolab_cookies_list
-            WHERE id = $1
-        ORDER BY idx LIMIT 1 OFFSET $2`, [userID, page]).then(res => res.at(0));
+    return query(`SELECT *, $2::int + 1 AS page
+         FROM hoyolab_cookies_list
+         WHERE id = $1
+         ORDER BY idx
+         LIMIT 1 OFFSET $2`, [userID, page]).then(res => res.at(0));
 }
 exports.fetchAutocollectByPage = fetchAutocollectByPage;
 function fetchAutocollectLength(userID) {
-    return query(`SELECT COUNT(*) FROM hoyolab_cookies_list
-            WHERE id = $1`, [userID]).then(res => parseInt(res[0].count));
+    return query(`SELECT COUNT(*)
+         FROM hoyolab_cookies_list
+         WHERE id = $1`, [userID]).then(res => parseInt(res[0].count));
 }
 exports.fetchAutocollectLength = fetchAutocollectLength;
 function toggleAutocollect(userID, game, type, idx) {
     return query(`UPDATE hoyolab_cookies_list
-            SET ${game} = $2
-            WHERE id = $1 AND idx = $3`, [userID, type, idx]).then(() => { });
+         SET ${game} = $2
+         WHERE id = $1
+           AND idx = $3`, [userID, type, idx]).then(() => {
+    });
 }
 exports.toggleAutocollect = toggleAutocollect;
 async function addCookie(userID, cookie) {
@@ -574,13 +607,18 @@ async function addCookie(userID, cookie) {
     if (count >= 5)
         return false;
     return query(`INSERT INTO hoyolab_cookies_list (id, cookie)
-            VALUES ($1, $2) ON CONFLICT (id, cookie)
-        DO NOTHING RETURNING *`, [userID, cookie]).then(res => !!res.at(0));
+         VALUES ($1, $2)
+         ON CONFLICT (id, cookie)
+             DO NOTHING
+         RETURNING *`, [userID, cookie]).then(res => !!res.at(0));
 }
 exports.addCookie = addCookie;
 function deleteCookie(userID, idx) {
-    return query(`DELETE FROM hoyolab_cookies_list
-            WHERE id = $1 AND idx = $2 RETURNING *`, [userID, idx]).then(rows => !!rows.at(0));
+    return query(`DELETE
+         FROM hoyolab_cookies_list
+         WHERE id = $1
+           AND idx = $2
+         RETURNING *`, [userID, idx]).then(rows => !!rows.at(0));
 }
 exports.deleteCookie = deleteCookie;
 function getEmoji(name) {
@@ -595,17 +633,19 @@ exports.addEmoji = addEmoji;
 /* User Chars database */
 // Add character(s)
 function fetchAllUsers(wid) {
-    return query(`SELECT * FROM all_user_chars
-            WHERE wid = $1
-        ORDER BY lvl DESC, idx
-        LIMIT 20`, // Higher limit to fit embed
+    return query(`SELECT *
+         FROM all_user_chars
+         WHERE wid = $1
+         ORDER BY lvl DESC, idx
+         LIMIT 20`, // Higher limit to fit embed
     [wid]).then(Character.fromRows);
 }
 exports.fetchAllUsers = fetchAllUsers;
 // For high list
 function fetchUserHighCount(userID) {
-    return query(`SELECT MAX(idx) FROM
-            get_high_user_chars($1)`, [userID]).then(ret => parseInt(ret.at(0)?.max ?? '0'));
+    return query(`SELECT MAX(idx)
+         FROM
+             get_high_user_chars($1)`, [userID]).then(ret => parseInt(ret.at(0)?.max ?? '0'));
 }
 exports.fetchUserHighCount = fetchUserHighCount;
 function fetchUserCharacterCount(userID) {
@@ -627,66 +667,83 @@ function fetchUserCommonCount(userID, { start, end } = {}) {
 }
 exports.fetchUserCommonCount = fetchUserCommonCount;
 function fetchUserStarredCount(userID) {
-    return query(`SELECT COUNT(*) FROM all_user_chars
-            WHERE uid = $1 AND fc = TRUE`, [userID]).then(ret => parseInt(ret[0].count));
+    return query(`SELECT COUNT(*)
+         FROM all_user_chars
+         WHERE uid = $1
+           AND fc = TRUE`, [userID]).then(ret => parseInt(ret[0].count));
 }
 exports.fetchUserStarredCount = fetchUserStarredCount;
 function fetchRandomStarred(userID) {
     // For daily to get a random starred character
-    return query(`SELECT * FROM all_user_chars
-            WHERE uid = $1 AND fc = TRUE
-        ORDER BY RANDOM() LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
+    return query(`SELECT *
+         FROM all_user_chars
+         WHERE uid = $1
+           AND fc = TRUE
+         ORDER BY RANDOM()
+         LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchRandomStarred = fetchRandomStarred;
 function fetchUserCharacter(userID, wid) {
     if (parseInt(wid) <= 0)
         throw new Error('Invalid wid');
-    return query(`SELECT * FROM all_user_chars
-            WHERE uid = $1 AND wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
+    return query(`SELECT *
+         FROM all_user_chars
+         WHERE uid = $1
+           AND wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserCharacter = fetchUserCharacter;
 function fetchUserHighCharacter(userID, wid) {
-    return query(`SELECT * FROM get_high_user_chars($1)
-            WHERE wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
+    return query(`SELECT *
+         FROM get_high_user_chars($1)
+         WHERE wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserHighCharacter = fetchUserHighCharacter;
 function fetchUserHighestCharacter(userID) {
-    return query(`SELECT * FROM all_user_chars
-            WHERE uid = $1
-        ORDER BY lvl DESC, idx LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
+    return query(`SELECT *
+         FROM all_user_chars
+         WHERE uid = $1
+         ORDER BY lvl DESC, idx
+         LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
 exports.fetchUserHighestCharacter = fetchUserHighestCharacter;
 function fetchUserCharactersList(userID, start) {
     if (start <= 0)
         throw new Error('Invalid start');
-    return query(`SELECT * FROM get_user_chars($1)
-        WHERE idx >= $2 LIMIT $3`, [userID, start, defaultLimit]).then(Character.fromRows);
+    return query(`SELECT *
+         FROM get_user_chars($1)
+         WHERE idx >= $2
+         LIMIT $3`, [userID, start, defaultLimit]).then(Character.fromRows);
 }
 exports.fetchUserCharactersList = fetchUserCharactersList;
 function fetchUserHighCharactersList(userID, start) {
     if (start <= 0)
         throw new Error('Invalid start');
-    return query(`SELECT * FROM get_high_user_chars($1)
-        WHERE idx >= $2 LIMIT $3`, [userID, start, defaultLimit]).then(Character.fromRows);
+    return query(`SELECT *
+         FROM get_high_user_chars($1)
+         WHERE idx >= $2
+         LIMIT $3`, [userID, start, defaultLimit]).then(Character.fromRows);
 }
 exports.fetchUserHighCharactersList = fetchUserHighCharactersList;
 function queryUserCharacter(userID, name) {
     const params = [userID, defaultLimit.toString()];
-    return query(`SELECT * FROM get_user_chars($1)
-        ${sortQueryAndParams('name', params, name)}
-        LIMIT $2`, params).then(Character.fromRows);
+    return query(`SELECT *
+         FROM get_user_chars($1) ${sortQueryAndParams('name', params, name)}
+         LIMIT $2`, params).then(Character.fromRows);
 }
 exports.queryUserCharacter = queryUserCharacter;
 function queryUserHighCharacter(userID, name) {
     const params = [userID, defaultLimit.toString()];
-    return query(`SELECT * FROM get_high_user_chars($1)
-        ${sortQueryAndParams('name', params, name)}
-        LIMIT $2`, params).then(Character.fromRows);
+    return query(`SELECT *
+         FROM get_high_user_chars($1) ${sortQueryAndParams('name', params, name)}
+         LIMIT $2`, params).then(Character.fromRows);
 }
 exports.queryUserHighCharacter = queryUserHighCharacter;
 function fetchUserAnimeCount(userID, origin) {
-    return query(`SELECT COUNT(*) FROM all_user_chars
-            WHERE uid = $1 AND origin = $2 AND fc = TRUE`, [userID, origin]).then(ret => parseInt(ret[0].count));
+    return query(`SELECT COUNT(*)
+         FROM all_user_chars
+         WHERE uid = $1
+           AND origin = $2
+           AND fc = TRUE`, [userID, origin]).then(ret => parseInt(ret[0].count));
 }
 exports.fetchUserAnimeCount = fetchUserAnimeCount;
 function getCommonQuery() {
@@ -696,9 +753,12 @@ function getStarredQuery() {
     return 'SELECT wid FROM chars WHERE fc = TRUE ORDER BY RANDOM() LIMIT 1';
 }
 function getMultiStarredQuery() {
-    return `SELECT wid FROM chars
-        WHERE fc = TRUE AND array_length(img, 1) > 1 OR array_length(nimg, 1) > 0
-        ORDER BY RANDOM() LIMIT 1`;
+    return `SELECT wid
+            FROM chars
+            WHERE fc = TRUE AND array_length(img, 1) > 1
+               OR array_length(nimg, 1) > 0
+            ORDER BY RANDOM()
+            LIMIT 1`;
 }
 function generateCharacterQuery(level) {
     const random = Math.floor(Math.random() * 101);
@@ -727,9 +787,10 @@ async function generateAndAddCharacter(userID, amtTaken) {
     amtTaken.amt = -amt; // Returning to the front end brons difference
     return multi_query([
         'CALL sub_brons($1, $2, $3)',
-        `SELECT * FROM add_character($1,
-                (${generateCharacterQuery(0 /* GuaranteeLevel.COMMON */)})
-            )`,
+        `SELECT *
+             FROM add_character($1,
+                                (${generateCharacterQuery(0 /* GuaranteeLevel.COMMON */)})
+                  )`,
     ], [[userID, false, amt], [userID]]).then(res => {
         const c = new Character(res[1][0]);
         c.new = res[1][0].new;
@@ -759,7 +820,8 @@ function generateAndAddCharacters(userID, special, amtTaken) {
         // 10 starred pulls, 1 guaranteed upgradable
         for (let i = 0; i < PULL_AMT; ++i) {
             qstring = generateCharacterQuery(1 /* GuaranteeLevel.STARRED */);
-            queries.push(`SELECT * FROM add_character($1, (${qstring}))`);
+            queries.push(`SELECT *
+                          FROM add_character($1, (${qstring}))`);
             params.push([userID]);
         }
     }
@@ -767,13 +829,15 @@ function generateAndAddCharacters(userID, special, amtTaken) {
         // 10 normal pulls, 1 guaranteed starred
         for (let i = 0; i < PULL_AMT; ++i) {
             qstring = generateCharacterQuery(0 /* GuaranteeLevel.COMMON */);
-            queries.push(`SELECT * FROM add_character($1, (${qstring}))`);
+            queries.push(`SELECT *
+                          FROM add_character($1, (${qstring}))`);
             params.push([userID]);
         }
     }
     // Finally, add the guaranteed character.
     qstring = generateCharacterQuery(special ? 2 /* GuaranteeLevel.MULTI_STARS */ : 1 /* GuaranteeLevel.STARRED */);
-    queries.push(`SELECT * FROM add_character($1, (${qstring}))`);
+    queries.push(`SELECT *
+                  FROM add_character($1, (${qstring}))`);
     params.push([userID]);
     return multi_query(queries, params).then(res => 
     // Whales has extra query for user_info
@@ -798,40 +862,47 @@ exports.generateAndAddCharacters = generateAndAddCharacters;
 function setUserCharacterImage(userID, wid, img) {
     return multi_query([
         `UPDATE user_chars
-                SET _img = $3
-            WHERE uid = $1 AND wid = $2 AND
-            wid IN (
-                SELECT wid FROM chars WHERE
-                $3 <= array_length(img, 1)
-            ) RETURNING _img`,
+             SET _img = $3
+             WHERE uid = $1
+               AND wid = $2
+               AND wid IN (SELECT wid
+                           FROM chars
+                           WHERE $3 <= array_length(img, 1))
+             RETURNING _img`,
         'SELECT img FROM all_user_chars WHERE uid = $1 AND wid = $2',
     ], [[userID, wid, img], [userID, wid]]).then(res => ({ _img: res[0][0]._img, img: res[1][0].img }));
 }
 function setUserCharacterNImage(userID, wid, nimg) {
     return multi_query([
         `UPDATE user_chars
-                SET _nimg = $3
-            WHERE uid = $1 AND wid = $2 AND
-            wid IN (
-                SELECT wid FROM chars WHERE
-                $3 <= COALESCE(array_length(nimg, 1), 0)
-            ) RETURNING _nimg`,
+             SET _nimg = $3
+             WHERE uid = $1
+               AND wid = $2
+               AND wid IN (SELECT wid
+                           FROM chars
+                           WHERE $3 <= COALESCE(array_length(nimg, 1), 0))
+             RETURNING _nimg`,
         'SELECT _nimg, nimg FROM all_user_chars WHERE uid = $1 AND wid = $2',
     ], [[userID, wid, nimg], [userID, wid]]).then(res => ({ _nimg: res[0][0]._nimg, nimg: res[1][0].nimg }));
 }
 function setUserCharacterNsfw(userID, wid, nsfw) {
     return multi_query([
         `UPDATE user_chars
-                SET nsfw = $3
-            WHERE uid = $1 AND wid = $2 AND
-            wid IN (
-                SELECT wid FROM chars WHERE
-                COALESCE(array_length(nimg, 1), 0) >= 1
-            ) RETURNING nsfw`,
-        `UPDATE user_chars SET _nimg = 1
-            WHERE nsfw = TRUE AND _nimg = 0`,
-        `SELECT _nimg, nimg, nsfw FROM all_user_chars
-            WHERE uid = $1 AND wid = $2`,
+             SET nsfw = $3
+             WHERE uid = $1
+               AND wid = $2
+               AND wid IN (SELECT wid
+                           FROM chars
+                           WHERE COALESCE(array_length(nimg, 1), 0) >= 1)
+             RETURNING nsfw`,
+        `UPDATE user_chars
+             SET _nimg = 1
+             WHERE nsfw = TRUE
+               AND _nimg = 0`,
+        `SELECT _nimg, nimg, nsfw
+             FROM all_user_chars
+             WHERE uid = $1
+               AND wid = $2`,
     ], [[userID, wid, nsfw], [], [userID, wid]]).then(res => [res[0][0], res[2][0]]);
 }
 async function deleteUserCharacter(char) {
@@ -841,11 +912,16 @@ async function deleteUserCharacter(char) {
     // but we do it just in case; will be helpful when
     // updating the index for other chars
     return multi_query([
-        `DELETE FROM user_chars
-            WHERE uid = $1 AND wid = $2 AND idx = $3
-            RETURNING *`,
-        `UPDATE user_chars SET idx = idx - 1
-            WHERE uid = $1 AND idx >= $2`,
+        `DELETE
+             FROM user_chars
+             WHERE uid = $1
+               AND wid = $2
+               AND idx = $3
+             RETURNING *`,
+        `UPDATE user_chars
+             SET idx = idx - 1
+             WHERE uid = $1
+               AND idx >= $2`,
     ], [[char.uid, char.wid, idx], [char.uid, idx]]).then(res => res[0].length);
 }
 exports.deleteUserCharacter = deleteUserCharacter;
@@ -865,10 +941,12 @@ function moveUserCharacter(char, pos) {
     return multi_query([
         'SET CONSTRAINTS ALL DEFERRED',
         `UPDATE user_chars
-                SET idx = $4
-            WHERE uid = $1 AND wid = $2 AND idx = $3 AND
-                $3 IN (SELECT idx FROM user_chars WHERE uid = $1)
-            RETURNING *`,
+             SET idx = $4
+             WHERE uid = $1
+               AND wid = $2
+               AND idx = $3
+               AND $3 IN (SELECT idx FROM user_chars WHERE uid = $1)
+             RETURNING *`,
         'CALL repair_index($1)',
     ], [[], [char.uid, char.wid, char.idx, pos], [char.uid]]).then(ret => ret[1].length === 1);
 }
@@ -877,16 +955,21 @@ function swapUserCharacters(char1, char2) {
     return multi_query([
         'SET CONSTRAINTS ALL DEFERRED',
         `UPDATE user_chars
-                SET idx = $4
-            WHERE uid = $1 AND wid = $2 AND idx = $3`,
+             SET idx = $4
+             WHERE uid = $1
+               AND wid = $2
+               AND idx = $3`,
         `UPDATE user_chars
-                SET idx = $4
-            WHERE uid = $1 AND wid = $2 AND idx = $3`,
+             SET idx = $4
+             WHERE uid = $1
+               AND wid = $2
+               AND idx = $3`,
     ], [
         [],
         [char1.uid, char1.wid, char1.idx, char2.idx],
         [char2.uid, char2.wid, char2.idx, char1.idx],
-    ]).then(() => { });
+    ]).then(() => {
+    });
 }
 exports.swapUserCharacters = swapUserCharacters;
 const EMPTY_GUILD_SETTINGS = {
@@ -930,8 +1013,10 @@ function setGuild(settings) {
         colUpdates += `, ${setting} = EXCLUDED.${setting}`;
     }
     return query(`INSERT INTO guild_settings(${cols})
-            VALUES(${values}) ON CONFLICT (gid)
-        DO UPDATE SET ${colUpdates}`, params).then(() => { });
+         VALUES (${values})
+         ON CONFLICT (gid)
+             DO UPDATE SET ${colUpdates}`, params).then(() => {
+    });
 }
 exports.setGuild = setGuild;
 function getGuessStreaks(userID) {
@@ -940,9 +1025,10 @@ function getGuessStreaks(userID) {
 exports.getGuessStreaks = getGuessStreaks;
 function addOneToGuessStreak(userID, level) {
     return query(`INSERT INTO guess_info(uid, ${level}_streak, ${level}_max_streak)
-            VALUES($1, $2, $3) ON CONFLICT (uid)
-        DO UPDATE SET ${level}_streak = guess_info.${level}_streak + 1
-        RETURNING ${level}_streak, ${level}_max_streak`, [userID, 1, 1]).then(res => {
+         VALUES ($1, $2, $3)
+         ON CONFLICT (uid)
+             DO UPDATE SET ${level}_streak = guess_info.${level}_streak + 1
+         RETURNING ${level}_streak, ${level}_max_streak`, [userID, 1, 1]).then(res => {
         if (!res)
             throw new Error(`Guess streak ${level} not found`);
         return {
@@ -953,8 +1039,10 @@ function addOneToGuessStreak(userID, level) {
 }
 exports.addOneToGuessStreak = addOneToGuessStreak;
 function resetGuessStreak(userID, level) {
-    return query(`UPDATE guess_info SET ${level}_streak = 0
-            WHERE uid = $1`, [userID]).then(() => { });
+    return query(`UPDATE guess_info
+         SET ${level}_streak = 0
+         WHERE uid = $1`, [userID]).then(() => {
+    });
 }
 exports.resetGuessStreak = resetGuessStreak;
 /* Special functions for storing local data */
@@ -963,15 +1051,18 @@ class Cache {
         this.cmd = cmd;
     }
     get(id) {
-        return query(`SELECT data FROM local_data
-                WHERE cmd = $1 AND id = $2 AND
-                    (CURRENT_DATE < expiry OR expiry IS NULL)`, [this.cmd, id]).then(res => res.at(0)?.data);
+        return query(`SELECT data
+             FROM local_data
+             WHERE cmd = $1
+               AND id = $2
+               AND (CURRENT_DATE < expiry OR expiry IS NULL)`, [this.cmd, id]).then(res => res.at(0)?.data);
     }
     set(id, data, expiry = null) {
-        return query(`INSERT INTO local_data(cmd, id, data, expiry) VALUES ($1, $2, $3, $4)
-            ON CONFLICT (cmd, id) DO UPDATE SET
-                data = EXCLUDED.data,
-                expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`, [this.cmd, id, data, expiry]).then(() => { });
+        return query(`INSERT INTO local_data(cmd, id, data, expiry)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (cmd, id) DO UPDATE SET data   = EXCLUDED.data,
+                                                 expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`, [this.cmd, id, data, expiry]).then(() => {
+        });
     }
     delete(id = null) {
         return query('DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *', [this.cmd, id]);
@@ -980,7 +1071,9 @@ class Cache {
 exports.Cache = Cache;
 // We use this function to delete when any subscribed object is deleted
 function deleteLocalData(id) {
-    return query('DELETE FROM local_data WHERE id = $1', [id]).then(() => { }, () => { });
+    return query('DELETE FROM local_data WHERE id = $1', [id]).then(() => {
+    }, () => {
+    });
 }
 exports.deleteLocalData = deleteLocalData;
 //# sourceMappingURL=database.js.map

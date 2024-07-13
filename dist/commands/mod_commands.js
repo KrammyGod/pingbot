@@ -68,17 +68,21 @@ exports.purge = {
         const amt = interaction.options.getString('amount', true);
         const amount = parseInt(amt);
         if (amt.toLowerCase() !== 'all' && (isNaN(amount) || amount <= 0)) {
-            return interaction.editReply({ content: 'Enter a positive number.' }).then(() => { });
+            return interaction.editReply({ content: 'Enter a positive number.' }).then(() => {
+            });
         }
         const user = interaction.options.getUser('user');
         if (interaction.channel.isDMBased() && !interaction.inGuild()) {
             // DMs
             if (isNaN(amount)) {
-                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => { });
+                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => {
+                });
             }
             const deleted = await Purge.purge_from_dm(interaction.channel, amount);
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
-                .then(m => { setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000); });
+                .then(m => {
+                setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000);
+            });
         }
         else if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
@@ -88,27 +92,33 @@ exports.purge = {
             return interaction.editReply({
                 content: 'You do not have permission to purge.\n' +
                     'You need the `Manage Messages` permission.',
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: "I don't have permission to purge.\n" +
                     'I need the `Manage Messages` permission.',
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         // Purge all, or anything over 100 messages, really
         if (isNaN(amount) || amount >= 100) {
             const buttonMessage = await interaction.editReply({
                 content: "## Woah! That's a lot of messages!\n# Are you sure " +
-                    `you want to delete ${isNaN(amount) ? 'all' : amount} messages?`,
+                    `you want to delete ${isNaN(amount) ?
+                        'all' :
+                        amount} messages?`,
                 components: [this.buttons],
             });
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: discord_js_1.ComponentType.Button,
                 filter: i => i.user.id === interaction.user.id,
                 time: 60_000,
-            }).then(i => i.customId === 'purge/confirm').catch(() => false);
+            })
+                .then(i => i.customId === 'purge/confirm')
+                .catch(() => false);
             if (!confirmed)
                 return interaction.deleteReply();
             await interaction.editReply({ components: [] });
@@ -121,20 +131,23 @@ exports.purge = {
                 return interaction.editReply({
                     content: 'You do not have permission to purge all.\n' +
                         'You need the `Manage Channels` permission.',
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
                 .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: "I don't have permission to purge all.\n" +
                         'I need the `Manage Channels` permission.',
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             // Check to satisfy typescript
             if (interaction.channel.isThread()) {
                 return interaction.editReply({
                     content: 'To purge all in threads, just simply delete the thread.',
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             const new_channel = await Purge.purge_clean_channel(interaction.channel).catch(() => {
                 interaction.editReply({
@@ -143,7 +156,10 @@ exports.purge = {
                 throw new exceptions_1.PermissionError();
             });
             return new_channel.send({ content: `${interaction.user} Purged all messages.` })
-                .then(msg => { setTimeout(() => msg.delete(), 3000); }).catch(() => { });
+                .then(msg => {
+                setTimeout(() => msg.delete(), 3000);
+            }).catch(() => {
+            });
         }
         else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ReadMessageHistory)) {
@@ -151,14 +167,16 @@ exports.purge = {
             return interaction.editReply({
                 content: "I don't have permission to purge here.\n" +
                     'I need the `Read Message History` permission.',
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         const user_filter = (m) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
         const deleted = await Purge.purge_from_channel(interaction.channel, amount, user_filter);
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
-            .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
+            .then(m => setTimeout(() => m.delete(), 3000)).catch(() => {
+        });
     },
 };
 const main_menu = {
@@ -277,26 +295,25 @@ const welcome_menu = {
     },
     async buttonReact(guild, menu, action, interaction) {
         switch (action) {
-            case 'editmsg':
-                {
-                    const input = new discord_js_1.ModalBuilder({
-                        title: 'Change Welcome Message',
-                        custom_id: 'guild/0/welcome_menu/msg',
-                        components: [new discord_js_1.ActionRowBuilder({
-                                components: [new discord_js_1.TextInputBuilder({
-                                        label: 'Enter your welcome message:',
-                                        custom_id: 'guild/welcome_menu/msg',
-                                        placeholder: 'Leave me blank to remove!',
-                                        style: discord_js_1.TextInputStyle.Paragraph,
-                                        value: guild?.welcome_msg ?? '',
-                                        max_length: 2000,
-                                        required: false,
-                                    })],
-                            })],
-                    });
-                    await interaction.showModal(input);
-                    break;
-                }
+            case 'editmsg': {
+                const input = new discord_js_1.ModalBuilder({
+                    title: 'Change Welcome Message',
+                    custom_id: 'guild/0/welcome_menu/msg',
+                    components: [new discord_js_1.ActionRowBuilder({
+                            components: [new discord_js_1.TextInputBuilder({
+                                    label: 'Enter your welcome message:',
+                                    custom_id: 'guild/welcome_menu/msg',
+                                    placeholder: 'Leave me blank to remove!',
+                                    style: discord_js_1.TextInputStyle.Paragraph,
+                                    value: guild?.welcome_msg ?? '',
+                                    max_length: 2000,
+                                    required: false,
+                                })],
+                        })],
+                });
+                await interaction.showModal(input);
+                break;
+            }
             case 'back':
                 menu = 'main_menu';
                 break;
@@ -319,75 +336,73 @@ const welcome_menu = {
     async menuReact(guild, menu, actions, interaction) {
         const menuType = actions.pop();
         switch (menuType) {
-            case 'channel':
-                {
-                    const chn = interaction.guild.channels.resolve(actions.at(0) ?? '');
-                    if (chn) {
-                        if (!chn.isTextBased()) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: 'Channel must be a text channel.',
-                                ephemeral: true,
-                            });
-                            return menu;
-                        }
-                        if (!chn.permissionsFor(interaction.member).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: `You do not have permission to send messages in ${chn}.`,
-                                ephemeral: true,
-                            });
-                            return menu;
-                        }
-                        else if (!chn.permissionsFor(interaction.guild.members.me).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: `I do not have permission to send messages in ${chn}.`,
-                                ephemeral: true,
-                            });
-                            return menu;
-                        }
+            case 'channel': {
+                const chn = interaction.guild.channels.resolve(actions.at(0) ?? '');
+                if (chn) {
+                    if (!chn.isTextBased()) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: 'Channel must be a text channel.',
+                            ephemeral: true,
+                        });
+                        return menu;
                     }
-                    guild.welcome_channelid = chn ? chn.id : chn;
-                    break;
-                }
-            case 'role':
-                {
-                    const role = interaction.guild.roles.resolve(actions.at(0) ?? '');
-                    if (role) {
-                        if (role.managed) {
-                            await interaction.editReply({ content: null });
-                            await interaction.followUp({
-                                content: 'Cannot assign a bot role.',
-                                ephemeral: true,
-                            });
-                            return menu;
-                        }
-                        const roleManager = interaction.guild.roles;
-                        const me = interaction.guild.members.me.roles.highest;
-                        const them = interaction.member.roles.highest;
-                        if (roleManager.comparePositions(me, role) <= 0) {
-                            await interaction.followUp({
-                                content: `I am unable to add ${role} due to my role ` +
-                                    'being lower than it.',
-                                ephemeral: true,
-                            });
-                            return menu;
-                        }
-                        else if (interaction.guild.ownerId !== interaction.user.id &&
-                            roleManager.comparePositions(them, role) <= 0) {
-                            // Owner's role is always higher than the role they are adding.
-                            await interaction.followUp({
-                                content: `You are unable to add ${role} due to your highest role ` +
-                                    'being lower than it.',
-                                ephemeral: true,
-                            });
-                            return menu;
-                        }
+                    if (!chn.permissionsFor(interaction.member).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: `You do not have permission to send messages in ${chn}.`,
+                            ephemeral: true,
+                        });
+                        return menu;
                     }
-                    guild.welcome_roleid = role ? role.id : role;
-                    break;
+                    else if (!chn.permissionsFor(interaction.guild.members.me).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: `I do not have permission to send messages in ${chn}.`,
+                            ephemeral: true,
+                        });
+                        return menu;
+                    }
                 }
+                guild.welcome_channelid = chn ? chn.id : chn;
+                break;
+            }
+            case 'role': {
+                const role = interaction.guild.roles.resolve(actions.at(0) ?? '');
+                if (role) {
+                    if (role.managed) {
+                        await interaction.editReply({ content: null });
+                        await interaction.followUp({
+                            content: 'Cannot assign a bot role.',
+                            ephemeral: true,
+                        });
+                        return menu;
+                    }
+                    const roleManager = interaction.guild.roles;
+                    const me = interaction.guild.members.me.roles.highest;
+                    const them = interaction.member.roles.highest;
+                    if (roleManager.comparePositions(me, role) <= 0) {
+                        await interaction.followUp({
+                            content: `I am unable to add ${role} due to my role ` +
+                                'being lower than it.',
+                            ephemeral: true,
+                        });
+                        return menu;
+                    }
+                    else if (interaction.guild.ownerId !== interaction.user.id &&
+                        roleManager.comparePositions(them, role) <= 0) {
+                        // Owner's role is always higher than the role they are adding.
+                        await interaction.followUp({
+                            content: `You are unable to add ${role} due to your highest role ` +
+                                'being lower than it.',
+                            ephemeral: true,
+                        });
+                        return menu;
+                    }
+                }
+                guild.welcome_roleid = role ? role.id : role;
+                break;
+            }
             default:
                 throw new Error(`/guild: welcome_menu menuReact invalid action: ${menuType}`);
         }
@@ -591,7 +606,8 @@ exports.guild = {
             return interaction.editReply({
                 content: 'You do not have permission to edit guild settings.\n' +
                     'You need the `Manage Guild` permission.',
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         // Check to make sure that dialog does not currently exist for the guild
         // Only allow one user to access the dialog at a time

@@ -153,13 +153,14 @@ const guess_number = {
         'Example: `/guess number num: 5`',
     // Cooldown of 5 per 75 seconds.
     cds: new CooldownMapping(5, 75),
-    async execute(interaction, client) {
+    async execute(interaction) {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = this.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
         // Exists embeds to send.
         if (ret.embeds)
-            return interaction.editReply(ret).then(() => { });
+            return interaction.editReply(ret).then(() => {
+            });
         // Generate a random number from 1 to 10.
         const embed = new discord_js_1.EmbedBuilder();
         const num = Math.floor(Math.random() * 10) + 1;
@@ -191,7 +192,7 @@ const guess_number = {
             return false;
         });
         if (!success) {
-            const daily_cmd = await Utils.get_rich_cmd('daily');
+            const daily_cmd = await Utils.get_rich_cmd('daily', interaction.client);
             cd.force_cd();
             // On error:
             const embed = new discord_js_1.EmbedBuilder({
@@ -200,9 +201,10 @@ const guess_number = {
                 description: `(Pssst try ${daily_cmd})`,
                 color: discord_js_1.Colors.Red,
             });
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
-        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${client.bot_emojis.brons}`)
+        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${interaction.client.bot_emojis.brons}`)
             .setDescription(this.cds.get(interaction.user.id).tries_left())
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
@@ -218,10 +220,10 @@ exports.guess = {
     desc: 'Guess base command',
     subcommands: new Map()
         .set(guess_number.data.name, guess_number),
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const cmd = this.subcommands.get(interaction.options.getSubcommand());
-        return cmd.execute(interaction, client);
+        return cmd.execute(interaction);
     },
 };
 const coin_docs = `Flip a coin and guess a side! You have a 2/3 chance of winning (unbalanced coin).
@@ -273,7 +275,8 @@ const flip_heads = {
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip heads bet: 100`',
     // Unneeded function; defined for typing
-    async execute() { },
+    async execute() {
+    },
 };
 const flip_tails = {
     data: new discord_js_1.SlashCommandSubcommandBuilder()
@@ -291,7 +294,8 @@ const flip_tails = {
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip tails bet: 100`',
     // Unneeded function; defined for typing
-    async execute() { },
+    async execute() {
+    },
 };
 exports.flip = {
     data: new discord_js_1.SlashCommandBuilder()
@@ -304,18 +308,19 @@ exports.flip = {
     subcommands: new Map()
         .set(flip_heads.data.name, flip_heads)
         .set(flip_tails.data.name, flip_tails),
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const bet = interaction.options.getInteger('bet');
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = this.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
         if (ret.embeds)
-            return interaction.editReply(ret).then(() => { });
+            return interaction.editReply(ret).then(() => {
+            });
         const cmd = interaction.options.getSubcommand();
-        const [embed, files, success] = await generate_flip(client, interaction, cmd, bet);
+        const [embed, files, success] = await generate_flip(interaction.client, interaction, cmd, bet);
         if (!success) {
-            const daily_cmd = await Utils.get_rich_cmd('daily');
+            const daily_cmd = await Utils.get_rich_cmd('daily', interaction.client);
             cd.force_cd();
             // On error:
             const embed = new discord_js_1.EmbedBuilder({
@@ -324,7 +329,8 @@ exports.flip = {
                 description: `(Pssst try ${daily_cmd})`,
                 color: discord_js_1.Colors.Red,
             });
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
         embed.setDescription(cd.tries_left());
         await interaction.editReply({ embeds: [embed], files });

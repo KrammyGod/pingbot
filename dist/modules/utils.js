@@ -1,14 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
-const client_1 = require("../classes/client");
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 function strip(text, char) {
     return text.replaceAll(new RegExp(`^${char}+|${char}+$`, 'g'), '');
 }
-async function fetch_user_fast(uid, userCb, ctx) {
-    const client = new client_1.CustomClient();
+async function fetch_user_fast(client, uid, userCb, ctx) {
     // This is quite a hack, essentially define the callback using eval,
     // and then run the function on the discord user object.
     const retval = await client.shard?.broadcastEval((client, { uid, userCb, ctx }) => {
@@ -21,15 +19,13 @@ async function fetch_user_fast(uid, userCb, ctx) {
     return retval;
 }
 exports.fetch_user_fast = fetch_user_fast;
-function fetch_guild_cache(gid, guildCb, ctx) {
-    const client = new client_1.CustomClient();
+function fetch_guild_cache(client, gid, guildCb, ctx) {
     return client.shard?.broadcastEval((client, { gid, guildCb, ctx }) => {
         return eval(guildCb)(client.guilds.cache.get(gid), ctx);
     }, { context: { gid, guildCb: guildCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
 }
 exports.fetch_guild_cache = fetch_guild_cache;
-async function convert_user(text, guild) {
-    const client = new client_1.CustomClient();
+async function convert_user(client, text, guild) {
     if (!text.startsWith('@'))
         return;
     text = text.slice(1).toLowerCase();
@@ -48,13 +44,13 @@ async function convert_user(text, guild) {
     if (user)
         return user;
     // Try to get with name
-    return guild.members.fetch().then(members => members.find(m => m.displayName.toLowerCase().includes(text) ||
-        m.user.displayName.toLowerCase().includes(text) ||
-        m.user.tag.toLowerCase().includes(text)));
+    return guild.members.fetch().then(members => members.find(m => m.displayName.toLowerCase()
+        .includes(text) || m.user.displayName.toLowerCase()
+        .includes(text) || m.user.tag.toLowerCase()
+        .includes(text)));
 }
 exports.convert_user = convert_user;
-async function convert_channel(text) {
-    const client = new client_1.CustomClient();
+async function convert_channel(client, text) {
     if (!text.startsWith('#'))
         return null;
     text = text.slice(1);
@@ -67,8 +63,7 @@ async function convert_channel(text) {
     return await client.shard?.broadcastEval((client, text) => client.channels.cache.find(c => c.isDMBased() ? false : c.name.toLowerCase().includes(text))?.id, { context: text }).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
 }
 exports.convert_channel = convert_channel;
-function convert_emoji(text, emojiCb, ctx) {
-    const client = new client_1.CustomClient();
+function convert_emoji(client, text, emojiCb, ctx) {
     if (!text.startsWith(':') || !text.endsWith(':'))
         return;
     text = strip(text, ':').toLowerCase();
@@ -78,7 +73,7 @@ function convert_emoji(text, emojiCb, ctx) {
     }, { context: { text, emojiCb: emojiCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
 }
 exports.convert_emoji = convert_emoji;
-async function get_rich_cmd(textOrInteraction) {
+async function get_rich_cmd(textOrInteraction, client) {
     if (textOrInteraction instanceof discord_js_1.CommandInteraction) {
         let full_cmd_name = textOrInteraction.commandName;
         const sub_cmd_group_name = textOrInteraction.options.getSubcommandGroup(false);
@@ -89,7 +84,6 @@ async function get_rich_cmd(textOrInteraction) {
             full_cmd_name += ` ${sub_cmd_name}`;
         return `</${full_cmd_name}:${textOrInteraction.commandId}>`;
     }
-    const client = new client_1.CustomClient();
     const [main_cmd, ...sub_cmd] = textOrInteraction.split(' ');
     let cmd = client.application.commands.cache.find(cmd => cmd.name === main_cmd);
     if (!cmd) {
@@ -125,10 +119,13 @@ exports.channel_is_nsfw_safe = channel_is_nsfw_safe;
 async function send_embeds_by_wave(interaction, embeds) {
     // 10 embeds per message
     let wave = embeds.splice(0, 10);
-    await interaction.editReply({ embeds: wave }).catch(() => { throw new exceptions_1.TimedOutError(); });
+    await interaction.editReply({ embeds: wave }).catch(() => {
+        throw new exceptions_1.TimedOutError();
+    });
     while (embeds.length > 0) {
         wave = embeds.splice(0, 10);
-        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => { });
+        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => {
+        });
     }
 }
 exports.send_embeds_by_wave = send_embeds_by_wave;
@@ -159,7 +156,8 @@ exports.timestamp = timestamp;
  * However, Discord has a route to support this, and that's what this function does.
  */
 function delete_ephemeral_message(i, msg) {
-    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => { });
+    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => {
+    });
 }
 exports.delete_ephemeral_message = delete_ephemeral_message;
 /**

@@ -190,7 +190,9 @@ class Sign {
     }
 }
 async function collect() {
-    const accounts = await client.query(`SELECT * FROM hoyolab_cookies_list WHERE ${process.env.type} <> $1`, ['none']).then(res => res.rows);
+    const accounts = await client.query(`SELECT *
+         FROM hoyolab_cookies_list
+         WHERE ${process.env.type} <> $1`, ['none']).then(res => res.rows);
     const message = {
         accounts: [],
         name: process.env.displayName,
@@ -232,7 +234,8 @@ async function collect() {
         add('I encountered a really bad error... save me...\n```\n' + (0, util_1.inspect)(e) + '```');
     }
     finally {
-        await client.end().catch(() => { });
+        await client.end().catch(() => {
+        });
         LOGGER.end();
     }
 })();

@@ -28,7 +28,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const glob_1 = __importDefault(require("glob"));
 const path_1 = __importDefault(require("path"));
-const client_1 = require("../classes/client");
+const command_types_1 = require("../classes/command_types");
 const discord_js_1 = require("discord.js");
 async function load(client) {
     client.cogs = [];
@@ -41,10 +41,10 @@ async function load(client) {
         commandFile.commands = [];
         commandFile.amt = 0;
         Object.values(commandFile).forEach(command => {
-            if ((0, client_1.isSlashCommand)(command) || ((0, client_1.isMessageCommand)(command) && !command.admin)) {
+            if ((0, command_types_1.isSlashCommand)(command) || ((0, command_types_1.isMessageCommand)(command) && !command.admin)) {
                 commandFile.commands.push(command);
             }
-            if ((0, client_1.isInteractionCommand)(command)) {
+            if ((0, command_types_1.isInteractionCommand)(command)) {
                 client.commands.set(command.data.name, command);
                 let has_subcommands = false;
                 command.data.toJSON().options?.forEach(option => {
@@ -61,7 +61,7 @@ async function load(client) {
                 if (!has_subcommands)
                     ++commandFile.amt;
             }
-            else if ((0, client_1.isMessageCommand)(command)) {
+            else if ((0, command_types_1.isMessageCommand)(command)) {
                 if (command.admin) {
                     client.admin_commands.set(`${client.prefix}${command.name}`, command);
                 }

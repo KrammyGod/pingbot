@@ -1,13 +1,31 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Song = void 0;
-const play_dl_1 = __importDefault(require("play-dl"));
+exports.GuildVoices = exports.Song = void 0;
+const play_dl_1 = __importStar(require("play-dl"));
 const discord_js_1 = require("discord.js");
-const client_1 = require("./client");
-const play_dl_2 = require("play-dl");
 const voice_1 = require("@discordjs/voice");
 class Song {
     constructor(infoData, uniqueId, isNsfw, playlist_url) {
@@ -16,7 +34,7 @@ class Song {
         if (!infoData)
             return;
         this.notFound = false;
-        if (infoData instanceof play_dl_2.SpotifyTrack) {
+        if (infoData instanceof play_dl_1.SpotifyTrack) {
             if (infoData.explicit && !isNsfw)
                 return;
             this.url = infoData.url;
@@ -77,6 +95,128 @@ class GuildVoice {
         });
     }
     // This is actually only called during in ctor
+    // Added extra parameter specifically for reset.
+    reset(songs = []) {
+        this.started = false;
+        this.paused = false;
+        this.currentSongResource = null;
+        this.songs = songs;
+        this.player.stop();
+    }
+    fullReset() {
+        // Clearing the entire queue vs ending a song
+        this.reset();
+        this.fullQueue = [];
+        this.IDCounter = 0;
+    }
+    shiftToNextSong() {
+        if (this.loop === "ALL" /* LoopType.all */) {
+            this.songs.shift();
+            // Refill queue for all
+            if (this.songs.length === 0) {
+                this.songs = this.fullQueue.slice();
+            }
+        }
+        else if (this.loop === "NONE" /* LoopType.none */) {
+            this.songs.shift();
+        }
+        // Empty playlist
+        if (!this.songs.length)
+            this.reset();
+    }
+    getCurrentSong() {
+        return this.songs.at(0);
+    }
+    async playNextSong() {
+        if (this.started)
+            this.shiftToNextSong();
+        const song = this.getCurrentSong();
+        if (!song)
+            return this.started = false;
+        else
+            this.started = true;
+        if (song.artists) {
+            const info = await play_dl_1.default.search(`${song.title} by ${song.artists}`, {
+                source: { youtube: 'video' },
+                limit: 1,
+                unblurNSFWThumbnails: true, // We wouldn't have added if it wasn't NSFW allowed
+            }).then(res => res.at(0)).catch(() => undefined);
+            if (info) {
+                song.playUrl = info.url; // Different url to actually stream the song
+                song.duration = info.durationInSec;
+                song.artists = undefined; // So we don't repeatedly search for this song.
+            }
+            else {
+                // Forcibly skip song if we can't find details of it.
+                if (this.loop === "ONE" /* LoopType.one */) {
+                    this.songs.shift();
+                }
+                return this.playNextSong();
+            }
+        }
+        const source = await play_dl_1.default.stream(song.playUrl).catch(() => {
+        });
+        if (!source) {
+            // Forcefully skip song on error
+            if (this.loop === "ONE" /* LoopType.one */) {
+                this.songs.shift();
+            }
+            return this.playNextSong();
+        }
+        source.stream.on('error', e => {
+            console.error(e);
+        });
+        this.currentSongResource = (0, voice_1.createAudioResource)(source.stream, {
+            inputType: source.type,
+        });
+        this.player.play(this.currentSongResource);
+        this.voted = [];
+        this.votingMessage = null;
+        return true;
+    }
+    getSong(idx) {
+        return this.fullQueue[idx];
+    }
+    /** -1 Represents bad index, 0 means trying to remove current song, 1 means successful */
+    removeSong(idx) {
+        // -1 Represents bad index, 0 means trying to remove current song from queue
+        if (idx >= this.fullQueue.length)
+            return -1;
+        const currIdx = this.fullQueue.findIndex(song => song.id === this.songs.at(0)?.id);
+        if (idx === currIdx)
+            return 0;
+        const songIdx = this.songs.findIndex(s => s.id === this.fullQueue[idx].id);
+        if (songIdx !== -1)
+            this.songs.splice(songIdx, 1);
+        this.fullQueue.splice(idx, 1);
+        // 1 means successful
+        return 1;
+    }
+    _shuffleFullQueue() {
+        for (let i = this.fullQueue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.fullQueue[i], this.fullQueue[j]] = [this.fullQueue[j], this.fullQueue[i]];
+        }
+    }
+    shuffle() {
+        if (this.songs.length === 0)
+            return this._shuffleFullQueue();
+        const currIdx = this.fullQueue.findIndex(song => song.id === this.songs[0].id);
+        this.fullQueue.splice(currIdx, 1);
+        this._shuffleFullQueue();
+        this.fullQueue.splice(currIdx, 0, this.songs[0]);
+        // Update songs to match fullQueue
+        this.songs = this.fullQueue.slice(currIdx);
+    }
+    destroy() {
+        (0, voice_1.getVoiceConnection)(this.voiceChannel.guild.id)?.destroy();
+        exports.GuildVoices.delete(this.voiceChannel.guildId);
+    }
+    // create massive ID numbers for songs in different guilds
+    getUniqueId() {
+        return this.IDCounter++;
+    }
+    // Give a unique id for the guild's songs, so we don't
     // Separated to make ctor more clear.
     connectAndListen(voiceChannel) {
         const connection = this.join(voiceChannel);
@@ -136,121 +276,7 @@ class GuildVoice {
             }
         });
     }
-    // Added extra parameter specifically for reset.
-    reset(songs = []) {
-        this.started = false;
-        this.paused = false;
-        this.currentSongResource = null;
-        this.songs = songs;
-        this.player.stop();
-    }
-    fullReset() {
-        // Clearing the entire queue vs ending a song
-        this.reset();
-        this.fullQueue = [];
-        this.IDCounter = 0;
-    }
-    shiftToNextSong() {
-        if (this.loop === "ALL" /* LoopType.all */) {
-            this.songs.shift();
-            // Refill queue for all
-            if (this.songs.length === 0) {
-                this.songs = this.fullQueue.slice();
-            }
-        }
-        else if (this.loop === "NONE" /* LoopType.none */) {
-            this.songs.shift();
-        }
-        // Empty playlist
-        if (!this.songs.length)
-            this.reset();
-    }
-    getCurrentSong() { return this.songs.at(0); }
-    async playNextSong() {
-        if (this.started)
-            this.shiftToNextSong();
-        const song = this.getCurrentSong();
-        if (!song)
-            return this.started = false;
-        else
-            this.started = true;
-        if (song.artists) {
-            const info = await play_dl_1.default.search(`${song.title} by ${song.artists}`, {
-                source: { youtube: 'video' },
-                limit: 1,
-                unblurNSFWThumbnails: true, // We wouldn't have added if it wasn't NSFW allowed
-            }).then(res => res.at(0)).catch(() => undefined);
-            if (info) {
-                song.playUrl = info.url; // Different url to actually stream the song
-                song.duration = info.durationInSec;
-                song.artists = undefined; // So we don't repeatedly search for this song.
-            }
-            else {
-                // Forcibly skip song if we can't find details of it.
-                if (this.loop === "ONE" /* LoopType.one */) {
-                    this.songs.shift();
-                }
-                return this.playNextSong();
-            }
-        }
-        const source = await play_dl_1.default.stream(song.playUrl).catch(() => { });
-        if (!source) {
-            // Forcefully skip song on error
-            if (this.loop === "ONE" /* LoopType.one */) {
-                this.songs.shift();
-            }
-            return this.playNextSong();
-        }
-        source.stream.on('error', e => {
-            console.error(e);
-        });
-        this.currentSongResource = (0, voice_1.createAudioResource)(source.stream, {
-            inputType: source.type,
-        });
-        this.player.play(this.currentSongResource);
-        this.voted = [];
-        this.votingMessage = null;
-        return true;
-    }
-    getSong(idx) { return this.fullQueue[idx]; }
-    /** -1 Represents bad index, 0 means trying to remove current song, 1 means successful */
-    removeSong(idx) {
-        // -1 Represents bad index, 0 means trying to remove current song from queue
-        if (idx >= this.fullQueue.length)
-            return -1;
-        const currIdx = this.fullQueue.findIndex(song => song.id === this.songs.at(0)?.id);
-        if (idx === currIdx)
-            return 0;
-        const songIdx = this.songs.findIndex(s => s.id === this.fullQueue[idx].id);
-        if (songIdx !== -1)
-            this.songs.splice(songIdx, 1);
-        this.fullQueue.splice(idx, 1);
-        // 1 means successful
-        return 1;
-    }
-    _shuffleFullQueue() {
-        for (let i = this.fullQueue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.fullQueue[i], this.fullQueue[j]] = [this.fullQueue[j], this.fullQueue[i]];
-        }
-    }
-    shuffle() {
-        if (this.songs.length === 0)
-            return this._shuffleFullQueue();
-        const currIdx = this.fullQueue.findIndex(song => song.id === this.songs[0].id);
-        this.fullQueue.splice(currIdx, 1);
-        this._shuffleFullQueue();
-        this.fullQueue.splice(currIdx, 0, this.songs[0]);
-        // Update songs to match fullQueue
-        this.songs = this.fullQueue.slice(currIdx);
-    }
-    destroy() {
-        (0, voice_1.getVoiceConnection)(this.voiceChannel.guild.id)?.destroy();
-        client_1.GuildVoices.delete(this.voiceChannel.guildId);
-    }
-    // Give a unique id for the guild's songs, so we don't
-    // create massive ID numbers for songs in different guilds
-    getUniqueId() { return this.IDCounter++; }
 }
 exports.default = GuildVoice;
+exports.GuildVoices = new Map();
 //# sourceMappingURL=GuildVoice.js.map

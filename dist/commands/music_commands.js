@@ -31,7 +31,6 @@ const util_1 = __importDefault(require("util"));
 const play_dl_1 = __importDefault(require("play-dl"));
 const GuildVoice_1 = __importStar(require("../classes/GuildVoice"));
 const Utils = __importStar(require("../modules/utils"));
-const client_1 = require("../classes/client");
 const voice_1 = require("@discordjs/voice");
 const discord_js_1 = require("discord.js");
 exports.name = 'Music';
@@ -98,10 +97,8 @@ function check_move_permission(member, guildVoice, rich_cmd) {
 // Tried, tested, and true.
 const barLength = 13;
 // This function will display the current playing stats in a pretty embed
-async function nowPlaying(guildId) {
-    // Really this is bad, but what can I do?
-    const client = new client_1.CustomClient();
-    const guildVoice = client_1.GuildVoices.get(guildId);
+async function nowPlaying(client, guildId) {
+    const guildVoice = GuildVoice_1.GuildVoices.get(guildId);
     // This happens if the user immediately disconnects exactly when this is called.
     if (!guildVoice)
         return;
@@ -144,10 +141,10 @@ function releasePlayNextLock(guildId) {
     playNextLock.delete(guildId);
 }
 // This function will help play the next song in a guild
-async function playNext(guildId) {
+async function playNext(client, guildId) {
     if (!getPlayNextLock(guildId))
         return;
-    const guildVoice = client_1.GuildVoices.get(guildId);
+    const guildVoice = GuildVoice_1.GuildVoices.get(guildId);
     if (!guildVoice)
         return;
     const success = await guildVoice.playNextSong();
@@ -158,9 +155,10 @@ async function playNext(guildId) {
         return;
     }
     // Send now playing stats
-    const embed = await nowPlaying(guildId);
+    const embed = await nowPlaying(client, guildId);
     if (embed) {
-        await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => { });
+        await guildVoice.textChannel.send({ embeds: [embed] }).catch(() => {
+        });
     }
 }
 const join = {
@@ -183,29 +181,32 @@ const join = {
             return;
         const voiceChannel = member.voice.channel;
         const guildID = interaction.guildId;
-        let guildVoice = client_1.GuildVoices.get(guildID);
+        let guildVoice = GuildVoice_1.GuildVoices.get(guildID);
         const permissions = voiceChannel.permissionsFor(me);
         if (!permissions.has(discord_js_1.PermissionsBitField.Flags.Connect) || !permissions.has(discord_js_1.PermissionsBitField.Flags.Speak)) {
             return interaction.editReply({
                 content: `I need the permissions to join and speak in ${voiceChannel}!`,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         else if (!channel.permissionsFor(me).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.editReply({
                 content: `I need the permissions to send messages in ${channel}!`,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         if (guildVoice) {
             // Fix later
-            return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` }).then(() => { });
+            return interaction.editReply({ content: `I am already in ${guildVoice.voiceChannel}` }).then(() => {
+            });
         }
         else {
             guildVoice = new GuildVoice_1.default(channel, voiceChannel, member);
-            client_1.GuildVoices.set(guildID, guildVoice);
+            GuildVoice_1.GuildVoices.set(guildID, guildVoice);
             // Register listener for when song ends
             guildVoice.player.on(voice_1.AudioPlayerStatus.Idle, () => {
                 // Allows us to release the guildVoice object.
-                const guildVoice = client_1.GuildVoices.get(guildID);
+                const guildVoice = GuildVoice_1.GuildVoices.get(guildID);
                 if (!guildVoice)
                     return;
                 // Leave if host is self, which means nobody is listening.
@@ -213,9 +214,10 @@ const join = {
                     guildVoice.destroy();
                     return guildVoice.textChannel.send({
                         content: `No one wants to listen to me in ${guildVoice.voiceChannel} so I'm leaving... 😭`,
-                    }).then(() => { });
+                    }).then(() => {
+                    });
                 }
-                return playNext(guildVoice.voiceChannel.guildId);
+                return playNext(interaction.client, guildVoice.voiceChannel.guildId);
             }).on('error', console.error);
         }
         await interaction.editReply({ content: `✅ Success! I am now in ${voiceChannel}` });
@@ -234,14 +236,16 @@ const leave = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_move_permission(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         guildVoice.destroy();
         await interaction.editReply({ content: `💨 Leaving ${guildVoice.voiceChannel} bye!` });
     },
@@ -255,14 +259,16 @@ const np = {
         'Examples: `/music np`',
     async execute(interaction) {
         await interaction.deferReply();
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         else if (!guildVoice.getCurrentSong()) {
-            return interaction.editReply({ content: 'I am not playing anything.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not playing anything.' }).then(() => {
+            });
         }
-        const embed = await nowPlaying(interaction.guildId);
+        const embed = await nowPlaying(interaction.client, interaction.guildId);
         if (embed) {
             await interaction.editReply({ embeds: [embed] });
         }
@@ -321,11 +327,11 @@ const play = {
         song.user = member.user;
         return true;
     },
-    async execute(interaction, client) {
-        let guildVoice = client_1.GuildVoices.get(interaction.guildId);
+    async execute(interaction) {
+        let guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            await join.execute(interaction, client);
-            guildVoice = client_1.GuildVoices.get(interaction.guildId);
+            await join.execute(interaction);
+            guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
             if (!guildVoice)
                 return;
         }
@@ -336,7 +342,8 @@ const play = {
         if (!member)
             return;
         if (member.voice.channelId !== guildVoice.voiceChannel.id) {
-            return interaction.editReply({ content: 'I am not with you, b-baka.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not with you, b-baka.' }).then(() => {
+            });
         }
         const link = interaction.options.getString('query').trim();
         const shuffle = interaction.options.getBoolean('shuffle') || false;
@@ -462,7 +469,7 @@ const play = {
         }).setThumbnail(showThumbnail);
         await interaction.followUp({ embeds: [embed] });
         if (!guildVoice.started) {
-            return playNext(interaction.guildId);
+            return playNext(interaction.client, interaction.guildId);
         }
     },
 };
@@ -473,14 +480,15 @@ const host = {
     desc: 'Views the current host of the music channel.\n\n' +
         'Usage: `/music host`\n\n' +
         'Examples: `/music host`',
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         let host = guildVoice.host.toString();
-        if (guildVoice.host.id === client.user.id) {
+        if (guildVoice.host.id === interaction.client.user.id) {
             host = 'me';
         }
         else if (guildVoice.host.id === interaction.user.id) {
@@ -501,14 +509,16 @@ const clear = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         guildVoice.fullReset();
         await interaction.editReply({ content: '🚮 **RIP Queue.**' });
     },
@@ -531,14 +541,16 @@ const loop = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         guildVoice.loop = interaction.options.getString('type');
         await interaction.editReply({ content: `✅ Loop type set to ${guildVoice.loop}` });
     },
@@ -555,14 +567,16 @@ const pause = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         if (guildVoice.paused) {
             guildVoice.player.unpause();
             guildVoice.paused = false;
@@ -587,14 +601,16 @@ const resume = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         if (guildVoice.paused) {
             guildVoice.player.unpause();
             guildVoice.paused = false;
@@ -667,11 +683,14 @@ const queue = {
         }
         if (songsLeft > 0)
             desc += `etc (${songsLeft} more)...`;
-        embed.setDescription(desc).setThumbnail(currentQueue[0].thumbnail).setAuthor({
+        embed.setDescription(desc)
+            .setThumbnail(currentQueue[0].thumbnail)
+            .setAuthor({
             name: `Added by: @${currentQueue[0].user.username}`,
             url: currentQueue[0].albumUrl,
             iconURL: currentQueue[0].user.displayAvatarURL(),
-        }).setFooter({ text: `Loop type: ${guildVoice.loop}` });
+        })
+            .setFooter({ text: `Loop type: ${guildVoice.loop}` });
         const jumpPage = Math.floor(idx / 10) + (idx % 10 ? 1 : 0);
         const buttons = [
             new discord_js_1.ButtonBuilder()
@@ -711,7 +730,7 @@ const queue = {
         return retval;
     },
     async textInput(interaction) {
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice)
             return; // No longer playing music
         await interaction.deferUpdate();
@@ -721,7 +740,8 @@ const queue = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
@@ -757,7 +777,7 @@ const queue = {
                 throw new Error(`Page ${page} is not a valid type.`);
             }
         }
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice)
             return; // No longer playing music
         await interaction.deferUpdate();
@@ -767,9 +787,10 @@ const queue = {
     async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const { embeds, components, followUp } = this.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
@@ -789,12 +810,13 @@ const shuffle = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice)
             return interaction.deleteReply();
         const reply = check_host(member, guildVoice, 'this button');
         if (reply)
-            return interaction.followUp({ ...reply, ephemeral: true }).then(() => { });
+            return interaction.followUp({ ...reply, ephemeral: true }).then(() => {
+            });
         guildVoice.shuffle();
         const page = parseInt(interaction.customId.split('/').slice(3)[0]);
         const { embeds, components } = queue.getPage(interaction.user.id, guildVoice, page);
@@ -806,14 +828,16 @@ const shuffle = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         guildVoice.shuffle();
         await interaction.editReply({ content: '🔀 Successfully shuffled the queue.' });
     },
@@ -830,18 +854,21 @@ const prev = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         // Using lower-level access, however more efficient.
         const currIdx = guildVoice.fullQueue.findIndex(song => song.id === guildVoice.songs.at(0)?.id);
         if (currIdx === 0)
-            return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => { });
+            return interaction.editReply({ content: '❌ There is no previous song.' }).then(() => {
+            });
         // Hack we do, pretend we just started playing, so it doesn't skip the new song we added.
         guildVoice.songs.unshift(guildVoice.fullQueue[currIdx - 1]);
         guildVoice.started = false;
@@ -861,14 +888,16 @@ const skip = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         // A bit of outside handling, but its minor
         // Shift the internal queue to force next song when loop type is One.
         if (guildVoice.loop === "ONE" /* LoopType.one */)
@@ -897,26 +926,30 @@ const remove_song = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         const idx = interaction.options.getInteger('index') - 1;
         const res = guildVoice.removeSong(idx);
         if (res === -1) {
             return interaction.editReply({
                 content: `There are only ${guildVoice.fullQueue.length} songs.`,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         else if (res === 0) {
-            const skip_cmd = await Utils.get_rich_cmd('skip');
+            const skip_cmd = await Utils.get_rich_cmd('skip', interaction.client);
             return interaction.editReply({
                 content: `Song at index ${idx + 1} is currently playing. Use ${skip_cmd} instead.`,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         await interaction.editReply({ content: `✅ Successfully removed song at index ${idx + 1}.` });
     },
@@ -929,9 +962,9 @@ const remove = {
     desc: 'Remove base command',
     subcommands: new Map()
         .set(remove_song.data.name, remove_song),
-    async execute(interaction, client) {
+    async execute(interaction) {
         const subcmd = this.subcommands.get(interaction.options.getSubcommand());
-        return subcmd.execute(interaction, client);
+        return subcmd.execute(interaction);
     },
 };
 const vote_skip = {
@@ -956,13 +989,15 @@ const vote_skip = {
     async execute(interaction) {
         await interaction.deferReply();
         // const vote = interaction.options.getBoolean('skip')!;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const song = guildVoice.getCurrentSong();
         if (!song) {
-            return interaction.editReply({ content: 'There is no song playing.' }).then(() => { });
+            return interaction.editReply({ content: 'There is no song playing.' }).then(() => {
+            });
         }
         await interaction.editReply({ content: 'This command is not implemented yet.' });
     },
@@ -975,9 +1010,9 @@ const vote = {
     desc: 'Vote Base Command',
     subcommands: new Map()
         .set(vote_skip.data.name, vote_skip),
-    async execute(interaction, client) {
+    async execute(interaction) {
         const subcmd = this.subcommands.get(interaction.options.getSubcommand());
-        return subcmd.execute(interaction, client);
+        return subcmd.execute(interaction);
     },
 };
 const restart = {
@@ -992,16 +1027,19 @@ const restart = {
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = client_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
-            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => { });
+            return interaction.editReply({ content: 'I am not in a voice channel.' }).then(() => {
+            });
         }
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const reply = check_host(member, guildVoice, rich_cmd);
         if (reply)
-            return interaction.editReply(reply).then(() => { });
+            return interaction.editReply(reply).then(() => {
+            });
         if (!guildVoice.fullQueue.length) {
-            return interaction.editReply({ content: 'There is no queue.' }).then(() => { });
+            return interaction.editReply({ content: 'There is no queue.' }).then(() => {
+            });
         }
         const message = await interaction.editReply({
             content: '# Are you sure you want to restart the queue?',
@@ -1024,7 +1062,7 @@ const restart = {
             // Low level access to guildVoice private fields
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
-                playNext(interaction.guildId);
+                playNext(interaction.client, interaction.guildId);
                 await i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             }
             else {
@@ -1076,22 +1114,22 @@ exports.music = {
         .set(vote.data.name, vote)
         .set(restart.data.name, restart),
     desc: 'Music base command',
-    async textInput(interaction, client) {
+    async textInput(interaction) {
         const subcommand = this.subcommands.get(interaction.customId.split('/')[1]);
-        return subcommand.textInput(interaction, client);
+        return subcommand.textInput(interaction);
     },
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const subcommand = this.subcommands.get(interaction.customId.split('/')[2]);
-        return subcommand.buttonReact(interaction, client);
+        return subcommand.buttonReact(interaction);
     },
-    async menuReact(interaction, client) {
+    async menuReact(interaction) {
         const subcommand = this.subcommands.get(interaction.customId.split('/')[2]);
-        return subcommand.menuReact(interaction, client);
+        return subcommand.menuReact(interaction);
     },
-    async execute(interaction, client) {
+    async execute(interaction) {
         const subcmd = this.subcommands.get(interaction.options.getSubcommandGroup(false) ??
             interaction.options.getSubcommand());
-        return subcmd.execute(interaction, client);
+        return subcmd.execute(interaction);
     },
 };
 //# sourceMappingURL=music_commands.js.map
