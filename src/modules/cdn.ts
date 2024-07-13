@@ -1,5 +1,6 @@
 import config from '@config';
 import path from 'path';
+
 const headers = new Headers();
 headers.append('Authorization', `Bearer ${config.secret}`);
 
@@ -9,6 +10,7 @@ type Metrics = {
         count: string
     }[]
 };
+
 export async function getCDNMetrics(): Promise<Metrics> {
     const res = await fetch(`${config.origin}/api/metrics`, {
         method: 'GET',
@@ -25,7 +27,8 @@ export async function uploadToCDN(body: FormData): Promise<string[]> {
     }).then(res => {
         if (res.status === 200) return res.json();
         // Try to log error message
-        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => { });
+        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => {
+        });
         return { urls: [] };
     }).catch(e => {
         console.error(`POST: ${e}`);

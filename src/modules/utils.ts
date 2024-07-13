@@ -1,15 +1,24 @@
-import {CustomClient,} from '@classes/client';
-import {TimedOutError,} from '@classes/exceptions';
-import type DTypes from 'discord.js';
+import { TimedOutError } from '@classes/exceptions';
 import {
     ActionRowBuilder,
     ApplicationCommandOptionType,
+    Awaitable,
+    ChatInputCommandInteraction,
+    Client,
     Colors,
     CommandInteraction,
     ComponentType,
     EmbedBuilder,
+    Guild,
+    GuildEmoji,
+    GuildMember,
+    Message,
+    RepliableInteraction,
     Routes,
+    Serialized,
     StringSelectMenuBuilder,
+    TextBasedChannel,
+    User,
 } from 'discord.js';
 
 function strip(text: string, char: string) {
@@ -18,25 +27,27 @@ function strip(text: string, char: string) {
 
 // Helpers that convert text to Discord.js objects
 export async function fetch_user_fast<T>(
+    client: Client,
     uid: string,
-    userCb: (user: DTypes.User | undefined) => DTypes.Awaitable<T | undefined>
-): Promise<DTypes.Serialized<T> | undefined>;
+    userCb: (user: User | undefined) => Awaitable<T | undefined>
+): Promise<Serialized<T> | undefined>;
 export async function fetch_user_fast<T, R>(
+    client: Client,
     uid: string,
-    userCb: (user: DTypes.User | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
+    userCb: (user: User | undefined, ctx: Serialized<R>) => Awaitable<T | undefined>,
     ctx: R
-): Promise<DTypes.Serialized<T> | undefined>;
+): Promise<Serialized<T> | undefined>;
 export async function fetch_user_fast<T, R>(
+    client: Client,
     uid: string,
-    userCb: (user: DTypes.User | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
+    userCb: (user: User | undefined, ctx?: Serialized<R>) => Awaitable<T | undefined>,
     ctx?: R,
 ) {
-    const client = new CustomClient();
     // This is quite a hack, essentially define the callback using eval,
     // and then run the function on the discord user object.
     const retval = await client.shard?.broadcastEval(
         (client, { uid, userCb, ctx }) => {
-            return eval(userCb)(client.users.cache.get(uid), ctx) as DTypes.Awaitable<T | undefined>;
+            return eval(userCb)(client.users.cache.get(uid), ctx) as Awaitable<T | undefined>;
         },
         { context: { uid, userCb: userCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
@@ -48,35 +59,37 @@ export async function fetch_user_fast<T, R>(
 }
 
 export function fetch_guild_cache<T>(
+    client: Client,
     gid: string,
-    guildCb: (guild: DTypes.Guild | undefined) => DTypes.Awaitable<T | undefined>
-): Promise<DTypes.Serialized<T> | undefined>;
+    guildCb: (guild: Guild | undefined) => Awaitable<T | undefined>
+): Promise<Serialized<T> | undefined>;
 export function fetch_guild_cache<T, R>(
+    client: Client,
     gid: string,
-    guildCb: (guild: DTypes.Guild | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
+    guildCb: (guild: Guild | undefined, ctx: Serialized<R>) => Awaitable<T | undefined>,
     ctx: R
-): Promise<DTypes.Serialized<T> | undefined>;
+): Promise<Serialized<T> | undefined>;
 export function fetch_guild_cache<T, R>(
+    client: Client,
     gid: string,
-    guildCb: (guild: DTypes.Guild | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
+    guildCb: (guild: Guild | undefined, ctx?: Serialized<R>) => Awaitable<T | undefined>,
     ctx?: R,
 ) {
-    const client = new CustomClient();
     return client.shard?.broadcastEval(
         (client, { gid, guildCb, ctx }) => {
-            return eval(guildCb)(client.guilds.cache.get(gid), ctx) as DTypes.Awaitable<T | undefined>;
+            return eval(guildCb)(client.guilds.cache.get(gid), ctx) as Awaitable<T | undefined>;
         },
         { context: { gid, guildCb: guildCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
 }
 
-export async function convert_user(text: string): Promise<DTypes.User | undefined>;
+export async function convert_user(client: Client, text: string): Promise<User | undefined>;
 export async function convert_user(
+    client: Client,
     text: string,
-    guild: Readonly<DTypes.Guild>
-): Promise<DTypes.GuildMember | undefined>;
-export async function convert_user(text: string, guild?: Readonly<DTypes.Guild>) {
-    const client = new CustomClient();
+    guild: Readonly<Guild>
+): Promise<GuildMember | undefined>;
+export async function convert_user(client: Client, text: string, guild?: Readonly<Guild>) {
     if (!text.startsWith('@')) return;
     text = text.slice(1).toLowerCase();
     if (!guild) {
@@ -88,7 +101,7 @@ export async function convert_user(text: string, guild?: Readonly<DTypes.Guild>)
         return client.shard?.broadcastEval(
             (client, text) => client.users.cache.find(u =>
                 u.displayName.toLowerCase().includes(text) ||
-                u.tag.toLowerCase().includes(text),
+                                                          u.tag.toLowerCase().includes(text),
             )?.id,
             { context: text },
         ).then(results => client.users.fetch(results.find(r => r !== undefined) ?? '0').catch(() => undefined));
@@ -101,14 +114,15 @@ export async function convert_user(text: string, guild?: Readonly<DTypes.Guild>)
     // Try to get with name
     return guild.members.fetch().then(members =>
         members.find(m =>
-            m.displayName.toLowerCase().includes(text) ||
-            m.user.displayName.toLowerCase().includes(text) ||
-            m.user.tag.toLowerCase().includes(text),
+            m.displayName.toLowerCase()
+                .includes(text) || m.user.displayName.toLowerCase()
+                .includes(text) || m.user.tag.toLowerCase()
+                .includes(text),
         ),
     );
 }
-export async function convert_channel(text: string) {
-    const client = new CustomClient();
+
+export async function convert_channel(client: Client, text: string) {
     if (!text.startsWith('#')) return null;
     text = text.slice(1);
     // Try to get with id
@@ -121,24 +135,27 @@ export async function convert_channel(text: string) {
         (client, text) => client.channels.cache.find(c =>
             c.isDMBased() ? false : c.name.toLowerCase().includes(text),
         )?.id,
-        {context: text},
+        { context: text },
     ).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
 }
+
 export function convert_emoji<T>(
+    client: Client,
     text: string,
-    emojiCb: (emoji: DTypes.GuildEmoji | undefined) => DTypes.Awaitable<T | undefined>,
-): Promise<DTypes.Serialized<T> | undefined>;
+    emojiCb: (emoji: GuildEmoji | undefined) => Awaitable<T | undefined>,
+): Promise<Serialized<T> | undefined>;
 export function convert_emoji<T, R>(
+    client: Client,
     text: string,
-    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
+    emojiCb: (emoji: GuildEmoji | undefined, ctx: Serialized<R>) => Awaitable<T | undefined>,
     ctx: R
-): Promise<DTypes.Serialized<T> | undefined>;
+): Promise<Serialized<T> | undefined>;
 export function convert_emoji<T, R>(
+    client: Client,
     text: string,
-    emojiCb: (emoji: DTypes.GuildEmoji | undefined, ctx?: DTypes.Serialized<R>) => DTypes.Awaitable<T | undefined>,
+    emojiCb: (emoji: GuildEmoji | undefined, ctx?: Serialized<R>) => Awaitable<T | undefined>,
     ctx?: R,
 ) {
-    const client = new CustomClient();
     if (!text.startsWith(':') || !text.endsWith(':')) return;
     text = strip(text, ':').toLowerCase();
     // Explaination of trick above in fetch_user_fast
@@ -146,13 +163,15 @@ export function convert_emoji<T, R>(
         (client, { text, emojiCb, ctx }) => {
             return eval(emojiCb)(client.emojis.cache.find(e =>
                 e.name!.toLowerCase() === text,
-            ), ctx) as DTypes.Awaitable<T | undefined>;
+            ), ctx) as Awaitable<T | undefined>;
         },
         { context: { text, emojiCb: emojiCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
 }
 
-export async function get_rich_cmd(textOrInteraction: DTypes.ChatInputCommandInteraction | string) {
+export async function get_rich_cmd(interaction: ChatInputCommandInteraction): Promise<string>;
+export async function get_rich_cmd(text: string, client: Client<true>): Promise<string>;
+export async function get_rich_cmd(textOrInteraction: ChatInputCommandInteraction | string, client?: Client<true>) {
     if (textOrInteraction instanceof CommandInteraction) {
         let full_cmd_name = textOrInteraction.commandName;
         const sub_cmd_group_name = textOrInteraction.options.getSubcommandGroup(false);
@@ -161,12 +180,11 @@ export async function get_rich_cmd(textOrInteraction: DTypes.ChatInputCommandInt
         if (sub_cmd_name) full_cmd_name += ` ${sub_cmd_name}`;
         return `</${full_cmd_name}:${textOrInteraction.commandId}>`;
     }
-    const client = new CustomClient();
     const [main_cmd, ...sub_cmd] = textOrInteraction.split(' ');
-    let cmd = client.application.commands.cache.find(cmd => cmd.name === main_cmd);
+    let cmd = client!.application.commands.cache.find(cmd => cmd.name === main_cmd);
     if (!cmd) {
         // Try to fetch full thing if we can't find the command
-        const cmds = await client.application.commands.fetch();
+        const cmds = await client!.application.commands.fetch();
         cmd = cmds.find(cmd => cmd.name === main_cmd);
         if (!cmd) return `\`/${textOrInteraction}\``;
     }
@@ -186,22 +204,25 @@ export async function get_rich_cmd(textOrInteraction: DTypes.ChatInputCommandInt
     return `</${cmd.name}:${cmd.id}>`;
 }
 
-export function channel_is_nsfw_safe(channel: DTypes.TextBasedChannel) {
+export function channel_is_nsfw_safe(channel: TextBasedChannel) {
     return !channel.isThread() && (channel.isDMBased() || channel.nsfw);
 }
 
 // Useful helpers used in all modules
 // Helper that sends all embeds by wave
 export async function send_embeds_by_wave(
-    interaction: DTypes.RepliableInteraction,
-    embeds: DTypes.EmbedBuilder[],
+    interaction: RepliableInteraction,
+    embeds: EmbedBuilder[],
 ) {
     // 10 embeds per message
     let wave = embeds.splice(0, 10);
-    await interaction.editReply({ embeds: wave }).catch(() => { throw new TimedOutError(); });
+    await interaction.editReply({ embeds: wave }).catch(() => {
+        throw new TimedOutError();
+    });
     while (embeds.length > 0) {
         wave = embeds.splice(0, 10);
-        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => { });
+        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => {
+        });
     }
 }
 
@@ -223,6 +244,7 @@ export function date_after_hours(hours: number) {
  * R: x years|months|days ago
  */
 type DateFormats = 't' | 'T' | 'd' | 'D' | 'f' | 'F' | 'R';
+
 /**
  * If is a number, pass as miliseconds since epoch.
  * @param date
@@ -244,15 +266,16 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
  * doesn't currently support deleting ephemeral messages for ephemeral followups.
  * However, Discord has a route to support this, and that's what this function does.
  */
-export function delete_ephemeral_message(i: DTypes.RepliableInteraction, msg: DTypes.Message) {
-    return i.client.rest.delete(Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => { });
+export function delete_ephemeral_message(i: RepliableInteraction, msg: Message) {
+    return i.client.rest.delete(Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => {
+    });
 }
 
 /**
  * Waits for a specific confirm button to be pressed, on a given message.
  * The confirm_id is the customId of the confirm button.
  */
-export function wait_for_button(message: DTypes.Message, confirm_id: string) {
+export function wait_for_button(message: Message, confirm_id: string) {
     return message.awaitMessageComponent({
         componentType: ComponentType.Button,
         time: 10 * 60 * 1000, // 10 minutes before interaction expires
@@ -263,17 +286,17 @@ export function wait_for_button(message: DTypes.Message, confirm_id: string) {
 /**
  * Warning: This will create a followup message and delete it
  * Make sure to have original reply still be available & edit original reply instead
- * 
+ *
  * options allowed:
- * 
+ *
  * Embed details: `title_fmt`, `desc_fmt`
- * 
+ *
  * Select menu details: `sel_fmt`
- * 
+ *
  * returns: T if selected, undefined if no choices, and null if cancelled
  */
 export async function get_results<T>(
-    interaction: DTypes.RepliableInteraction,
+    interaction: RepliableInteraction,
     choices: T[],
     {
         title_fmt = idx => `Found ${idx} items:`,
@@ -312,7 +335,8 @@ export async function get_results<T>(
 
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [new ActionRowBuilder<DTypes.StringSelectMenuBuilder>().addComponents(menu)],
+        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+            menu)],
         ephemeral: true,
     });
 
@@ -334,9 +358,9 @@ export async function get_results<T>(
  * It is still correct behaviour, but I like the latter better.
  */
 export async function* fetch_history(
-    channel: DTypes.TextBasedChannel,
+    channel: TextBasedChannel,
     amount: number,
-    filter: (message: DTypes.Message) => boolean = () => true,
+    filter: (message: Message) => boolean = () => true,
 ) {
     let prev: string | undefined;
     while (amount > 0) {

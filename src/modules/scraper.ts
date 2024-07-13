@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import config from '@config';
 import Pixiv from 'pixiv.ts';
-import { load, } from 'cheerio';
-import { LambdaClient, InvokeCommand, } from '@aws-sdk/client-lambda';
+import { load } from 'cheerio';
+import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 
 // Pixiv object for scraping pixiv images.
 let pixiv: Pixiv;
@@ -82,7 +82,7 @@ export async function getRawImageLink(source: string) {
             .then(res => {
                 console.log(`(scraper/getRawImageLink ${id}) Scraper returned ${res.status}.`);
                 return res.json();
-            }, () => { 
+            }, () => {
                 return { imgs: [] };
             });
         images.push(...imgs);
@@ -103,7 +103,9 @@ interface GetSauceResponse {
     error: boolean;
     sauce: string;
 }
+
 const client = new LambdaClient();
+
 /**
  * Scrape saucenao.com API for best image source we can get.
  */
@@ -117,14 +119,15 @@ export async function getSauce(rawImageLink: string, retries: number = 2): Promi
         const res = await client.send(command).then(res => new TextDecoder().decode(res.Payload));
         return JSON.parse(res);
     }
-    
+
     // However, also allow local scraping.
     const url = 'https://saucenao.com/search.php?' + new URLSearchParams({
         output_type: '2',
         numres: '1',
         // pixiv, danbooru, gelbooru, twitter
         dbmask: (0x20 | 0x200 | 0x1000000 | 0x10000000000).toString(),
-        api_key: Buffer.from(config.saucenao, 'base64').toString(),
+        api_key: Buffer.from(config.saucenao,
+            'base64').toString(),
         url: rawImageLink,
     });
     console.log('(scraper/getSauce) fetching:', url);

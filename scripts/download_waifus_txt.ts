@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
-import { Pool, QueryResultRow, } from 'pg';
+import { Pool, QueryResultRow } from 'pg';
 
 const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
 // The shared file path between upload_waifus_txt.ts and download_waifus_txt.ts
@@ -14,6 +14,7 @@ const imgReplacer = (i: string) => {
 const pool = new Pool({
     host: process.env.PRODHOST, // Not included in .env.example, since for personal use only.
 });
+
 function query<R extends QueryResultRow = QueryResultRow, I = unknown>(query: string, values?: I[]) {
     return pool.query<R>(query, values).then(res => res.rows);
 }
@@ -27,6 +28,7 @@ type WaifuDetails = {
     img: string[] | string;
     nimg: string[] | string;
 };
+
 class Waifu {
     iid: string;
     name: string;
@@ -36,14 +38,6 @@ class Waifu {
     _img: string | string[];
     nimg: string;
     _nimg: string | string[];
-
-    static fromRows(rows: unknown[]) {
-        const rets: Waifu[] = [];
-        for (const row of rows) {
-            rets.push(new Waifu(row as WaifuDetails));
-        }
-        return rets;
-    }
 
     constructor(row: WaifuDetails) {
         if (!row) throw new Error('Waifu details partial');
@@ -56,6 +50,14 @@ class Waifu {
         // Raw values are useful for calculations
         this._img = row.img;
         this._nimg = row.nimg;
+    }
+
+    static fromRows(rows: unknown[]) {
+        const rets: Waifu[] = [];
+        for (const row of rows) {
+            rets.push(new Waifu(row as WaifuDetails));
+        }
+        return rets;
     }
 
     equal(other: Waifu) {
@@ -91,6 +93,7 @@ async function confirm(prompt: string) {
 const connector = '+';
 const horizontalLine = '―';
 const verticalLine = '|';
+
 function center(str: string, size: number) {
     // Not asserted, but assuming size >= str.length
     const len = size - str.length;
@@ -98,6 +101,7 @@ function center(str: string, size: number) {
     const end = len - start;
     return `${' '.repeat(start)}${str}${' '.repeat(end)}`;
 }
+
 if (require.main === module) {
     (async () => {
         const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);

@@ -1,22 +1,20 @@
-import Play from 'play-dl';
-import { ChannelType, } from 'discord.js';
-import { GuildVoices, } from '@classes/client';
-import { SpotifyTrack, YouTubeVideo, } from 'play-dl';
+import Play, { SpotifyTrack, YouTubeVideo } from 'play-dl';
+import { ChannelType, GuildMember, Message, TextBasedChannel, User, VoiceBasedChannel } from 'discord.js';
 import {
-    VoiceConnectionStatus,
+    AudioPlayer,
+    AudioResource,
     createAudioPlayer,
     createAudioResource,
     entersState,
     getVoiceConnection,
     joinVoiceChannel,
+    VoiceConnectionStatus,
 } from '@discordjs/voice';
-import type DTypes from 'discord.js';
-import type VTypes from '@discordjs/voice';
 
 export const enum LoopType {
     none = 'NONE',
     one = 'ONE',
-    all = 'ALL'
+    all = 'ALL',
 }
 
 // Because Play-DL does not export this type
@@ -24,6 +22,7 @@ declare class PlayYoutubeThumbnail {
     url: string;
     width: number;
     height: number;
+
     toJSON(): {
         url: string;
         width: number;
@@ -40,7 +39,7 @@ export class Song {
     thumbnail!: string | null;
     duration!: number;
     id!: number;
-    user!: DTypes.User;
+    user!: User;
     artists?: string; // Only for spotify
     notFound: boolean; // When infoData is undefined
     invalid: boolean; // When channel is not NSFW attempts to play NSFW song
@@ -91,24 +90,24 @@ export class Song {
 }
 
 export default class GuildVoice {
-    textChannel: DTypes.TextBasedChannel;
-    voiceChannel: DTypes.VoiceBasedChannel;
-    host: DTypes.GuildMember;
-    player: VTypes.AudioPlayer;
+    textChannel: TextBasedChannel;
+    voiceChannel: VoiceBasedChannel;
+    host: GuildMember;
+    player: AudioPlayer;
     loop: LoopType;
     started: boolean;
     paused: boolean;
-    currentSongResource: VTypes.AudioResource | null;
-    voted: DTypes.GuildMember[];
-    votingMessage: DTypes.Message | null;
+    currentSongResource: AudioResource | null;
+    voted: GuildMember[];
+    votingMessage: Message | null;
     fullQueue: Song[];
     songs: Song[];
     IDCounter: number;
 
     constructor(
-        textChannel: DTypes.TextBasedChannel,
-        voiceChannel: DTypes.VoiceBasedChannel,
-        host: DTypes.GuildMember,
+        textChannel: TextBasedChannel,
+        voiceChannel: VoiceBasedChannel,
+        host: GuildMember,
     ) {
         this.textChannel = textChannel;
         this.voiceChannel = voiceChannel;
@@ -126,7 +125,7 @@ export default class GuildVoice {
         this.connectAndListen(voiceChannel);
     }
 
-    join(voiceChannel: DTypes.VoiceBasedChannel) {
+    join(voiceChannel: VoiceBasedChannel) {
         return joinVoiceChannel({
             channelId: voiceChannel.id,
             guildId: voiceChannel.guildId,
@@ -135,68 +134,6 @@ export default class GuildVoice {
     }
 
     // This is actually only called during in ctor
-    // Separated to make ctor more clear.
-    private connectAndListen(voiceChannel: DTypes.VoiceBasedChannel) {
-        const connection = this.join(voiceChannel);
-        connection.subscribe(this.player);
-
-        this.player.on('error', async err => {
-            await this.textChannel.send({
-                content:
-                    'Something bad happened while I was playing...\n' +
-                    'Sorry! I will continue to play the next song.',
-            });
-            throw err;
-        });
-        connection.on(VoiceConnectionStatus.Ready, async () => {
-            // Get latest voice channel info
-            this.voiceChannel = await this.voiceChannel.guild.channels.fetch(
-                connection.joinConfig.channelId!,
-            ) as DTypes.VoiceBasedChannel;
-            const me = this.voiceChannel.guild.members.me!;
-            // This makes it so that I can play music in stage channels
-            if (this.voiceChannel.type === ChannelType.GuildStageVoice) {
-                await me.voice.setSuppressed(false);
-            }
-            const members = this.voiceChannel.members.filter(m => !m.user.bot);
-            const host = members.get(this.host.id);
-            if (!host) {
-                const newHost = members.at(Math.floor(Math.random() * members.size));
-                // No more members in channel, so get ready for me to be host.
-                if (!newHost) {
-                    this.host = me;
-                    // If it hadn't started/finished, and then moved, then we can safely disconnect.
-                    if (!this.started || this.paused) {
-                        this.destroy();
-                        return this.textChannel.send({
-                            content: 'No one wants to listen to me in ' +
-                                `${this.voiceChannel} so I'm leaving... 😭`,
-                        });
-                    }
-                } else {
-                    this.host = newHost;
-                }
-            }
-            return this.textChannel.send({
-                content: `Connected to ${this.voiceChannel}\nHost is ${this.host}`,
-                allowedMentions: { users: [] },
-            });
-        });
-
-        // Some cute error handling when random disconnection.
-        connection.on(VoiceConnectionStatus.Disconnected, async () => {
-            try {
-                await Promise.race([
-                    entersState(connection, VoiceConnectionStatus.Signalling, 5000),
-                    entersState(connection, VoiceConnectionStatus.Connecting, 5000),
-                ]);
-                // Seems to be reconnecting to a new channel - ignore disconnect.
-            } catch (err) {
-                // Seems to be a real disconnect which SHOULDN'T be recovered from
-                this.destroy();
-            }
-        });
-    }
 
     // Added extra parameter specifically for reset.
     reset(songs: Song[] = []) {
@@ -228,7 +165,9 @@ export default class GuildVoice {
         if (!this.songs.length) this.reset();
     }
 
-    getCurrentSong() { return this.songs.at(0); }
+    getCurrentSong() {
+        return this.songs.at(0);
+    }
 
     async playNextSong(): Promise<boolean> {
         if (this.started) this.shiftToNextSong();
@@ -253,7 +192,8 @@ export default class GuildVoice {
                 return this.playNextSong();
             }
         }
-        const source = await Play.stream(song.playUrl).catch(() => { });
+        const source = await Play.stream(song.playUrl).catch(() => {
+        });
         if (!source) {
             // Forcefully skip song on error
             if (this.loop === LoopType.one) {
@@ -273,7 +213,9 @@ export default class GuildVoice {
         return true;
     }
 
-    getSong(idx: number) { return this.fullQueue[idx]; }
+    getSong(idx: number) {
+        return this.fullQueue[idx];
+    }
 
     /** -1 Represents bad index, 0 means trying to remove current song, 1 means successful */
     removeSong(idx: number) {
@@ -310,7 +252,75 @@ export default class GuildVoice {
         GuildVoices.delete(this.voiceChannel.guildId);
     }
 
-    // Give a unique id for the guild's songs, so we don't
     // create massive ID numbers for songs in different guilds
-    getUniqueId() { return this.IDCounter++; }
+    getUniqueId() {
+        return this.IDCounter++;
+    }
+
+    // Give a unique id for the guild's songs, so we don't
+
+    // Separated to make ctor more clear.
+    private connectAndListen(voiceChannel: VoiceBasedChannel) {
+        const connection = this.join(voiceChannel);
+        connection.subscribe(this.player);
+
+        this.player.on('error', async err => {
+            await this.textChannel.send({
+                content:
+                                                'Something bad happened while I was playing...\n' +
+                                                'Sorry! I will continue to play the next song.',
+            });
+            throw err;
+        });
+        connection.on(VoiceConnectionStatus.Ready, async () => {
+            // Get latest voice channel info
+            this.voiceChannel = await this.voiceChannel.guild.channels.fetch(
+                connection.joinConfig.channelId!,
+            ) as VoiceBasedChannel;
+            const me = this.voiceChannel.guild.members.me!;
+            // This makes it so that I can play music in stage channels
+            if (this.voiceChannel.type === ChannelType.GuildStageVoice) {
+                await me.voice.setSuppressed(false);
+            }
+            const members = this.voiceChannel.members.filter(m => !m.user.bot);
+            const host = members.get(this.host.id);
+            if (!host) {
+                const newHost = members.at(Math.floor(Math.random() * members.size));
+                // No more members in channel, so get ready for me to be host.
+                if (!newHost) {
+                    this.host = me;
+                    // If it hadn't started/finished, and then moved, then we can safely disconnect.
+                    if (!this.started || this.paused) {
+                        this.destroy();
+                        return this.textChannel.send({
+                            content: 'No one wants to listen to me in ' +
+                                                             `${this.voiceChannel} so I'm leaving... 😭`,
+                        });
+                    }
+                } else {
+                    this.host = newHost;
+                }
+            }
+            return this.textChannel.send({
+                content: `Connected to ${this.voiceChannel}\nHost is ${this.host}`,
+                allowedMentions: { users: [] },
+            });
+        });
+
+        // Some cute error handling when random disconnection.
+        connection.on(VoiceConnectionStatus.Disconnected, async () => {
+            try {
+                await Promise.race([
+                    entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+                    entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+                ]);
+                // Seems to be reconnecting to a new channel - ignore disconnect.
+            } catch (err) {
+                // Seems to be a real disconnect which SHOULDN'T be recovered from
+                this.destroy();
+            }
+        });
+    }
 }
+
+export const GuildVoices = new Map<string, GuildVoice>();

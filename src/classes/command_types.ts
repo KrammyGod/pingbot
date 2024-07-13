@@ -1,11 +1,19 @@
-import config from '@config';
 import {
-    Client, ContextMenuCommandBuilder, SlashCommandSubcommandBuilder,
-    SlashCommandSubcommandGroupBuilder, SlashCommandBuilder,
+    AnySelectMenuInteraction,
+    ButtonInteraction,
+    ChatInputCommandInteraction,
+    ContextMenuCommandBuilder,
+    ContextMenuCommandInteraction,
+    Message,
+    ModalSubmitInteraction,
+    SharedNameAndDescription,
+    SlashCommandBuilder,
+    SlashCommandOptionsOnlyBuilder,
+    SlashCommandSubcommandBuilder,
+    SlashCommandSubcommandGroupBuilder,
+    SlashCommandSubcommandsOnlyBuilder,
 } from 'discord.js';
-import type DTypes from 'discord.js';
-import type GuildVoice from '@classes/GuildVoice';
-import type { Cache, } from '@modules/database';
+import type { Cache } from '@modules/database';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isSlashSubcommand(obj: any): obj is SlashSubcommand {
@@ -61,27 +69,30 @@ export interface MessageCommand {
     name: string;
     admin: boolean;
     desc: string;
-    execute: (msg: DTypes.Message, args: string[], client: CustomClient) => Promise<void>;
+    execute: (msg: Message, args: string[]) => Promise<void>;
 }
 
 // Basics that every slash command must have
 interface Command {
-    data: DTypes.SharedNameAndDescription;
+    data: SharedNameAndDescription;
     desc: string; // Long description for help command
-    execute: (i: DTypes.ChatInputCommandInteraction, client: CustomClient) => Promise<void>;
-    buttonReact?: (i: DTypes.ButtonInteraction, client: CustomClient) => Promise<void>;
-    menuReact?: (i: DTypes.AnySelectMenuInteraction, client: CustomClient) => Promise<void>;
-    textInput?: (i: DTypes.ModalSubmitInteraction, client: CustomClient) => Promise<void>;
+    execute: (i: ChatInputCommandInteraction) => Promise<void>;
+    buttonReact?: (i: ButtonInteraction) => Promise<void>;
+    menuReact?: (i: AnySelectMenuInteraction) => Promise<void>;
+    textInput?: (i: ModalSubmitInteraction) => Promise<void>;
 }
+
 export interface SlashSubcommand extends Command {
-    data: DTypes.SlashCommandSubcommandBuilder;
+    data: SlashCommandSubcommandBuilder;
 }
+
 export interface SlashSubcommandGroup extends Command {
-    data: DTypes.SlashCommandSubcommandGroupBuilder;
+    data: SlashCommandSubcommandGroupBuilder;
     subcommands: Map<string, SlashSubcommand>;
 }
+
 export interface SlashCommand extends Command {
-    data: DTypes.SlashCommandOptionsOnlyBuilder | DTypes.SlashCommandSubcommandsOnlyBuilder;
+    data: SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
     subcommands?: Map<string, SlashSubcommandGroup | SlashSubcommand>;
 }
 
@@ -92,44 +103,8 @@ export type CachedSlashSubcommandGroup<T extends object> = SlashCommand & CacheD
 
 // Basics that every context command must have
 export interface ContextCommand {
-    data: DTypes.ContextMenuCommandBuilder;
-    execute: (i: DTypes.ContextMenuCommandInteraction, client: CustomClient) => Promise<void>;
+    data: ContextMenuCommandBuilder;
+    execute: (i: ContextMenuCommandInteraction) => Promise<void>;
 }
 
 export type InteractionCommand = SlashCommand | ContextCommand;
-
-export const GuildVoices = new Map<string, GuildVoice>();
-
-export class CustomClient extends Client<true> {
-    // Predefine custom properties
-    is_ready!: boolean;                              // Is fully loaded
-    is_listening!: boolean;                          // Is currently listening for interactions
-    readonly prefix!: string;                        // Message prefix
-    admin!: DTypes.User;                             // Admin user
-    log_channel!: DTypes.TextBasedChannel;           // Error logs
-    bot_emojis!: Record<string, string>;             // All available emojis
-    lines!: string[][];                              // All message reply lines
-    cogs!: CommandFile[];                            // All cogs (groups of commands)
-    commands!: Map<string, InteractionCommand>;      // All non-admin commands
-    admin_commands!: Map<string, MessageCommand>;    // All admin commands
-    message_commands!: Map<string, MessageCommand>;  // All message commands
-    user_cache_ready!: boolean;                      // Whether user cache is ready for current shard
-
-    private static _instance: CustomClient;
-
-    constructor(options?: DTypes.ClientOptions) {
-        if (CustomClient._instance) {
-            return CustomClient._instance;
-        }
-        super(options!);
-        this.is_ready = false;
-        this.is_listening = true;
-        this.prefix = config.prefix;
-        this.bot_emojis = {};
-        this.lines = [];
-        this.commands = new Map();
-        this.user_cache_ready = false;
-        // Everything is ready, set instance here
-        CustomClient._instance = this;
-    }
-}

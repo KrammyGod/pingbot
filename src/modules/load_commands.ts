@@ -1,11 +1,9 @@
 import glob from 'glob';
 import path from 'path';
-import {
-    CommandFile, CustomClient, isInteractionCommand, isMessageCommand, isSlashCommand,
-} from '@classes/client';
-import { ApplicationCommandOptionType, } from 'discord.js';
+import { CommandFile, isInteractionCommand, isMessageCommand, isSlashCommand } from '@classes/command_types';
+import { ApplicationCommandOptionType, Client } from 'discord.js';
 
-export default async function load(client: CustomClient) {
+export default async function load(client: Client) {
     client.cogs = [];
     client.commands = new Map();
     client.admin_commands = new Map();

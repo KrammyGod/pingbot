@@ -39,13 +39,7 @@ export default tseslint.config(
             ],
             '@stylistic/js/comma-dangle': [
                 'error',
-                {
-                    'arrays': 'always-multiline',
-                    'objects': 'always-multiline',
-                    'imports': 'always',
-                    'exports': 'always-multiline',
-                    'functions': 'always-multiline',
-                },
+                'always-multiline',
             ],
             '@typescript-eslint/no-unused-vars': [
                 'error',

@@ -3,17 +3,30 @@ import path from 'path';
 import load from '@modules/load_commands';
 import config from '@config';
 import * as DB from '@modules/database';
-import { inspect, } from 'util';
-import { convert_emoji, } from '@modules/utils';
-import { DatabaseMaintenanceError, IgnoredException, } from '@classes/exceptions';
-import { CustomClient, GuildVoices, InteractionCommand, isContextCommand, isSlashCommand, } from '@classes/client';
+import { inspect } from 'util';
+import { GuildVoices } from '@classes/GuildVoice';
+import { convert_emoji } from '@modules/utils';
+import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
+import { InteractionCommand, isContextCommand, isSlashCommand } from '@classes/command_types';
 import {
-    ActivityType, Collection, Events, IntentsBitField,
-    Partials, PermissionsBitField,
+    ActivitiesOptions,
+    ActivityType,
+    Client,
+    Collection,
+    Events,
+    GuildEmoji,
+    GuildMember,
+    IntentsBitField,
+    Message,
+    Partials,
+    PermissionsBitField,
+    RepliableInteraction,
+    TextBasedChannel,
+    VoiceState,
+    Webhook,
 } from 'discord.js';
-import type DTypes from 'discord.js';
 
-function WELCOMEMESSAGEMAPPING(member: DTypes.GuildMember) {
+function WELCOMEMESSAGEMAPPING(member: GuildMember) {
     return {
         '${USER}': member.toString(),
         '${SERVER}': member.guild.name,
@@ -21,7 +34,7 @@ function WELCOMEMESSAGEMAPPING(member: DTypes.GuildMember) {
     };
 }
 
-const ACTIVITY: DTypes.ActivitiesOptions = {
+const ACTIVITY: ActivitiesOptions = {
     name: 'a date with Krammy',
     type: ActivityType.Streaming,
     url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -38,34 +51,44 @@ const INTENTS = [
     IntentsBitField.Flags.DirectMessageTyping,
     IntentsBitField.Flags.MessageContent,
 ];
-const client = new CustomClient({
+// Warning: we assert that client is true, but actually the client is not immediately ready upon creation.
+// Ensure using the is_ready property before using properties such as client.user
+const client = new Client<true>({
     intents: INTENTS,
     presence: { activities: [ACTIVITY] },
     partials: [Partials.Channel],
 });
+client.is_ready = false;
+client.is_listening = true;
+client.prefix = config.prefix;
+client.bot_emojis = {};
+client.lines = [];
+client.commands = new Map();
+client.user_cache_ready = false;
 
 // Helper to get a free webhook
-async function get_webhook(channel: DTypes.TextBasedChannel, reason = 'General use') {
+async function get_webhook(channel: TextBasedChannel, reason = 'General use') {
     if (channel.isDMBased() || channel.isThread()) return;
-    const wbs = await channel.fetchWebhooks().catch(() => new Map<string, DTypes.Webhook>());
+    const wbs = await channel.fetchWebhooks().catch(() => new Map<string, Webhook>());
     for (const _wb of wbs.values()) {
         if (_wb.token) return _wb;
     }
     return channel.createWebhook({
         name: client.user.username,
         reason: reason,
-    }).catch(() => { });
+    }).catch(() => {
+    });
 }
 
 // Helper to check if webhook has emoji permissions
-function webhook_permission(message: DTypes.Message) {
+function webhook_permission(message: Message) {
     if (!message.inGuild()) return false;
     const _default = message.channel.permissionsFor(message.guild.roles.everyone);
     return _default.has(PermissionsBitField.Flags.UseExternalEmojis);
 }
 
 // Replace emojis
-async function replace_emojis(message: DTypes.Message) {
+async function replace_emojis(message: Message) {
     // No bots and DMs
     if (!message.content || message.author.bot || !message.inGuild() || config.env !== 'prod') return;
     const guild = await DB.getGuild(message.guild.id).catch(() => null);
@@ -75,7 +98,7 @@ async function replace_emojis(message: DTypes.Message) {
     let impersonate = false;
     let msg = message.content;
     for (const i of emojis) {
-        const emoji = await convert_emoji(i, (e, id) => {
+        const emoji = await convert_emoji(message.client, i, (e, id) => {
             // Check if the user is in the guild, only those in the guild are allowed to use it.
             return e?.guild.members.fetch(id).then(() => e.toString(), () => undefined);
         }, message.author.id);
@@ -92,14 +115,19 @@ async function replace_emojis(message: DTypes.Message) {
             username: message.author.username,
             avatarURL: message.author.displayAvatarURL(),
             content: msg,
-        }).then(() => { setTimeout(() => message.delete().catch(() => { }), 200); }).catch(() => { });
+        }).then(() => {
+            setTimeout(() => message.delete().catch(() => {
+            }), 200);
+        }).catch(() => {
+        });
     }
 }
 
-async function handle_reply(message: DTypes.Message) {
+async function handle_reply(message: Message) {
     if (message.mentions.users.has(client.user.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
-        const reply = await message.reply({ content: lines.shift() }).catch(() => { });
+        const reply = await message.reply({ content: lines.shift() }).catch(() => {
+        });
         if (!reply) return; // No permissions to send messages
         for (const line of lines) {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -110,7 +138,7 @@ async function handle_reply(message: DTypes.Message) {
     return replace_emojis(message);
 }
 
-async function handle_command(message: DTypes.Message) {
+async function handle_command(message: Message) {
     if (!message.content) return;
     const commandName = message.content.toLowerCase().split(/\s/)[0];
     let command = client.message_commands.get(commandName);
@@ -126,8 +154,10 @@ async function handle_command(message: DTypes.Message) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
-        return command.execute(message, args.filter(a => a !== ''), client).catch(err =>
-            handle_message_errors(message, commandName, err),
+        return command.execute(message, args.filter(a => a !== '')).catch(err =>
+            handle_message_errors(message,
+                commandName,
+                err),
         );
     }
     return handle_reply(message);
@@ -147,7 +177,8 @@ client.on(Events.InteractionCreate, interaction => {
         return interaction.reply({
             content: 'I am loading... Please try again later.',
             ephemeral: true,
-        }).then(() => { });
+        }).then(() => {
+        });
     }
 
     // Process interaction.
@@ -175,13 +206,17 @@ client.on(Events.InteractionCreate, interaction => {
     if (interaction.isCommand()) {
         if (interaction.isContextMenuCommand() && isContextCommand(command)) {
             // Error handling after command.
-            return command.execute(interaction, client).catch(err =>
-                handle_interaction_errors(interaction, interaction.commandName, err),
+            return command.execute(interaction).catch(err =>
+                handle_interaction_errors(interaction,
+                    interaction.commandName,
+                    err),
             );
         } else if (interaction.isChatInputCommand() && isSlashCommand(command)) {
             // Error handling after command.
-            return command.execute(interaction, client).catch(err =>
-                handle_interaction_errors(interaction, interaction.commandName, err),
+            return command.execute(interaction).catch(err =>
+                handle_interaction_errors(interaction,
+                    interaction.commandName,
+                    err),
             );
         } else {
             throw new Error(`${interaction}\nis not a valid interaction for\n${command}.`);
@@ -195,8 +230,10 @@ client.on(Events.InteractionCreate, interaction => {
         // 0 means global button
         if (id !== '0' && interaction.user.id !== id) return;
 
-        return command.buttonReact(interaction, client).catch(err =>
-            handle_interaction_errors(interaction, commandName, err),
+        return command.buttonReact(interaction).catch(err =>
+            handle_interaction_errors(interaction,
+                commandName,
+                err),
         );
     } else if (interaction.isAnySelectMenu()) {
         if (!command.menuReact) return;
@@ -205,14 +242,18 @@ client.on(Events.InteractionCreate, interaction => {
         // 0 means global selection
         if (id !== '0' && interaction.user.id !== id) return;
 
-        return command.menuReact(interaction, client).catch(err =>
-            handle_interaction_errors(interaction, commandName, err),
+        return command.menuReact(interaction).catch(err =>
+            handle_interaction_errors(interaction,
+                commandName,
+                err),
         );
     } else if (interaction.isModalSubmit()) {
         if (!command.textInput) return;
         // With modal, it only applies to user so no need to check for issues.
-        return command.textInput(interaction, client).catch(err =>
-            handle_interaction_errors(interaction, commandName, err),
+        return command.textInput(interaction).catch(err =>
+            handle_interaction_errors(interaction,
+                commandName,
+                err),
         );
     } else {
         throw new Error('Interaction not implemented.');
@@ -227,7 +268,8 @@ client.on(Events.GuildMemberAdd, async member => {
     if (guild.welcome_roleid) {
         const role = await member.guild.roles.fetch(guild.welcome_roleid);
         if (role) {
-            await member.roles.add(role).catch(() => { });
+            await member.roles.add(role).catch(() => {
+            });
         }
     }
     if (!guild.welcome_channelid) return;
@@ -238,12 +280,13 @@ client.on(Events.GuildMemberAdd, async member => {
         for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
             msg = msg.replaceAll(template, value);
         }
-        await channel.send({ content: msg }).catch(() => { });
+        await channel.send({ content: msg }).catch(() => {
+        });
     }
 });
 
 // Following functions are for voice channel management
-async function update_voice(oldState: DTypes.VoiceState, newState: DTypes.VoiceState) {
+async function update_voice(oldState: VoiceState, newState: VoiceState) {
     const guildVoice = GuildVoices.get(oldState.guild.id);
     // Not connected, don't care.
     if (!guildVoice) return;
@@ -274,7 +317,7 @@ async function update_voice(oldState: DTypes.VoiceState, newState: DTypes.VoiceS
     }
 }
 
-async function set_new_host(oldState: DTypes.VoiceState, newState: DTypes.VoiceState) {
+async function set_new_host(oldState: VoiceState, newState: VoiceState) {
     const guildVoice = GuildVoices.get(newState.guild.id);
     // Not connected, don't care.
     if (!guildVoice) return;
@@ -334,9 +377,10 @@ client.on(Events.Raw, (packet: RawMessageDeletePacket) => {
 // Handling any error
 type ErrorOpts = {
     commandName?: string;
-    interaction?: DTypes.RepliableInteraction;
-    message?: DTypes.Message;
+    interaction?: RepliableInteraction;
+    message?: Message;
 };
+
 function handle_error(err: Error, opts: ErrorOpts = {}) {
     const { commandName, interaction, message } = opts;
     // Log the error
@@ -358,7 +402,7 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
             } else if (!interaction.isContextMenuCommand()) {
                 nameCommand += interaction.isButton() ? ' (button)' :
                     interaction.isAnySelectMenu() ? ' (select menu)' :
-                        interaction.isModalSubmit() ? ' (modal)': '';
+                        interaction.isModalSubmit() ? ' (modal)' : '';
                 nameCommand += ` __Custom id: \`${interaction.customId}\`__`;
             } else {
                 nameCommand += ' (menu)';
@@ -394,15 +438,21 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
         const keepLength = Math.min(error_str.length + err_str.length, 1991) - error_str.length;
         error_str += '```\n' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
         // We catch so there are no recursive errors.
-        client.log_channel.send({ content: error_str }).catch(() => { });
+        client.log_channel.send({ content: error_str }).catch(() => {
+        });
     }
 }
-function handle_interaction_errors(interaction: DTypes.RepliableInteraction, commandName: string, err: Error) {
+
+function handle_interaction_errors(interaction: RepliableInteraction, commandName: string, err: Error) {
     if (!err) {
         return;
     } else if (err instanceof DatabaseMaintenanceError) {
         interaction.reply({ content: err.message, ephemeral: true }).catch(() =>
-            interaction.followUp({ content: err.message, ephemeral: true }).catch(() => { }),
+            interaction.followUp({
+                content: err.message,
+                ephemeral: true,
+            }).catch(() => {
+            }),
         );
         return;
     } else if (err instanceof IgnoredException) {
@@ -423,9 +473,11 @@ function handle_interaction_errors(interaction: DTypes.RepliableInteraction, com
         .catch(() => interaction.followUp({
             content: content,
             ephemeral: true,
-        }).catch(() => { })); // If interaction webhook is invalid.
+        }).catch(() => {
+        })); // If interaction webhook is invalid.
 }
-function handle_message_errors(message: DTypes.Message, commandName: string, err: Error) {
+
+function handle_message_errors(message: Message, commandName: string, err: Error) {
     return handle_error(err, { commandName, message });
 }
 
@@ -436,7 +488,7 @@ async function loading() {
     // Ensure log channel is set up before we start the database.
     client.log_channel = await client.channels.fetch(config.log, {
         allowUnknownGuild: true,
-    }) as DTypes.TextBasedChannel;
+    }) as TextBasedChannel;
     await DB.start().then(bad_load => {
         if (bad_load) {
             client.log_channel.send({
@@ -466,7 +518,7 @@ async function loading() {
     client.bot_emojis = {};
     const emojis = await client.guilds.fetch(config.emojis)
         .then(guild => guild.emojis.fetch().then(e => Array.from(e.values())))
-        .catch(() => [] as DTypes.GuildEmoji[]);
+        .catch(() => [] as GuildEmoji[]);
     for (const emoji of emojis) {
         client.bot_emojis[emoji.name ?? ''] = emoji.toString();
     }
@@ -480,6 +532,7 @@ client.once(Events.ClientReady, () => {
 });
 
 let cleanedUp = false;
+
 function cleanup() {
     if (cleanedUp) return;
     cleanedUp = true;
@@ -489,7 +542,9 @@ function cleanup() {
         'music for you again in a few moments.';
     const promises = [DB.end(), client.destroy()];
     for (const guildVoice of GuildVoices.values()) {
-        promises.push(guildVoice.textChannel.send({ content }).then(() => { }, () => { }));
+        promises.push(guildVoice.textChannel.send({ content }).then(() => {
+        }, () => {
+        }));
         guildVoice.destroy();
     }
     Promise.all(promises).then(() => {

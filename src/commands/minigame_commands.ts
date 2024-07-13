@@ -1,9 +1,15 @@
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
-import { DatabaseMaintenanceError, } from '@classes/exceptions';
-import { Colors, EmbedBuilder, SlashCommandBuilder, SlashCommandSubcommandBuilder, } from 'discord.js';
-import type DTypes from 'discord.js';
-import type { CustomClient, SlashCommand, SlashSubcommand, } from '@classes/client';
+import { DatabaseMaintenanceError } from '@classes/exceptions';
+import {
+    Client,
+    Colors,
+    CommandInteraction,
+    EmbedBuilder,
+    SlashCommandBuilder,
+    SlashCommandSubcommandBuilder,
+} from 'discord.js';
+import type { SlashCommand, SlashSubcommand } from '@classes/command_types';
 
 export const name = 'Minigames';
 export const desc = 'This category is for commands that allow you to play fun games with your precious brons.';
@@ -116,7 +122,7 @@ function on_cd(name: string, cd: Cooldown) {
 }
 
 const num_docs =
-`Guess a number between 1 and 10 (inclusive) to win brons. You must have an account.
+    `Guess a number between 1 and 10 (inclusive) to win brons. You must have an account.
 Cost: -1 bron per guess.
 Cooldown: 75 seconds every 5 guesses.
 __Prizes:__ 
@@ -151,12 +157,13 @@ const guess_number: SlashSubcommand & NumberPrivates = {
     // Cooldown of 5 per 75 seconds.
     cds: new CooldownMapping(5, 75),
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = this.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
         // Exists embeds to send.
-        if (ret.embeds) return interaction.editReply(ret).then(() => { });
+        if (ret.embeds) return interaction.editReply(ret).then(() => {
+        });
         // Generate a random number from 1 to 10.
         const embed = new EmbedBuilder();
         const num = Math.floor(Math.random() * 10) + 1;
@@ -168,12 +175,12 @@ const guess_number: SlashSubcommand & NumberPrivates = {
             embed.setColor(Colors.Gold);
             title = 'Jackpot!';
             change = 10;
-        // Guess within range
+            // Guess within range
         } else if (num_guess === num - 1 || num_guess === num + 1) {
             embed.setColor(Colors.Green);
             title = 'You were close.';
             change = 1;
-        // Guess out of range
+            // Guess out of range
         } else {
             embed.setColor(Colors.Red);
             title = 'Not my number.';
@@ -181,25 +188,26 @@ const guess_number: SlashSubcommand & NumberPrivates = {
         }
         // Will throw if user doesn't have enough brons.
         const success = await DB.addBrons(interaction.user.id, change).then(uid =>
-            uid === interaction.user.id,    
+            uid === interaction.user.id,
         ).catch(err => {
             if (err instanceof DatabaseMaintenanceError) throw err;
             return false;
         });
         if (!success) {
-            const daily_cmd = await Utils.get_rich_cmd('daily');
+            const daily_cmd = await Utils.get_rich_cmd('daily', interaction.client);
             cd.force_cd();
             // On error:
             const embed = new EmbedBuilder({
                 title:
-                    'You guessed wrong and you are poor. How dare you guess.\n' +
-                    `You are now on cooldown. More available ${cd.next_ready()}`,
+                                                   'You guessed wrong and you are poor. How dare you guess.\n' +
+                                                   `You are now on cooldown. More available ${cd.next_ready()}`,
                 description: `(Pssst try ${daily_cmd})`,
                 color: Colors.Red,
             });
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
+            return interaction.editReply({ embeds: [embed] }).then(() => {
+            });
         }
-        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${client.bot_emojis.brons}`)
+        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${interaction.client.bot_emojis.brons}`)
             .setDescription(this.cds.get(interaction.user.id).tries_left())
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
@@ -220,15 +228,15 @@ export const guess: SlashCommand = {
     subcommands: new Map()
         .set(guess_number.data.name, guess_number),
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const cmd = this.subcommands!.get(interaction.options.getSubcommand())!;
-        return cmd.execute(interaction, client);
+        return cmd.execute(interaction);
     },
 };
 
 const coin_docs =
-`Flip a coin and guess a side! You have a 2/3 chance of winning (unbalanced coin).
+    `Flip a coin and guess a side! You have a 2/3 chance of winning (unbalanced coin).
 
 __Rules:__
 > Your bet must be between 10-500 brons (subject to change)
@@ -238,12 +246,12 @@ Guessing correctly awards you your bet, and incorrectly will take away your bet.
 
 const enum Coin {
     Heads = 'heads',
-    Tails = 'tails'
+    Tails = 'tails',
 }
 
 async function generate_flip(
-    client: CustomClient,
-    interaction: DTypes.CommandInteraction,
+    client: Client,
+    interaction: CommandInteraction,
     side: Coin,
     bet: number,
 ): Promise<[EmbedBuilder, string[], boolean]> {
@@ -292,7 +300,8 @@ const flip_heads: SlashSubcommand = {
         'Example: `/flip heads bet: 100`',
 
     // Unneeded function; defined for typing
-    async execute() { },
+    async execute() {
+    },
 };
 
 const flip_tails: SlashSubcommand = {
@@ -314,7 +323,8 @@ const flip_tails: SlashSubcommand = {
         'Example: `/flip tails bet: 100`',
 
     // Unneeded function; defined for typing
-    async execute() { },
+    async execute() {
+    },
 };
 
 type FlipPrivates = {
@@ -334,29 +344,33 @@ export const flip: SlashCommand & FlipPrivates = {
         .set(flip_heads.data.name, flip_heads)
         .set(flip_tails.data.name, flip_tails),
 
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
         const bet = interaction.options.getInteger('bet')!;
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = this.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
-        if (ret.embeds) return interaction.editReply(ret).then(() => { });
+        if (ret.embeds) return interaction.editReply(ret).then(() => {
+        });
         const cmd = interaction.options.getSubcommand();
-        const [embed, files, success] = await generate_flip(client, interaction, cmd as Coin, bet);
+        const [embed, files, success] = await generate_flip(interaction.client, interaction, cmd as Coin, bet);
         if (!success) {
-            const daily_cmd = await Utils.get_rich_cmd('daily');
+            const daily_cmd = await Utils.get_rich_cmd('daily', interaction.client);
             cd.force_cd();
             // On error:
-            const embed = new EmbedBuilder({
-                title:
-                    'You guessed wrong and you are poor. How dare you guess.\n' +
-                    `You are now on cooldown. More available ${cd.next_ready()}`,
-                description: `(Pssst try ${daily_cmd})`,
-                color: Colors.Red,
+            const embed = new EmbedBuilder(
+                {
+                    title:
+                        'You guessed wrong and you are poor. How dare you guess.\n' +
+                        `You are now on cooldown. More available ${cd.next_ready()}`,
+                    description: `(Pssst try ${daily_cmd})`,
+                    color: Colors.Red,
+                },
+            );
+            return interaction.editReply({ embeds: [embed] }).then(() => {
             });
-            return interaction.editReply({ embeds: [embed] }).then(() => { });
         }
         embed.setDescription(cd.tries_left());
-        await interaction.editReply({ embeds: [embed], files });   
+        await interaction.editReply({ embeds: [embed], files });
     },
 };

@@ -1,12 +1,13 @@
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
 import * as Purge from '@modules/purge_utils';
-import {CachedSlashCommand, SlashCommand,} from '@classes/client';
-import {PermissionError,} from '@classes/exceptions';
-import type DTypes from 'discord.js';
+import { CachedSlashCommand, SlashCommand } from '@classes/command_types';
+import { PermissionError } from '@classes/exceptions';
 import {
     ActionRowBuilder,
+    AnySelectMenuInteraction,
     ButtonBuilder,
+    ButtonInteraction,
     ButtonStyle,
     ChannelSelectMenuBuilder,
     codeBlock,
@@ -16,7 +17,11 @@ import {
     escapeCodeBlock,
     escapeEscape,
     escapeInlineCode,
+    Message,
+    MessageActionRowComponentBuilder,
     ModalBuilder,
+    ModalSubmitFields,
+    ModalSubmitInteraction,
     PermissionsBitField,
     RoleSelectMenuBuilder,
     SlashCommandBuilder,
@@ -30,7 +35,7 @@ export const name = 'Moderation';
 export const desc = 'Helpful bunch of commands for moderators who want an easier time.';
 
 type PurgePrivates = {
-    buttons: ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>;
+    buttons: ActionRowBuilder<MessageActionRowComponentBuilder>;
 };
 export const purge: SlashCommand & PurgePrivates = {
     data: new SlashCommandBuilder()
@@ -48,11 +53,11 @@ export const purge: SlashCommand & PurgePrivates = {
         .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
 
     desc: 'Want an easy way to purge any amount of message? You came to the right command!\n\n' +
-          'Usage: `/purge amount: <amount> user: [user]`\n\n' +
-          '__**Options**__\n' +
-          '*amount:* The amount of messages to delete. Enter a number, or `all`\n' +
-          '*user:* Delete only messages sent by this user. (Default: everyone)\n\n' +
-          'Examples: `/purge amount: all`, `/purge amount: 5 user: @krammygod`',
+        'Usage: `/purge amount: <amount> user: [user]`\n\n' +
+        '__**Options**__\n' +
+        '*amount:* The amount of messages to delete. Enter a number, or `all`\n' +
+        '*user:* Delete only messages sent by this user. (Default: everyone)\n\n' +
+        'Examples: `/purge amount: all`, `/purge amount: 5 user: @krammygod`',
 
     buttons: new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
@@ -76,39 +81,47 @@ export const purge: SlashCommand & PurgePrivates = {
         const amt = interaction.options.getString('amount', true);
         const amount = parseInt(amt);
         if (amt.toLowerCase() !== 'all' && (isNaN(amount) || amount <= 0)) {
-            return interaction.editReply({ content: 'Enter a positive number.' }).then(() => { });
+            return interaction.editReply({ content: 'Enter a positive number.' }).then(() => {
+            });
         }
         const user = interaction.options.getUser('user');
 
         if (interaction.channel!.isDMBased() && !interaction.inGuild()) {
             // DMs
             if (isNaN(amount)) {
-                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => { });
+                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => {
+                });
             }
             const deleted = await Purge.purge_from_dm(interaction.channel, amount);
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
-                .then(m => { setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000); });
+                .then(m => {
+                    setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000);
+                });
         } else if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
         } else if (!interaction.channel!.permissionsFor(interaction.member)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: 'You do not have permission to purge.\n' +
-                    'You need the `Manage Messages` permission.',
-            }).then(() => { });
+                                                 'You need the `Manage Messages` permission.',
+            }).then(() => {
+            });
         } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: "I don't have permission to purge.\n" +
-                    'I need the `Manage Messages` permission.',
-            }).then(() => { });
+                                                 'I need the `Manage Messages` permission.',
+            }).then(() => {
+            });
         }
 
         // Purge all, or anything over 100 messages, really
         if (isNaN(amount) || amount! >= 100) {
             const buttonMessage = await interaction.editReply({
                 content: "## Woah! That's a lot of messages!\n# Are you sure " +
-                    `you want to delete ${isNaN(amount) ? 'all' : amount} messages?`,
+                                                                      `you want to delete ${isNaN(amount) ?
+                                                                          'all' :
+                                                                          amount} messages?`,
                 components: [this.buttons],
             });
 
@@ -116,7 +129,9 @@ export const purge: SlashCommand & PurgePrivates = {
                 componentType: ComponentType.Button,
                 filter: i => i.user.id === interaction.user.id,
                 time: 60_000,
-            }).then(i => i.customId === 'purge/confirm').catch(() => false);
+            })
+                .then(i => i.customId === 'purge/confirm')
+                .catch(() => false);
             if (!confirmed) return interaction.deleteReply();
             await interaction.editReply({ components: [] });
         }
@@ -128,21 +143,24 @@ export const purge: SlashCommand & PurgePrivates = {
                 .has(PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: 'You do not have permission to purge all.\n' +
-                        'You need the `Manage Channels` permission.',
-                }).then(() => { });
+                                                     'You need the `Manage Channels` permission.',
+                }).then(() => {
+                });
             } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
                 .has(PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: "I don't have permission to purge all.\n" +
-                        'I need the `Manage Channels` permission.',
-                }).then(() => { });
+                                                     'I need the `Manage Channels` permission.',
+                }).then(() => {
+                });
             }
 
             // Check to satisfy typescript
             if (interaction.channel!.isThread()) {
                 return interaction.editReply({
                     content: 'To purge all in threads, just simply delete the thread.',
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             const new_channel = await Purge.purge_clean_channel(interaction.channel!).catch(() => {
                 interaction.editReply({
@@ -151,22 +169,27 @@ export const purge: SlashCommand & PurgePrivates = {
                 throw new PermissionError();
             });
             return new_channel.send({ content: `${interaction.user} Purged all messages.` })
-                .then(msg => { setTimeout(() => msg.delete(), 3000); }).catch(() => { });
+                .then(msg => {
+                    setTimeout(() => msg.delete(), 3000);
+                }).catch(() => {
+                });
         } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
             .has(PermissionsBitField.Flags.ReadMessageHistory)) {
             // Read message history required to purge specific messages
             return interaction.editReply({
                 content: "I don't have permission to purge here.\n" +
-                    'I need the `Read Message History` permission.',
-            }).then(() => { });
+                                                 'I need the `Read Message History` permission.',
+            }).then(() => {
+            });
         }
 
-        const user_filter = (m: DTypes.Message) => !user || m.author.id === user.id;
+        const user_filter = (m: Message) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
         const deleted = await Purge.purge_from_channel(interaction.channel!, amount, user_filter);
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
-            .then(m => setTimeout(() => m.delete(), 3000)).catch(() => { });
+            .then(m => setTimeout(() => m.delete(), 3000)).catch(() => {
+            });
     },
 };
 
@@ -178,11 +201,11 @@ type GuildComponentTypes = {
 type GuildType = Awaited<ReturnType<typeof DB.getGuild>>;
 type GuildCacheType = GuildType & { mid: string };
 type GuildMenus = {
-    buildEmbeds: (guild: GuildType) => DTypes.EmbedBuilder[];
+    buildEmbeds: (guild: GuildType) => EmbedBuilder[];
     buildComponents: (
         userID: string,
         guild: GuildType
-    ) => ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[];
+    ) => ActionRowBuilder<MessageActionRowComponentBuilder>[];
     // All reactions have interaction as last parameter
     // because only some reactions require the interaction
     // for information or editing.
@@ -190,19 +213,19 @@ type GuildMenus = {
         guild: GuildCacheType,
         menu: keyof GuildComponentTypes,
         actions: string,
-        interaction: DTypes.ButtonInteraction<'cached'>
+        interaction: ButtonInteraction<'cached'>
     ) => Promise<keyof GuildComponentTypes> | keyof GuildComponentTypes;
     menuReact: (
         guild: GuildCacheType,
         menu: keyof GuildComponentTypes,
         actions: string[],
-        interaction: DTypes.AnySelectMenuInteraction<'cached'>
+        interaction: AnySelectMenuInteraction<'cached'>
     ) => Promise<keyof GuildComponentTypes> | keyof GuildComponentTypes;
     textInput: (
         guild: GuildCacheType,
         menu: keyof GuildComponentTypes,
-        fields: DTypes.ModalSubmitFields,
-        interaction: DTypes.ModalSubmitInteraction<'cached'>
+        fields: ModalSubmitFields,
+        interaction: ModalSubmitInteraction<'cached'>
     ) => Promise<keyof GuildComponentTypes> | keyof GuildComponentTypes;
 };
 const main_menu: GuildMenus = {
@@ -328,21 +351,21 @@ const welcome_menu: GuildMenus = {
     },
     async buttonReact(guild, menu, action, interaction) {
         switch (action) {
-            case 'editmsg':
-            { 
+            case 'editmsg': {
                 const input = new ModalBuilder({
                     title: 'Change Welcome Message',
                     custom_id: 'guild/0/welcome_menu/msg',
                     components: [new ActionRowBuilder<TextInputBuilder>({
-                        components: [new TextInputBuilder({
-                            label: 'Enter your welcome message:',
-                            custom_id: 'guild/welcome_menu/msg',
-                            placeholder: 'Leave me blank to remove!',
-                            style: TextInputStyle.Paragraph,
-                            value: guild?.welcome_msg ?? '',
-                            max_length: 2000,
-                            required: false,
-                        })],
+                        components: [new TextInputBuilder(
+                            {
+                                label: 'Enter your welcome message:',
+                                custom_id: 'guild/welcome_menu/msg',
+                                placeholder: 'Leave me blank to remove!',
+                                style: TextInputStyle.Paragraph,
+                                value: guild?.welcome_msg ?? '',
+                                max_length: 2000,
+                                required: false,
+                            })],
                     })],
                 });
                 await interaction.showModal(input);
@@ -353,14 +376,16 @@ const welcome_menu: GuildMenus = {
                 break;
             case 'help':
                 await interaction.editReply({ content: null });
-                await interaction.followUp({
-                    content: '📝 Edit the welcome message\n🔙 Return to main menu\n' +
-                        '__Replacement Options For Welcome Message:__\n' +
-                        '> ${USER} - Mentions the newly joined member.\n' +
-                        '> ${SERVER} - Replaces with the name of the server.\n' +
-                        '> ${MEMBERCOUNT} - Replaces with the number of current members in the server.',
-                    ephemeral: true,
-                });
+                await interaction.followUp(
+                    {
+                        content: '📝 Edit the welcome message\n🔙 Return to main menu\n' +
+                            '__Replacement Options For Welcome Message:__\n' +
+                            '> ${USER} - Mentions the newly joined member.\n' +
+                            '> ${SERVER} - Replaces with the name of the server.\n' +
+                            '> ${MEMBERCOUNT} - Replaces with the number of current members in the server.',
+                        ephemeral: true,
+                    },
+                );
                 break;
             default:
                 throw new Error(`/guild: welcome_menu buttonReact invalid action: ${action}`);
@@ -370,8 +395,7 @@ const welcome_menu: GuildMenus = {
     async menuReact(guild, menu, actions, interaction) {
         const menuType = actions.pop();
         switch (menuType) {
-            case 'channel':
-            {
+            case 'channel': {
                 const chn = interaction.guild.channels.resolve(actions.at(0) ?? '');
                 if (chn) {
                     if (!chn.isTextBased()) {
@@ -381,7 +405,8 @@ const welcome_menu: GuildMenus = {
                             ephemeral: true,
                         });
                         return menu;
-                    } if (!chn.permissionsFor(interaction.member).has(PermissionsBitField.Flags.SendMessages)) {
+                    }
+                    if (!chn.permissionsFor(interaction.member).has(PermissionsBitField.Flags.SendMessages)) {
                         await interaction.editReply({ content: null });
                         await interaction.followUp({
                             content: `You do not have permission to send messages in ${chn}.`,
@@ -402,8 +427,7 @@ const welcome_menu: GuildMenus = {
                 guild.welcome_channelid = chn ? chn.id : chn;
                 break;
             }
-            case 'role':
-            {
+            case 'role': {
                 const role = interaction.guild.roles.resolve(actions.at(0) ?? '');
                 if (role) {
                     if (role.managed) {
@@ -420,16 +444,16 @@ const welcome_menu: GuildMenus = {
                     if (roleManager.comparePositions(me, role) <= 0) {
                         await interaction.followUp({
                             content: `I am unable to add ${role} due to my role ` +
-                                    'being lower than it.',
+                                                           'being lower than it.',
                             ephemeral: true,
                         });
                         return menu;
                     } else if (interaction.guild.ownerId !== interaction.user.id &&
-                                roleManager.comparePositions(them, role) <= 0) {
+                        roleManager.comparePositions(them, role) <= 0) {
                         // Owner's role is always higher than the role they are adding.
                         await interaction.followUp({
                             content: `You are unable to add ${role} due to your highest role ` +
-                                    'being lower than it.',
+                                                           'being lower than it.',
                             ephemeral: true,
                         });
                         return menu;
@@ -452,15 +476,17 @@ const emoji_menu: GuildMenus = {
     buildEmbeds(guild) {
         let description = '**Current Setting:**\n\n__Emoji Replacement:__';
         description += ` **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
-        return [new EmbedBuilder({
-            title: 'Emoji Replacement Settings',
-            color: Colors.Blue,
-            description,
-            footer: {
-                text: 'Toggling this option will enable/disable server-wide emoji replacement.\n' +
-                    'To toggle for individual channels, disable webhook permissions for the bot.',
+        return [new EmbedBuilder(
+            {
+                title: 'Emoji Replacement Settings',
+                color: Colors.Blue,
+                description,
+                footer: {
+                    text: 'Toggling this option will enable/disable server-wide emoji replacement.\n' +
+                        'To toggle for individual channels, disable webhook permissions for the bot.',
+                },
             },
-        })];
+        )];
     },
     buildComponents(userID) {
         return [new ActionRowBuilder<ButtonBuilder>()
@@ -508,8 +534,8 @@ type GuildPrivates = {
         userID: string,
         guild: GuildType,
         menu: keyof GuildComponentTypes
-    ) => ActionRowBuilder<DTypes.MessageActionRowComponentBuilder>[];
-    buildEmbeds: (guild: GuildType, menu: keyof GuildComponentTypes) => DTypes.EmbedBuilder[];
+    ) => ActionRowBuilder<MessageActionRowComponentBuilder>[];
+    buildEmbeds: (guild: GuildType, menu: keyof GuildComponentTypes) => EmbedBuilder[];
 };
 export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
     data: new SlashCommandBuilder()
@@ -519,17 +545,17 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
         .setDMPermission(false),
 
     desc: 'Starts a dialogue to edit some guild settings.\n\n' +
-          '__**<<RESTRICTED FOR USERS WITH MANAGE GUILD PERMISSIONS ONLY>>**__\n\n' +
-          '__Replacement Options For Welcome Message:__\n' +
-          '${USER} - Mentions the newly joined member.\n' +
-          '${SERVER} - Replaces with the name of the server.\n' +
-          '${MEMBERCOUNT} - Replaces with the number of current members in the server.\n\n' +
-          'Usage: `/guild`',
+        '__**<<RESTRICTED FOR USERS WITH MANAGE GUILD PERMISSIONS ONLY>>**__\n\n' +
+        '__Replacement Options For Welcome Message:__\n' +
+        '${USER} - Mentions the newly joined member.\n' +
+        '${SERVER} - Replaces with the name of the server.\n' +
+        '${MEMBERCOUNT} - Replaces with the number of current members in the server.\n\n' +
+        'Usage: `/guild`',
 
     cache: new DB.Cache('guild'),
 
     buildComponents(userID, guild, menu) {
-        switch(menu) {
+        switch (menu) {
             case 'main_menu':
                 return main_menu.buildComponents(userID, guild);
             case 'welcome_menu':
@@ -654,15 +680,16 @@ export const guild: CachedSlashCommand<GuildCacheType> & GuildPrivates = {
         if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
         }
-        
+
         if (!interaction.channel!.permissionsFor(interaction.member)
             .has(PermissionsBitField.Flags.ManageGuild)) {
             return interaction.editReply({
                 content: 'You do not have permission to edit guild settings.\n' +
-                    'You need the `Manage Guild` permission.',
-            }).then(() => { });
+                                                 'You need the `Manage Guild` permission.',
+            }).then(() => {
+            });
         }
-        
+
         // Check to make sure that dialog does not currently exist for the guild
         // Only allow one user to access the dialog at a time
         let guild = await this.cache.get(interaction.guildId);
