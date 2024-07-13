@@ -33,6 +33,26 @@ class HoyoAccountInfo {
         this.uid = uid;
         this.list = list;
     }
+    loadAllGames({ honkaiStatus, genshinStatus, starrailStatus, } = {}) {
+        let retval = '';
+        let infoStr = this.infoString(1);
+        const games = {};
+        if (infoStr) {
+            retval += infoStr + (honkaiStatus ?? '');
+            games.HI3 = true;
+        }
+        infoStr = this.infoString(2);
+        if (infoStr) {
+            retval += infoStr + (genshinStatus ?? '');
+            games.GI = true;
+        }
+        infoStr = this.infoString(6);
+        if (infoStr) {
+            retval += infoStr + (starrailStatus ?? '');
+            games.HSR = true;
+        }
+        return { retval, games };
+    }
     infoString(game_id) {
         const gameInfo = this.list.find(g => g.game_id === game_id);
         let game_name;
@@ -73,26 +93,6 @@ class HoyoAccountInfo {
             `**[${nickname}](${gameInfo.url})**\n` +
             `> **UID:** ${gameInfo.game_role_id}\n` +
             `> **Level:** ${gameInfo.level}\n`;
-    }
-    loadAllGames({ honkaiStatus, genshinStatus, starrailStatus, } = {}) {
-        let retval = '';
-        let infoStr = this.infoString(1);
-        const games = {};
-        if (infoStr) {
-            retval += infoStr + (honkaiStatus ?? '');
-            games.HI3 = true;
-        }
-        infoStr = this.infoString(2);
-        if (infoStr) {
-            retval += infoStr + (genshinStatus ?? '');
-            games.GI = true;
-        }
-        infoStr = this.infoString(6);
-        if (infoStr) {
-            retval += infoStr + (starrailStatus ?? '');
-            games.HSR = true;
-        }
-        return { retval, games };
     }
 }
 function getUID(cookie) {

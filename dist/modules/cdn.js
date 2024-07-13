@@ -25,7 +25,8 @@ async function uploadToCDN(body) {
         if (res.status === 200)
             return res.json();
         // Try to log error message
-        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => { });
+        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => {
+        });
         return { urls: [] };
     }).catch(e => {
         console.error(`POST: ${e}`);

@@ -38,17 +38,8 @@ exports.desc = 'This category contains all the commands for fun, or are informat
 // A purely random collection of images
 // Definitely not by @ryu_minoru
 const images = [
-    'https://i.imgur.com/SdOEWcD.png',
     'https://i.imgur.com/yI5mrdj.png',
     'https://i.imgur.com/PjF7G4n.jpg',
-    'https://i.imgur.com/w89HTnZ.jpg',
-    'https://i.imgur.com/T1lIU9g.png',
-    'https://i.imgur.com/FJcBjyS.jpg',
-    'https://i.imgur.com/CTYstMS.jpg',
-    'https://i.imgur.com/uzANodv.png',
-    'https://i.imgur.com/Dbub0z7.jpg',
-    'https://i.imgur.com/B50x4Cv.jpg',
-    'https://i.imgur.com/FVu3rEY.png',
     'https://i.imgur.com/qQ1oiPX.jpg',
     'https://i.imgur.com/59EGQUd.jpg',
     'https://i.imgur.com/fJ8iRIr.jpg',
@@ -110,11 +101,11 @@ exports.invite = {
         .setName('invite')
         .setDescription('Get the invite link for me! (See /help command: invite)'),
     desc: invite_docs,
-    async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         // Generated via discord's helper with the above permissions.
         const permissions = '1512670883152';
-        const url = client.generateInvite({
+        const url = interaction.client.generateInvite({
             permissions: permissions,
             scopes: [discord_js_1.OAuth2Scopes.Bot, discord_js_1.OAuth2Scopes.ApplicationsCommands],
         });
@@ -136,7 +127,7 @@ exports.support = {
         await interaction.deferReply({ ephemeral: true });
         // While we can get guild from fetching, it breaks the point of sharding
         // Maybe guild is unobtainable from fetching...?
-        const invite_link = await Utils.fetch_guild_cache(_config_1.default.guild, (guild, invite_code) => {
+        const invite_link = await Utils.fetch_guild_cache(interaction.client, _config_1.default.guild, (guild, invite_code) => {
             return guild?.invites.fetch(invite_code).then(invite => invite.url);
         }, invite_code);
         // Constant non-expiring invite
@@ -160,12 +151,12 @@ exports.getid = {
         '__**Options**__\n' +
         '*username:* The name of the user you would like to search for. (Required)\n\n' +
         'Examples: `/getid user: Krammy`, `/getid user: @Krammy`',
-    async execute(interaction, client) {
+    async execute(interaction) {
         let query = interaction.options.getString('user');
         if (!query.startsWith('@')) {
             query = `@${query}`;
         }
-        const users = await client.shard?.broadcastEval((client, query) => {
+        const users = await interaction.client.shard?.broadcastEval((client, query) => {
             const u = client.users.cache.filter(u => u.displayName.toLowerCase().includes(query) ||
                 u.tag.toLowerCase().includes(query));
             return u.map(u => ({ name: `@${u.username}`, id: u.id }));
@@ -186,7 +177,7 @@ exports.getid = {
         }
     },
 };
-const all_collector_docs = `Edit your entries in the autocollect system.
+const all_collector_docs = `Edit your entries in the auto-collect system.
 Essentially, the bot will automatically collect hoyolab dailies for you!
 Visit https://tinyurl.com/ayakacookiegist for help extracting your cookie.
 Furthermore, it will by default send you a message everyday when it collects with crucial information.
@@ -235,7 +226,7 @@ exports.hoyolab = {
         .setDescription('Change hoyolab auto collector settings.'),
     desc: all_collector_docs + 'Usage: `/hoyolab`',
     input: new discord_js_1.ModalBuilder({
-        title: 'Add to Autocollector',
+        title: 'Add to auto-collector',
         customId: 'hoyolab',
         components: [
             new discord_js_1.ActionRowBuilder({
@@ -249,7 +240,7 @@ exports.hoyolab = {
             }),
         ],
     }),
-    async delete(client, interaction, id) {
+    async delete(interaction, id) {
         const buttons = [
             new discord_js_1.ButtonBuilder({
                 label: 'Yes!',
@@ -287,18 +278,20 @@ exports.hoyolab = {
                 content: 'Failed to delete cookie, the embed is out of date!\n' +
                     'Please make sure to only use this command once!',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         const retval = await this.getAccount(interaction, 1);
         await interaction.editReply(retval);
         return interaction.followUp({
             content: 'Successfully deleted cookie!',
             ephemeral: true,
-        }).then(() => { });
+        }).then(() => {
+        });
     },
     async getAccount(interaction, pageOrIdx) {
         const max_pages = await DB.fetchAutocollectLength(interaction.user.id);
-        let account = undefined;
+        let account;
         // If there exists an account, and we're getting a page #
         if (typeof pageOrIdx === 'number' && max_pages !== 0) {
             if (pageOrIdx < 1)
@@ -310,9 +303,7 @@ exports.hoyolab = {
         else if (typeof pageOrIdx === 'string') {
             account = await DB.fetchAutocollectByIdx(interaction.user.id, pageOrIdx);
         }
-        if (typeof account?.page === 'string') {
-            account.page = parseInt(account.page);
-        }
+        const page = parseInt(account?.page ?? '0');
         const embed = new discord_js_1.EmbedBuilder({
             title: 'Hoyolab Autocollect Details',
             color: discord_js_1.Colors.Gold,
@@ -338,21 +329,21 @@ exports.hoyolab = {
                 label: 'Previous',
                 emoji: '⬅️',
                 style: discord_js_1.ButtonStyle.Primary,
-                customId: `hoyolab/0/${(account?.page ?? 0) - 1}`,
-                disabled: !account || account?.page === 1,
+                customId: `hoyolab/0/${page - 1}`,
+                disabled: !account || page === 1,
             }), new discord_js_1.ButtonBuilder({
                 label: 'Next',
                 emoji: '➡️',
                 style: discord_js_1.ButtonStyle.Primary,
-                customId: `hoyolab/0/${(account?.page ?? 0) + 1}`,
-                disabled: !account || account?.page === max_pages,
+                customId: `hoyolab/0/${page + 1}`,
+                disabled: !account || page === max_pages,
             })),
         ];
         if (!account) {
             embed.setDescription('No accounts found! Add one by clicking the add button!');
             return { embeds: [embed], components };
         }
-        let desc = `**Account ${account.page}/${max_pages}:**\n`;
+        let desc = `**Account ${page}/${max_pages}:**\n`;
         const info = await Hoyo.getHoyoLabData(account.cookie);
         if (!info) {
             desc += 'Invalid cookie! This account needs to be deleted and re-added!';
@@ -418,7 +409,8 @@ exports.hoyolab = {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
         if (!res) {
@@ -426,7 +418,8 @@ exports.hoyolab = {
                 content: 'Failed to add account to autocollector.\nEither you reached the max of 5 accounts, ' +
                     'or you are entering a duplicate cookie.',
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         // Adding new account always brings user to first page to properly reload everything.
         const retval = await this.getAccount(interaction, 1);
@@ -436,7 +429,7 @@ exports.hoyolab = {
             ephemeral: true,
         });
     },
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const [action, id] = interaction.customId.split('/').slice(2);
         if (action === 'add') {
             return interaction.showModal(this.input);
@@ -445,10 +438,11 @@ exports.hoyolab = {
         await interaction.deferUpdate();
         if (!isNaN(page)) {
             const retval = await this.getAccount(interaction, page);
-            return interaction.editReply(retval).then(() => { });
+            return interaction.editReply(retval).then(() => {
+            });
         }
         else if (action === 'delete') {
-            return this.delete(client, interaction, id);
+            return this.delete(interaction, id);
         }
         // Reached here means it is some sort of toggle.
         await this.toggleNotify(interaction, action[0], action[1], id);
@@ -527,9 +521,9 @@ exports.poll = {
         ];
         return { embeds: [embed], components };
     },
-    async getPoll(id) {
+    async getPoll(client, id) {
         const pollInfo = await this.cache.get(id);
-        const user = await Utils.fetch_user_fast(pollInfo.uid, u => {
+        const user = await Utils.fetch_user_fast(client, pollInfo.uid, u => {
             return u ? { name: u.displayName, avatar: u.displayAvatarURL() } : undefined;
         });
         let desc = '';
@@ -581,7 +575,9 @@ exports.poll = {
         const action = interaction.customId.split('/')[1];
         let pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo)
-            return interaction.message?.delete().then(() => { }, () => { }); // Somehow lost cache
+            return interaction.message?.delete().then(() => {
+            }, () => {
+            }); // Somehow lost cache
         if (pollInfo.mid) {
             pollInfo = await this.cache.get(pollInfo.mid) ?? pollInfo;
         }
@@ -594,17 +590,20 @@ exports.poll = {
             if (!choices.length) {
                 return interaction.followUp({
                     content: 'You must provide at least one choice.', ephemeral: true,
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             else if (choices.length > 25) {
                 return interaction.followUp({
                     content: 'You cannot provide more than 25 choices.', ephemeral: true,
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             else if (new Set(choices).size !== choices.length) {
                 return interaction.followUp({
                     content: 'All choices must be unique.', ephemeral: true,
-                }).then(() => { });
+                }).then(() => {
+                });
             }
             pollInfo.choices = choices.map(c => {
                 const prevChoice = pollInfo.choices.find(x => x.name === c);
@@ -619,13 +618,15 @@ exports.poll = {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
                         ephemeral: true,
-                    }).then(() => { });
+                    }).then(() => {
+                    });
                 }
                 else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
                         ephemeral: true,
-                    }).then(() => { });
+                    }).then(() => {
+                    });
                 }
                 pollInfo.expires = date;
             }
@@ -640,17 +641,19 @@ exports.poll = {
         const retval = await this.getPollEditor(interaction.message.id);
         await interaction.editReply(retval);
     },
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const action = interaction.customId.split('/')[2];
         const pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo)
-            return interaction.message.delete().then(() => { }, () => { }); // Somehow lost cache
+            return interaction.message.delete().then(() => {
+            }, () => {
+            }); // Somehow lost cache
         const idx = parseInt(action);
         if (isNaN(idx)) {
             const send = async () => {
                 await interaction.deferUpdate();
-                const channel = await client.channels.fetch(pollInfo.cid);
-                const { embeds, components } = await this.getPoll(interaction.message.id);
+                const channel = await interaction.client.channels.fetch(pollInfo.cid);
+                const { embeds, components } = await this.getPoll(interaction.client, interaction.message.id);
                 let message;
                 if (pollInfo.mid) {
                     // This means that we are editing the poll.
@@ -666,7 +669,9 @@ exports.poll = {
                     await interaction.deleteReply().catch(() => {
                         // If we can't delete the reply, we can't delete the original message either.
                         // So we just edit it to remove the buttons.
-                        return interaction.message.edit({ embeds, components: [] }).then(() => { }, () => { });
+                        return interaction.message.edit({ embeds, components: [] }).then(() => {
+                        }, () => {
+                        });
                     });
                 }
                 else {
@@ -716,7 +721,9 @@ exports.poll = {
                         components: [new discord_js_1.TextInputBuilder({
                                 label: 'Set New Expiry (Leave blank to remove)',
                                 customId: 'expiry',
-                                value: pollInfo.expires ? new Date(pollInfo.expires).toUTCString() : '',
+                                value: pollInfo.expires ?
+                                    new Date(pollInfo.expires).toUTCString() :
+                                    '',
                                 placeholder: 'Enter the date/relative time in UTC/GMT.',
                                 style: discord_js_1.TextInputStyle.Short,
                                 required: false,
@@ -749,26 +756,30 @@ exports.poll = {
             pollInfo.choices[idx].users.push(uid);
         }
         await this.cache.set(interaction.message.id, pollInfo);
-        const retval = await this.getPoll(interaction.message.id);
+        const retval = await this.getPoll(interaction.client, interaction.message.id);
         await interaction.editReply(retval);
     },
-    async menuReact(interaction, client) {
+    async menuReact(interaction) {
         await interaction.deferUpdate();
         const pollInfo = await this.cache.get(interaction.message.id);
         if (!pollInfo)
-            return interaction.message.delete().then(() => { }, () => { }); // Somehow lost cache
+            return interaction.message.delete().then(() => {
+            }, () => {
+            }); // Somehow lost cache
         const channel = interaction.channels.first();
         if (!channel.permissionsFor(interaction.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
-        else if (!channel.permissionsFor(client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
+        else if (!channel.permissionsFor(interaction.client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true,
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         pollInfo.cid = channel.id;
         await this.cache.set(interaction.message.id, pollInfo);
@@ -806,7 +817,8 @@ exports.poll_edit = {
         else if (pollInfo.uid !== interaction.user.id) {
             return interaction.editReply({
                 content: 'You are not the owner of this poll!',
-            }).then(() => { });
+            }).then(() => {
+            });
         }
         // Create a new edit dialog, and make it expire in 24 hours.
         await exports.poll.cache.set(thisId, pollInfo, Utils.date_after_hours(24));
@@ -830,7 +842,7 @@ exports.poll_end = {
         }
         pollInfo.expires = new Date();
         await exports.poll.cache.set(id, pollInfo);
-        const { embeds } = await exports.poll.getPoll(id);
+        const { embeds } = await exports.poll.getPoll(interaction.client, id);
         await interaction.targetMessage.edit({ embeds, components: [] });
         return interaction.deleteReply();
     },

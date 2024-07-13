@@ -46,7 +46,8 @@ async function setupCache() {
             promises.push(shard.eval((client, uids) => {
                 const promises = [];
                 for (const uid of uids) {
-                    promises.push(client.users.fetch(uid).catch(() => { }));
+                    promises.push(client.users.fetch(uid).catch(() => {
+                    }));
                 }
                 return Promise.all(promises).then(() => {
                     console.log(`User cache ready for shard ${client.shard.ids[0]}`);
@@ -171,7 +172,8 @@ async function sendCollectorResults(body) {
                 icon_url: typeof user === 'string' ? '' : user.displayAvatarURL(),
             };
             if (typeof user !== 'string') {
-                await user.createDM(true).catch(() => { });
+                await user.createDM(true).catch(() => {
+                });
                 await user.send({ embeds: [embed] }).then(() => {
                     console.log(`Sent message to @${user.tag}`);
                 }).catch(() => {

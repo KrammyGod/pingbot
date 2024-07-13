@@ -32,9 +32,10 @@ const load_commands_1 = __importDefault(require("./modules/load_commands"));
 const _config_1 = __importDefault(require("./classes/config.js"));
 const DB = __importStar(require("./modules/database"));
 const util_1 = require("util");
+const GuildVoice_1 = require("./classes/GuildVoice");
 const utils_1 = require("./modules/utils");
 const exceptions_1 = require("./classes/exceptions");
-const client_1 = require("./classes/client");
+const command_types_1 = require("./classes/command_types");
 const discord_js_1 = require("discord.js");
 function WELCOMEMESSAGEMAPPING(member) {
     return {
@@ -60,11 +61,20 @@ const INTENTS = [
     discord_js_1.IntentsBitField.Flags.DirectMessageTyping,
     discord_js_1.IntentsBitField.Flags.MessageContent,
 ];
-const client = new client_1.CustomClient({
+// Warning: we assert that client is true, but actually the client is not immediately ready upon creation.
+// Ensure using the is_ready property before using properties such as client.user
+const client = new discord_js_1.Client({
     intents: INTENTS,
     presence: { activities: [ACTIVITY] },
     partials: [discord_js_1.Partials.Channel],
 });
+client.is_ready = false;
+client.is_listening = true;
+client.prefix = _config_1.default.prefix;
+client.bot_emojis = {};
+client.lines = [];
+client.commands = new Map();
+client.user_cache_ready = false;
 // Helper to get a free webhook
 async function get_webhook(channel, reason = 'General use') {
     if (channel.isDMBased() || channel.isThread())
@@ -77,7 +87,8 @@ async function get_webhook(channel, reason = 'General use') {
     return channel.createWebhook({
         name: client.user.username,
         reason: reason,
-    }).catch(() => { });
+    }).catch(() => {
+    });
 }
 // Helper to check if webhook has emoji permissions
 function webhook_permission(message) {
@@ -99,7 +110,7 @@ async function replace_emojis(message) {
     let impersonate = false;
     let msg = message.content;
     for (const i of emojis) {
-        const emoji = await (0, utils_1.convert_emoji)(i, (e, id) => {
+        const emoji = await (0, utils_1.convert_emoji)(message.client, i, (e, id) => {
             // Check if the user is in the guild, only those in the guild are allowed to use it.
             return e?.guild.members.fetch(id).then(() => e.toString(), () => undefined);
         }, message.author.id);
@@ -116,13 +127,18 @@ async function replace_emojis(message) {
             username: message.author.username,
             avatarURL: message.author.displayAvatarURL(),
             content: msg,
-        }).then(() => { setTimeout(() => message.delete().catch(() => { }), 200); }).catch(() => { });
+        }).then(() => {
+            setTimeout(() => message.delete().catch(() => {
+            }), 200);
+        }).catch(() => {
+        });
     }
 }
 async function handle_reply(message) {
     if (message.mentions.users.has(client.user.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
-        const reply = await message.reply({ content: lines.shift() }).catch(() => { });
+        const reply = await message.reply({ content: lines.shift() }).catch(() => {
+        });
         if (!reply)
             return; // No permissions to send messages
         for (const line of lines) {
@@ -150,7 +166,7 @@ async function handle_command(message) {
             args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
             message.content = message.content.replace(reply, args[args.length - 1]);
         }
-        return command.execute(message, args.filter(a => a !== ''), client).catch(err => handle_message_errors(message, commandName, err));
+        return command.execute(message, args.filter(a => a !== '')).catch(err => handle_message_errors(message, commandName, err));
     }
     return handle_reply(message);
 }
@@ -169,7 +185,8 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         return interaction.reply({
             content: 'I am loading... Please try again later.',
             ephemeral: true,
-        }).then(() => { });
+        }).then(() => {
+        });
     }
     // Process interaction.
     const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
@@ -196,19 +213,19 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
     if (!command)
         return;
     if (interaction.isCommand()) {
-        if (interaction.isContextMenuCommand() && (0, client_1.isContextCommand)(command)) {
+        if (interaction.isContextMenuCommand() && (0, command_types_1.isContextCommand)(command)) {
             // Error handling after command.
-            return command.execute(interaction, client).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
+            return command.execute(interaction).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
         }
-        else if (interaction.isChatInputCommand() && (0, client_1.isSlashCommand)(command)) {
+        else if (interaction.isChatInputCommand() && (0, command_types_1.isSlashCommand)(command)) {
             // Error handling after command.
-            return command.execute(interaction, client).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
+            return command.execute(interaction).catch(err => handle_interaction_errors(interaction, interaction.commandName, err));
         }
         else {
             throw new Error(`${interaction}\nis not a valid interaction for\n${command}.`);
         }
     }
-    else if (!(0, client_1.isSlashCommand)(command)) {
+    else if (!(0, command_types_1.isSlashCommand)(command)) {
         return; // Not a slash command, ignore rest.
     }
     else if (interaction.isButton()) {
@@ -219,7 +236,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         // 0 means global button
         if (id !== '0' && interaction.user.id !== id)
             return;
-        return command.buttonReact(interaction, client).catch(err => handle_interaction_errors(interaction, commandName, err));
+        return command.buttonReact(interaction).catch(err => handle_interaction_errors(interaction, commandName, err));
     }
     else if (interaction.isAnySelectMenu()) {
         if (!command.menuReact)
@@ -229,13 +246,13 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         // 0 means global selection
         if (id !== '0' && interaction.user.id !== id)
             return;
-        return command.menuReact(interaction, client).catch(err => handle_interaction_errors(interaction, commandName, err));
+        return command.menuReact(interaction).catch(err => handle_interaction_errors(interaction, commandName, err));
     }
     else if (interaction.isModalSubmit()) {
         if (!command.textInput)
             return;
         // With modal, it only applies to user so no need to check for issues.
-        return command.textInput(interaction, client).catch(err => handle_interaction_errors(interaction, commandName, err));
+        return command.textInput(interaction).catch(err => handle_interaction_errors(interaction, commandName, err));
     }
     else {
         throw new Error('Interaction not implemented.');
@@ -251,7 +268,8 @@ client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
     if (guild.welcome_roleid) {
         const role = await member.guild.roles.fetch(guild.welcome_roleid);
         if (role) {
-            await member.roles.add(role).catch(() => { });
+            await member.roles.add(role).catch(() => {
+            });
         }
     }
     if (!guild.welcome_channelid)
@@ -264,12 +282,13 @@ client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
         for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
             msg = msg.replaceAll(template, value);
         }
-        await channel.send({ content: msg }).catch(() => { });
+        await channel.send({ content: msg }).catch(() => {
+        });
     }
 });
 // Following functions are for voice channel management
 async function update_voice(oldState, newState) {
-    const guildVoice = client_1.GuildVoices.get(oldState.guild.id);
+    const guildVoice = GuildVoice_1.GuildVoices.get(oldState.guild.id);
     // Not connected, don't care.
     if (!guildVoice)
         return;
@@ -304,7 +323,7 @@ async function update_voice(oldState, newState) {
     }
 }
 async function set_new_host(oldState, newState) {
-    const guildVoice = client_1.GuildVoices.get(newState.guild.id);
+    const guildVoice = GuildVoice_1.GuildVoices.get(newState.guild.id);
     // Not connected, don't care.
     if (!guildVoice)
         return;
@@ -407,7 +426,8 @@ function handle_error(err, opts = {}) {
         const keepLength = Math.min(error_str.length + err_str.length, 1991) - error_str.length;
         error_str += '```\n' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
         // We catch so there are no recursive errors.
-        client.log_channel.send({ content: error_str }).catch(() => { });
+        client.log_channel.send({ content: error_str }).catch(() => {
+        });
     }
 }
 function handle_interaction_errors(interaction, commandName, err) {
@@ -415,7 +435,11 @@ function handle_interaction_errors(interaction, commandName, err) {
         return;
     }
     else if (err instanceof exceptions_1.DatabaseMaintenanceError) {
-        interaction.reply({ content: err.message, ephemeral: true }).catch(() => interaction.followUp({ content: err.message, ephemeral: true }).catch(() => { }));
+        interaction.reply({ content: err.message, ephemeral: true }).catch(() => interaction.followUp({
+            content: err.message,
+            ephemeral: true,
+        }).catch(() => {
+        }));
         return;
     }
     else if (err instanceof exceptions_1.IgnoredException) {
@@ -435,7 +459,8 @@ function handle_interaction_errors(interaction, commandName, err) {
         .catch(() => interaction.followUp({
         content: content,
         ephemeral: true,
-    }).catch(() => { })); // If interaction webhook is invalid.
+    }).catch(() => {
+    })); // If interaction webhook is invalid.
 }
 function handle_message_errors(message, commandName, err) {
     return handle_error(err, { commandName, message });
@@ -493,8 +518,10 @@ function cleanup() {
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
     const promises = [DB.end(), client.destroy()];
-    for (const guildVoice of client_1.GuildVoices.values()) {
-        promises.push(guildVoice.textChannel.send({ content }).then(() => { }, () => { }));
+    for (const guildVoice of GuildVoice_1.GuildVoices.values()) {
+        promises.push(guildVoice.textChannel.send({ content }).then(() => {
+        }, () => {
+        }));
         guildVoice.destroy();
     }
     Promise.all(promises).then(() => {

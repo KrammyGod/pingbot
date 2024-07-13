@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.help = exports.desc = exports.name = void 0;
 const Utils = __importStar(require("../modules/utils"));
 const discord_js_1 = require("discord.js");
-const client_1 = require("../classes/client");
+const command_types_1 = require("../classes/command_types");
 exports.name = 'Help';
 exports.desc = 'This is a special category dedicated for you!';
 // Helper to replace all `/command` with new shiny command mention.
@@ -42,7 +42,7 @@ const asyncReplace = (str, regex, replace_fn) => {
     });
 };
 // Since help is just a single command, all helpers are globally scoped
-async function get_results_category(client, interaction, choices) {
+async function get_results_category(interaction, choices) {
     if (choices.length === 0)
         return undefined;
     else if (choices.length === 1)
@@ -86,20 +86,20 @@ async function get_results_category(client, interaction, choices) {
     Utils.delete_ephemeral_message(interaction, message);
     return res;
 }
-async function get_results_cmd(client, interaction, search) {
+async function get_results_cmd(interaction, search) {
     let choices = [];
-    for (const cmd of [...client.commands.values(), ...client.message_commands.values()]) {
-        if ((0, client_1.isMessageCommand)(cmd)) {
+    for (const cmd of [...interaction.client.commands.values(), ...interaction.client.message_commands.values()]) {
+        if ((0, command_types_1.isMessageCommand)(cmd)) {
             choices.push({
                 name: cmd.name,
                 desc: cmd.desc,
                 is_slash: false,
             });
         }
-        else if ((0, client_1.isSlashCommand)(cmd)) {
+        else if ((0, command_types_1.isSlashCommand)(cmd)) {
             if (cmd.subcommands) {
                 for (const subcmd of cmd.subcommands.values()) {
-                    if ((0, client_1.isSlashSubcommandGroup)(subcmd)) {
+                    if ((0, command_types_1.isSlashSubcommandGroup)(subcmd)) {
                         for (const subsubcmd of subcmd.subcommands.values()) {
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
@@ -147,14 +147,14 @@ async function get_results_cmd(client, interaction, search) {
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
-        if ((0, client_1.isSlashCommand)(choice)) {
+        if ((0, command_types_1.isSlashCommand)(choice)) {
             desc += `${idx + 1}. **${choice.data.name}**\n`;
         }
         else {
             desc += `${idx + 1}. **${choice.name}**\n`;
         }
         menu.addOptions({
-            label: `${idx + 1}. ${(0, client_1.isSlashCommand)(choice) ? choice.data.name : choice.name}`,
+            label: `${idx + 1}. ${(0, command_types_1.isSlashCommand)(choice) ? choice.data.name : choice.name}`,
             value: `${idx}`,
         });
     }
@@ -215,11 +215,11 @@ async function get_cog_page(client, authorID, page) {
     let field = '';
     const cog = client.cogs[page - 1];
     for (const command of cog.commands) {
-        if ((0, client_1.isSlashCommand)(command)) {
+        if ((0, command_types_1.isSlashCommand)(command)) {
             const commands = [];
             // Try to add all subcommands to list
             for (const subcommand of command.subcommands?.values() ?? []) {
-                if ((0, client_1.isSlashSubcommandGroup)(subcommand)) {
+                if ((0, command_types_1.isSlashSubcommandGroup)(subcommand)) {
                     for (const subsubcommand of subcommand.subcommands.values()) {
                         commands.push({
                             name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
@@ -238,15 +238,15 @@ async function get_cog_page(client, authorID, page) {
             if (!commands.length)
                 commands.push(command.data);
             for (const cmd of commands) {
-                const app_cmd = await Utils.get_rich_cmd(cmd.name);
+                const app_cmd = await Utils.get_rich_cmd(cmd.name, client);
                 field += `> ${app_cmd} - ${cmd.description}\n`;
             }
         }
-        else if ((0, client_1.isMessageCommand)(command)) {
+        else if ((0, command_types_1.isMessageCommand)(command)) {
             // Replace all `/command` with new shiny command mention.
             const replace_fn = (match) => {
                 const full_name = match.slice(2, -1);
-                return Utils.get_rich_cmd(full_name);
+                return Utils.get_rich_cmd(full_name, client);
             };
             // Don't ask me about the regex, it was way too long ago...
             // Shouldn't be that hard to figure out though...
@@ -306,7 +306,7 @@ async function get_cog_page(client, authorID, page) {
 }
 async function get_cmd_page(client, authorID, command) {
     const cmd_tag = command.is_slash ?
-        await Utils.get_rich_cmd(command.name) :
+        await Utils.get_rich_cmd(command.name, client) :
         `\`${client.prefix}${command.name}\``;
     const embed = new discord_js_1.EmbedBuilder({
         title: `__Command ${cmd_tag}__`,
@@ -316,7 +316,7 @@ async function get_cmd_page(client, authorID, command) {
             'Send me a direct message to create a ticket anytime!',
     });
     // Replace all `/command` with new shiny command mention.
-    const replace_fn = (match) => Utils.get_rich_cmd(match.slice(2, -1));
+    const replace_fn = (match) => Utils.get_rich_cmd(match.slice(2, -1), client);
     // Don't ask me about the regex, it was way too long ago...
     // Shouldn't be that hard to figure out though...
     const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
@@ -346,7 +346,7 @@ exports.help = {
     desc: 'What does {/help} do? Well, it shows you description messages.\n' +
         '...\n...\n...\n...\n...\n...\n...\n...\n... ' +
         '...   ...  ...like this one...',
-    async buttonReact(interaction, client) {
+    async buttonReact(interaction) {
         const [page, cmdName] = interaction.customId.split('/').splice(2);
         const val = parseInt(page);
         if (isNaN(val)) {
@@ -397,7 +397,8 @@ exports.help = {
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
                         ephemeral: true,
-                    }).then(() => { });
+                    }).then(() => {
+                    });
                 }
                 else if (cmdName === 'cog') {
                     return interaction.reply({
@@ -409,7 +410,8 @@ exports.help = {
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
                         ephemeral: true,
-                    }).then(() => { });
+                    }).then(() => {
+                    });
                 }
                 else {
                     throw new Error(`Command type: ${cmdName} not found.`);
@@ -420,55 +422,57 @@ exports.help = {
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await get_cog_page(client, interaction.user.id, val);
+        const { embeds, components } = await get_cog_page(interaction.client, interaction.user.id, val);
         await interaction.editReply({ embeds, components });
     },
-    async textInput(interaction, client) {
+    async textInput(interaction) {
         const [cmdName] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
         if (cmdName === 'cog') {
             const page = parseInt(value);
             if (isNaN(page)) {
-                const category = await get_results_category(client, interaction, client.cogs.filter(cog => cog.name.toLowerCase().includes(value.toLowerCase())).sort());
+                const category = await get_results_category(interaction, interaction.client.cogs.filter(cog => cog.name.toLowerCase().includes(value.toLowerCase())).sort());
                 // Either null or undefined, doesn't matter
                 if (!category) {
                     const error_embed = new discord_js_1.EmbedBuilder({
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
                         color: discord_js_1.Colors.Red,
                     });
-                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
+                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
+                    });
                 }
-                const { embeds, components, followUp } = await get_cog_page(client, interaction.user.id, client.cogs.indexOf(category) + 1);
+                const { embeds, components, followUp } = await get_cog_page(interaction.client, interaction.user.id, interaction.client.cogs.indexOf(category) + 1);
                 await interaction.editReply({ embeds, components });
                 if (followUp)
                     await interaction.followUp(followUp);
             }
             else {
-                const { embeds, components, followUp } = await get_cog_page(client, interaction.user.id, page);
+                const { embeds, components, followUp } = await get_cog_page(interaction.client, interaction.user.id, page);
                 await interaction.editReply({ embeds, components });
                 if (followUp)
                     await interaction.followUp(followUp);
             }
         }
         else if (cmdName === 'cmd') {
-            const command = await get_results_cmd(client, interaction, value);
+            const command = await get_results_cmd(interaction, value);
             // Either null or undefined, doesn't matter
             if (!command) {
                 const error_embed = new discord_js_1.EmbedBuilder({
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red,
                 });
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => { });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
+                });
             }
-            const res = await get_cmd_page(client, interaction.user.id, command);
+            const res = await get_cmd_page(interaction.client, interaction.user.id, command);
             await interaction.editReply(res);
         }
         else {
             throw new Error(`Command type: ${cmdName} not found.`);
         }
     },
-    async execute(interaction, client) {
+    async execute(interaction) {
         const commandName = interaction.options.getString('command');
         const categoryName = interaction.options.getString('category');
         const embed = new discord_js_1.EmbedBuilder({
@@ -478,11 +482,11 @@ exports.help = {
         // Admin invokes are not ephemeral.
         await interaction.reply({
             embeds: [embed],
-            ephemeral: interaction.user.id !== client.admin.id,
+            ephemeral: interaction.user.id !== interaction.client.admin.id,
         });
         let res;
         if (commandName) {
-            const command = await get_results_cmd(client, interaction, commandName);
+            const command = await get_results_cmd(interaction, commandName);
             if (command === null) {
                 return interaction.deleteReply();
             }
@@ -491,29 +495,30 @@ exports.help = {
                     title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red,
                 });
-                return interaction.editReply({ embeds: [error_embed] }).then(() => { });
+                return interaction.editReply({ embeds: [error_embed] }).then(() => {
+                });
             }
-            res = await get_cmd_page(client, interaction.user.id, command);
+            res = await get_cmd_page(interaction.client, interaction.user.id, command);
         }
         else if (categoryName) {
-            const category = await get_results_category(client, interaction, client.cogs.filter(cog => cog.name.toLowerCase().includes(categoryName.toLowerCase())).sort());
+            const category = await get_results_category(interaction, interaction.client.cogs.filter(cog => cog.name.toLowerCase().includes(categoryName.toLowerCase())).sort());
             if (category === null) {
-                res = await get_cog_page(client, interaction.user.id, 1);
+                res = await get_cog_page(interaction.client, interaction.user.id, 1);
             }
             else if (!category) {
                 const error_embed = new discord_js_1.EmbedBuilder({
                     title: `No category with name \`${categoryName.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red,
                 });
-                res = await get_cog_page(client, interaction.user.id, 1);
+                res = await get_cog_page(interaction.client, interaction.user.id, 1);
                 interaction.followUp({ embeds: [error_embed], ephemeral: true });
             }
             else {
-                res = await get_cog_page(client, interaction.user.id, client.cogs.indexOf(category) + 1);
+                res = await get_cog_page(interaction.client, interaction.user.id, interaction.client.cogs.indexOf(category) + 1);
             }
         }
         else {
-            res = await get_cog_page(client, interaction.user.id, 1);
+            res = await get_cog_page(interaction.client, interaction.user.id, 1);
         }
         const { embeds, components } = res;
         await interaction.editReply({ embeds, components });

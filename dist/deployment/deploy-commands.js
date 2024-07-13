@@ -33,7 +33,7 @@ const _config_1 = __importDefault(require("../classes/config.js"));
 const rest_1 = require("@discordjs/rest");
 const v10_1 = require("discord-api-types/v10");
 const discord_js_1 = require("discord.js");
-const client_1 = require("../classes/client");
+const command_types_1 = require("../classes/command_types");
 const token = _config_1.default.token ?? '';
 const clientId = _config_1.default.client ?? '';
 function reverse_command(cmd) {
@@ -57,12 +57,12 @@ function reverse_command(cmd) {
         const commandFile = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
         // Do not deploy message commands.
         Object.values(commandFile).forEach(command => {
-            if ((0, client_1.isInteractionCommand)(command)) {
+            if ((0, command_types_1.isInteractionCommand)(command)) {
                 const commandData = command.data.toJSON();
                 if (_config_1.default.events) {
                     // April Fools reverse command
                     commandData.name = commandData.name.split('').reverse().join('');
-                    if ((0, client_1.isSlashCommand)(command)) {
+                    if ((0, command_types_1.isSlashCommand)(command)) {
                         // @ts-expect-error We know it's not a context command, but typescript doesn't know that.
                         (commandData).description = commandData.description.split('').reverse().join('');
                         reverse_command(commandData);
