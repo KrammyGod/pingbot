@@ -1,6 +1,5 @@
 /* This file deals with all the slash command setup */
-import glob from 'glob';
-import path from 'path';
+import * as commands from '../commands';
 import config from '@config';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v10';
@@ -10,10 +9,10 @@ import type {
     ClientUser,
     RESTPostAPIChatInputApplicationCommandsJSONBody,
     RESTPostAPIContextMenuApplicationCommandsJSONBody,
+    SharedNameAndDescription,
 } from 'discord.js';
 import { ApplicationCommandOptionType } from 'discord.js';
-import { isInteractionCommand, isSlashCommand } from '@modules/utils';
-import type { CommandFile } from '@typings/commands';
+import type { CommandFile } from '@classes/commands';
 
 const token = config.token ?? '';
 const clientId = config.client ?? '';
@@ -30,34 +29,39 @@ function reverse_command(cmd: { options?: APIApplicationCommandOption[] }) {
     });
 }
 
+function isString(isThisString: unknown): isThisString is string {
+    return typeof isThisString === 'string';
+}
+
+type JSONConvertible = SharedNameAndDescription & { toJSON(): RESTPostAPIChatInputApplicationCommandsJSONBody };
+
 (async function () {
     // Read all commands from the commands directory
-    const commands: (
+    const commandsToDeploy: (
         RESTPostAPIContextMenuApplicationCommandsJSONBody | RESTPostAPIChatInputApplicationCommandsJSONBody
     )[] = [];
-    const commandFiles = glob.sync(path.resolve(__dirname, '../commands/*.js'));
     const rest = new REST({ version: '10' }).setToken(token);
 
-    for (const file of commandFiles) {
-        const commandFile = await import(file) as CommandFile;
-        // Do not deploy message commands.
-        Object.values(commandFile).forEach(command => {
-            if (isInteractionCommand(command)) {
-                const commandData = command.data.toJSON();
+    for (const commandFile of Object.values(commands)) {
+        Object.values(commandFile as unknown as CommandFile).forEach(command => {
+            // Ignore name and desc exported properties.
+            if (isString(command)) return;
+            // Do not deploy message commands.
+            if (command.isInteractionCommand()) {
+                const commandData = (command.data as JSONConvertible).toJSON();
                 if (config.events) {
                     // April Fools reverse command
                     commandData.name = commandData.name.split('').reverse().join('');
-                    if (isSlashCommand(command)) {
-                        // @ts-expect-error We know it's not a context command, but typescript doesn't know that.
-                        (commandData).description = commandData.description.split('').reverse().join('');
+                    if (command.isSlashCommand()) {
+                        commandData.description = commandData.description.split('').reverse().join('');
                         reverse_command(commandData);
                     }
                 }
-                commands.push(commandData);
+                commandsToDeploy.push(commandData);
             }
         });
     }
-    const res = await rest.put(Routes.applicationCommands(clientId), { body: commands })
+    const res = await rest.put(Routes.applicationCommands(clientId), { body: commandsToDeploy })
         .catch(err => console.error(err)) as APIApplicationCommand[];
     const user = await rest.get(Routes.user()).catch(err => console.error(err)) as ClientUser | void;
     if (user) {

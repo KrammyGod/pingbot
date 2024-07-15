@@ -1,5 +1,6 @@
 import config from '@config';
 import path from 'path';
+import { VOID } from '@modules/utils';
 
 const headers = new Headers();
 headers.append('Authorization', `Bearer ${config.secret}`);
@@ -27,8 +28,7 @@ export async function uploadToCDN(body: FormData): Promise<string[]> {
     }).then(res => {
         if (res.status === 200) return res.json();
         // Try to log error message
-        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => {
-        });
+        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), VOID);
         return { urls: [] };
     }).catch(e => {
         console.error(`POST: ${e}`);

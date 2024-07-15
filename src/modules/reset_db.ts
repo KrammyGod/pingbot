@@ -95,8 +95,7 @@ async function copy() {
     while (chars <= 100_000_000) {
         let res: CommonData | void = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
             .then(res => res.json())
-            .catch(() => {
-            });
+            .catch(() => { });
         // Rate limits/maintenance.
         if (!res) continue;
         // Bad unicode
@@ -132,8 +131,7 @@ async function copy() {
         await pipeline(fileStream, stream);
     } finally {
         client.release();
-        await fs.promises.unlink(dumpFile).catch(() => {
-        });
+        await fs.promises.unlink(dumpFile).catch(() => { });
     }
     return chars;
 }

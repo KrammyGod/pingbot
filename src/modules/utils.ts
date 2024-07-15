@@ -8,7 +8,6 @@ import {
     Colors,
     CommandInteraction,
     ComponentType,
-    ContextMenuCommandBuilder,
     EmbedBuilder,
     Guild,
     GuildEmoji,
@@ -17,21 +16,13 @@ import {
     RepliableInteraction,
     Routes,
     Serialized,
-    SlashCommandBuilder,
-    SlashCommandSubcommandBuilder,
-    SlashCommandSubcommandGroupBuilder,
     StringSelectMenuBuilder,
     TextBasedChannel,
     User,
 } from 'discord.js';
-import type {
-    ContextCommand,
-    InteractionCommand,
-    MessageCommand,
-    SlashCommand,
-    SlashSubcommand,
-    SlashSubcommandGroup,
-} from '@typings/commands';
+
+// This is used to make the code a little more readable when we need to return void in promises
+export const VOID = () => { };
 
 function strip(text: string, char: string) {
     return text.replaceAll(new RegExp(`^${char}+|${char}+$`, 'g'), '');
@@ -41,13 +32,13 @@ function strip(text: string, char: string) {
 export async function fetch_user_fast<T>(
     client: Client,
     uid: string,
-    userCb: (user: User | undefined) => Awaitable<T | undefined>
+    userCb: (user: User | undefined) => Awaitable<T | undefined>,
 ): Promise<Serialized<T> | undefined>;
 export async function fetch_user_fast<T, R>(
     client: Client,
     uid: string,
     userCb: (user: User | undefined, ctx: Serialized<R>) => Awaitable<T | undefined>,
-    ctx: R
+    ctx: R,
 ): Promise<Serialized<T> | undefined>;
 export async function fetch_user_fast<T, R>(
     client: Client,
@@ -63,7 +54,7 @@ export async function fetch_user_fast<T, R>(
         },
         { context: { uid, userCb: userCb.toString(), ctx } },
     ).then(results => results.find(r => r !== undefined));
-    if (!retval && client.user_cache_ready) {
+    if (!retval && client.is_user_cache_ready) {
         // Mimic serialization
         return userCb(await client.users.fetch(uid).catch(() => undefined), JSON.parse(JSON.stringify(ctx ?? {})));
     }
@@ -73,13 +64,13 @@ export async function fetch_user_fast<T, R>(
 export function fetch_guild_cache<T>(
     client: Client,
     gid: string,
-    guildCb: (guild: Guild | undefined) => Awaitable<T | undefined>
+    guildCb: (guild: Guild | undefined) => Awaitable<T | undefined>,
 ): Promise<Serialized<T> | undefined>;
 export function fetch_guild_cache<T, R>(
     client: Client,
     gid: string,
     guildCb: (guild: Guild | undefined, ctx: Serialized<R>) => Awaitable<T | undefined>,
-    ctx: R
+    ctx: R,
 ): Promise<Serialized<T> | undefined>;
 export function fetch_guild_cache<T, R>(
     client: Client,
@@ -99,7 +90,7 @@ export async function convert_user(client: Client, text: string): Promise<User |
 export async function convert_user(
     client: Client,
     text: string,
-    guild: Readonly<Guild>
+    guild: Readonly<Guild>,
 ): Promise<GuildMember | undefined>;
 export async function convert_user(client: Client, text: string, guild?: Readonly<Guild>) {
     if (!text.startsWith('@')) return;
@@ -113,7 +104,7 @@ export async function convert_user(client: Client, text: string, guild?: Readonl
         return client.shard?.broadcastEval(
             (client, text) => client.users.cache.find(u =>
                 u.displayName.toLowerCase().includes(text) ||
-                                                          u.tag.toLowerCase().includes(text),
+                u.tag.toLowerCase().includes(text),
             )?.id,
             { context: text },
         ).then(results => client.users.fetch(results.find(r => r !== undefined) ?? '0').catch(() => undefined));
@@ -160,7 +151,7 @@ export function convert_emoji<T, R>(
     client: Client,
     text: string,
     emojiCb: (emoji: GuildEmoji | undefined, ctx: Serialized<R>) => Awaitable<T | undefined>,
-    ctx: R
+    ctx: R,
 ): Promise<Serialized<T> | undefined>;
 export function convert_emoji<T, R>(
     client: Client,
@@ -233,8 +224,7 @@ export async function send_embeds_by_wave(
     });
     while (embeds.length > 0) {
         wave = embeds.splice(0, 10);
-        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => {
-        });
+        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(VOID);
     }
 }
 
@@ -279,8 +269,7 @@ export function timestamp(date: Date | number, fmt: DateFormats = 'f') {
  * However, Discord has a route to support this, and that's what this function does.
  */
 export function delete_ephemeral_message(i: RepliableInteraction, msg: Message) {
-    return i.client.rest.delete(Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => {
-    });
+    return i.client.rest.delete(Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(VOID);
 }
 
 /**
@@ -347,8 +336,7 @@ export async function get_results<T>(
 
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            menu)],
+        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
         ephemeral: true,
     });
 
@@ -395,42 +383,4 @@ export async function* fetch_history(
         }
         amount -= i;
     }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isSlashSubcommand(obj: any): obj is SlashSubcommand {
-    return obj && obj.data instanceof SlashCommandSubcommandBuilder &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length <= 2;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isSlashSubcommandGroup(obj: any): obj is SlashSubcommandGroup {
-    return obj && obj.data instanceof SlashCommandSubcommandGroupBuilder &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.subcommands && obj.execute.length <= 2;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isSlashCommand(obj: any): obj is SlashCommand {
-    return obj && obj.data instanceof SlashCommandBuilder &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length <= 2;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isContextCommand(obj: any): obj is ContextCommand {
-    return obj && obj.data instanceof ContextMenuCommandBuilder &&
-        typeof obj.execute === 'function' && obj.execute.length <= 2;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isInteractionCommand(obj: any): obj is InteractionCommand {
-    return isSlashCommand(obj) || isContextCommand(obj);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isMessageCommand(obj: any): obj is MessageCommand {
-    return obj && typeof obj.name === 'string' && typeof obj.admin === 'boolean' &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' && obj.execute.length <= 3;
 }

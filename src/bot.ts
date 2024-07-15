@@ -5,7 +5,7 @@ import config from '@config';
 import * as DB from '@modules/database';
 import { inspect } from 'util';
 import { GuildVoices } from '@classes/GuildVoice';
-import { convert_emoji, isContextCommand, isSlashCommand } from '@modules/utils';
+import { convert_emoji, VOID } from '@modules/utils';
 import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
 import {
     ActivitiesOptions,
@@ -24,13 +24,12 @@ import {
     VoiceState,
     Webhook,
 } from 'discord.js';
-import type { InteractionCommand } from '@typings/commands';
 
-function WELCOMEMESSAGEMAPPING(member: GuildMember) {
+function WELCOME_MESSAGE_MAPPING(member: GuildMember) {
     return {
         '${USER}': member.toString(),
         '${SERVER}': member.guild.name,
-        '${MEMBERCOUNT}': member.guild.memberCount.toString(),
+        '${MEMBER_COUNT}': member.guild.memberCount.toString(),
     };
 }
 
@@ -60,11 +59,13 @@ const client = new Client<true>({
 });
 client.is_ready = false;
 client.is_listening = true;
+client.is_user_cache_ready = false;
 client.prefix = config.prefix;
 client.bot_emojis = {};
 client.lines = [];
-client.commands = new Map();
-client.user_cache_ready = false;
+client.cogs = [];
+client.interaction_commands = new Map();
+client.message_commands = new Map();
 
 // Helper to get a free webhook
 async function get_webhook(channel: TextBasedChannel, reason = 'General use') {
@@ -76,8 +77,7 @@ async function get_webhook(channel: TextBasedChannel, reason = 'General use') {
     return channel.createWebhook({
         name: client.user.username,
         reason: reason,
-    }).catch(() => {
-    });
+    }).catch(VOID);
 }
 
 // Helper to check if webhook has emoji permissions
@@ -116,18 +116,15 @@ async function replace_emojis(message: Message) {
             avatarURL: message.author.displayAvatarURL(),
             content: msg,
         }).then(() => {
-            setTimeout(() => message.delete().catch(() => {
-            }), 200);
-        }).catch(() => {
-        });
+            setTimeout(() => message.delete().catch(VOID), 200);
+        }).catch(VOID);
     }
 }
 
 async function handle_reply(message: Message) {
     if (message.mentions.users.has(client.user.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
-        const reply = await message.reply({ content: lines.shift() }).catch(() => {
-        });
+        const reply = await message.reply({ content: lines.shift() }).catch(VOID);
         if (!reply) return; // No permissions to send messages
         for (const line of lines) {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -141,26 +138,33 @@ async function handle_reply(message: Message) {
 async function handle_command(message: Message) {
     if (!message.content) return;
     const commandName = message.content.toLowerCase().split(/\s/)[0];
-    let command = client.message_commands.get(commandName);
-    if (!command && message.author.id === client.admin.id) {
-        command = client.admin_commands.get(commandName);
+    const command = client.message_commands.get(commandName);
+    // If command doesn't exist, or if we aren't listening, and it's not an admin command (overrides listening)
+    // or if it's an admin command and the user isn't the admin, then ignore message handling.
+    if (!command ||
+        (!client.is_listening && !command.admin) ||
+        (command.admin && message.author.id !== client.admin.id)
+    ) {
+        return handle_reply(message);
     }
-    // All sorts of message commands
-    if (command && (client.is_listening || command.admin)) {
-        const args = [];
-        message.content = message.content.replace(message.content.split(/\s/)[0], '').trim();
-        // Split by whitespace, strip quotes
-        for (const reply of message.content.split(/(?!\B"[^"]*)\s(?![^"]*"\B)/)) {
-            args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
-            message.content = message.content.replace(reply, args[args.length - 1]);
-        }
-        return command.execute(message, args.filter(a => a !== '')).catch(err =>
-            handle_message_errors(message,
-                commandName,
-                err),
-        );
+    // Parse arguments and send to command execute
+    const args = [];
+    // Remove actual command invocation
+    message.content = message.content.replace(message.content.split(/\s/)[0], '').trim();
+    // Split by whitespace
+    for (const reply of message.content.split(/(?!\B"[^"]*)\s(?![^"]*"\B)/)) {
+        // Strip quotes not preceded by backslashes
+        args.push(reply.replaceAll(/^(?<!\\)"|(?<!\\)"$/g, '').replaceAll('\\', '').trim());
+        // I don't actually remember anymore... I think it's cleaning up args in message.content?
+        message.content = message.content.replace(reply, args[args.length - 1]);
     }
-    return handle_reply(message);
+    return command.execute(message, args.filter(a => a !== '')).catch(err =>
+        handle_message_errors(
+            message,
+            commandName,
+            err,
+        ),
+    );
 }
 
 // For all message commands
@@ -177,18 +181,16 @@ client.on(Events.InteractionCreate, interaction => {
         return interaction.reply({
             content: 'I am loading... Please try again later.',
             ephemeral: true,
-        }).then(() => {
-        });
+        }).then(VOID);
     }
 
     // Process interaction.
-    const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
+    let commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
     // Unknown interaction
     if (!commandName) return;
-    let command: InteractionCommand | undefined;
     if (interaction.isCommand() && config.events) {
         // Special event reversed command; typescript doesn't like the hacky solutions
-        command = client.commands.get(commandName.split('').reverse().join(''));
+        commandName = commandName.split('').reverse().join('');
         // Reverse subcommand names back to original.
         if (interaction.options) {
             // @ts-expect-error We forcefully reassign to rename the subcommand
@@ -198,65 +200,67 @@ client.on(Events.InteractionCreate, interaction => {
             // @ts-expect-error We forcefully reassign to rename the subcommand options
             interaction.options._hoistedOptions.map(o => o.name = o.name.split('').reverse().join(''));
         }
-    } else {
-        command = client.commands.get(commandName);
     }
+    const command = client.interaction_commands.get(commandName);
     if (!command) return;
 
-    if (interaction.isCommand()) {
-        if (interaction.isContextMenuCommand() && isContextCommand(command)) {
-            // Error handling after command.
-            return command.execute(interaction).catch(err =>
-                handle_interaction_errors(interaction,
-                    interaction.commandName,
-                    err),
-            );
-        } else if (interaction.isChatInputCommand() && isSlashCommand(command)) {
-            // Error handling after command.
-            return command.execute(interaction).catch(err =>
-                handle_interaction_errors(interaction,
-                    interaction.commandName,
-                    err),
-            );
-        } else {
-            throw new Error(`${interaction}\nis not a valid interaction for\n${command}.`);
-        }
-    } else if (!isSlashCommand(command)) {
-        return; // Not a slash command, ignore rest.
+    if (interaction.isContextMenuCommand() || interaction.isChatInputCommand()) {
+        // We can safely cast to never here, since the interface of SlashCommand and ContextCommand
+        // are the same, for the execute function.
+        return command.execute(interaction as never).catch(err =>
+            handle_interaction_errors(
+                interaction,
+                interaction.commandName,
+                err,
+            ),
+        );
+    } else if (command.isContextCommand()) {
+        return handle_interaction_errors(
+            interaction,
+            commandName,
+            new Error('Context command was found for non-context menu interaction.'),
+        );
     } else if (interaction.isButton()) {
-        if (!command.buttonReact) return;
         // Reactor isn't the one who initiated the interaction
         const id = interaction.customId.split('/')[1];
         // 0 means global button
         if (id !== '0' && interaction.user.id !== id) return;
 
         return command.buttonReact(interaction).catch(err =>
-            handle_interaction_errors(interaction,
+            handle_interaction_errors(
+                interaction,
                 commandName,
-                err),
+                err,
+            ),
         );
     } else if (interaction.isAnySelectMenu()) {
-        if (!command.menuReact) return;
         // Reactor isn't the one who initiated the interaction
         const id = interaction.customId.split('/')[1];
         // 0 means global selection
         if (id !== '0' && interaction.user.id !== id) return;
 
         return command.menuReact(interaction).catch(err =>
-            handle_interaction_errors(interaction,
+            handle_interaction_errors(
+                interaction,
                 commandName,
-                err),
+                err,
+            ),
         );
     } else if (interaction.isModalSubmit()) {
-        if (!command.textInput) return;
         // With modal, it only applies to user so no need to check for issues.
         return command.textInput(interaction).catch(err =>
-            handle_interaction_errors(interaction,
+            handle_interaction_errors(
+                interaction,
                 commandName,
-                err),
+                err,
+            ),
         );
     } else {
-        throw new Error('Interaction not implemented.');
+        return handle_interaction_errors(
+            interaction,
+            commandName,
+            new Error('Invalid interaction type for command.'),
+        );
     }
 });
 
@@ -268,8 +272,7 @@ client.on(Events.GuildMemberAdd, async member => {
     if (guild.welcome_roleid) {
         const role = await member.guild.roles.fetch(guild.welcome_roleid);
         if (role) {
-            await member.roles.add(role).catch(() => {
-            });
+            await member.roles.add(role).catch(VOID);
         }
     }
     if (!guild.welcome_channelid) return;
@@ -277,11 +280,10 @@ client.on(Events.GuildMemberAdd, async member => {
     if (!channel?.isTextBased()) return;
     if (guild.welcome_msg) {
         let msg = guild.welcome_msg;
-        for (const [template, value] of Object.entries(WELCOMEMESSAGEMAPPING(member))) {
+        for (const [template, value] of Object.entries(WELCOME_MESSAGE_MAPPING(member))) {
             msg = msg.replaceAll(template, value);
         }
-        await channel.send({ content: msg }).catch(() => {
-        });
+        await channel.send({ content: msg }).catch(VOID);
     }
 });
 
@@ -436,10 +438,14 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
         // Discord only allows 2000 characters per message, 6 more for backticks, 3 for dots
         // 2000 - 6 - 3 = 1991
         const keepLength = Math.min(error_str.length + err_str.length, 1991) - error_str.length;
-        error_str += '```\n' + err_str.slice(0, keepLength) + (keepLength < err_str.length ? '...' : '') + '```';
+        error_str += '```\n' +
+            err_str.slice(0, keepLength) +
+            (
+                keepLength < err_str.length ? '...' : ''
+            ) +
+            '```';
         // We catch so there are no recursive errors.
-        client.log_channel.send({ content: error_str }).catch(() => {
-        });
+        client.log_channel.send({ content: error_str }).catch(VOID);
     }
 }
 
@@ -451,8 +457,7 @@ function handle_interaction_errors(interaction: RepliableInteraction, commandNam
             interaction.followUp({
                 content: err.message,
                 ephemeral: true,
-            }).catch(() => {
-            }),
+            }).catch(VOID),
         );
         return;
     } else if (err instanceof IgnoredException) {
@@ -464,7 +469,9 @@ function handle_interaction_errors(interaction: RepliableInteraction, commandNam
     handle_error(err, { commandName, interaction });
 
     // Hacky, but tacky
-    if ((err as Error & { ignoreSend?: boolean }).ignoreSend) return;
+    if ((
+        err as Error & { ignoreSend?: boolean }
+    ).ignoreSend) return;
     // Reply to user with error
     const content = 'Apologies, an unexpected error occurred with that command. ' +
         'Please send a message to the support server or try again later.';
@@ -473,8 +480,7 @@ function handle_interaction_errors(interaction: RepliableInteraction, commandNam
         .catch(() => interaction.followUp({
             content: content,
             ephemeral: true,
-        }).catch(() => {
-        })); // If interaction webhook is invalid.
+        }).catch(VOID)); // If interaction webhook is invalid.
 }
 
 function handle_message_errors(message: Message, commandName: string, err: Error) {
@@ -498,7 +504,7 @@ async function loading() {
     });
 
     // Load all slash commands into the client.
-    await load(client);
+    load(client);
 
     // Read in all reply lines
     fs.readFile(path.resolve(__dirname, '../files/lines.txt'), (_, data) => {
@@ -542,9 +548,7 @@ function cleanup() {
         'music for you again in a few moments.';
     const promises = [DB.end(), client.destroy()];
     for (const guildVoice of GuildVoices.values()) {
-        promises.push(guildVoice.textChannel.send({ content }).then(() => {
-        }, () => {
-        }));
+        promises.push(guildVoice.textChannel.send({ content }).then(VOID, VOID));
         guildVoice.destroy();
     }
     Promise.all(promises).then(() => {

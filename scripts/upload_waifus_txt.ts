@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as rl from 'readline/promises';
 import { Pool, PoolClient, QueryResultRow } from 'pg';
 
-// The shared file path between upload_waius_txt.ts and download_waifus_txt.ts
+// The shared file path between upload_waifus_txt.ts and download_waifus_txt.ts
 const filePath = './files/waifus.txt';
 const CDN_URL = 'https://d1irvsiobt1r8d.cloudfront.net';
 // Change this to change input
@@ -106,7 +106,11 @@ function loadFromFile() {
         const [iid, name, _gender, origin, _img, _nimg] = line.split('|').map(x => x.trim()).slice(1, -1);
         const img = _img.replace('[', '').replace(']', '').split(', ').filter(i => i !== '');
         const nimg = _nimg.replace('[', '').replace(']', '').split(', ').filter(i => i !== '');
-        const gender = _gender === 'Female' ? _gender : (_gender === 'Male' ? _gender : 'Unknown');
+        const gender = _gender === 'Female' ?
+            _gender :
+            (
+                _gender === 'Male' ? _gender : 'Unknown'
+            );
         backupWaifus.push(new Waifu({ wid: '', iid, name, gender, origin, img, nimg }));
     }
     return backupWaifus;

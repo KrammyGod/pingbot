@@ -16,7 +16,7 @@ export default tseslint.config(
                 'error',
                 4,
                 {
-                    'SwitchCase': 1,
+                    'MemberExpression': 'off',
                 },
             ],
             '@stylistic/js/quotes': [

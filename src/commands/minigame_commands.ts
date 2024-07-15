@@ -9,7 +9,7 @@ import {
     SlashCommandBuilder,
     SlashCommandSubcommandBuilder,
 } from 'discord.js';
-import type { SlashCommand, SlashSubcommand } from '@typings/commands';
+import { SlashCommandWithSubcommand, SlashSubcommand } from '@classes/commands';
 
 export const name = 'Minigames';
 export const desc = 'This category is for commands that allow you to play fun games with your precious brons.';
@@ -63,7 +63,7 @@ class Cooldown {
     }
 
     next_ready() {
-        const next_ready = this.last + (this.per * 1000);
+        const next_ready = this.last + this.per * 1000;
         if (next_ready < Date.now()) {
             // Already ready.
             return '';
@@ -133,10 +133,10 @@ For the +5 brons prize, for example, if the number was 5, guessing 4 or 6 would 
 
 Pro tip: You have higher chances of winning guessing middle numbers.`;
 
-type NumberPrivates = {
-    cds: CooldownMapping;
+const number_privates = {
+    cds: new CooldownMapping(5, 75),
 };
-const guess_number: SlashSubcommand & NumberPrivates = {
+const guess_number = new SlashSubcommand({
     data: new SlashCommandSubcommandBuilder()
         .setName('number')
         .setDescription('Guess a random number between 1 and 10')
@@ -148,22 +148,19 @@ const guess_number: SlashSubcommand & NumberPrivates = {
                 .setMaxValue(10)
                 .setRequired(true)),
 
-    desc: `${num_docs}\n\n` +
+    long_description:
+        `${num_docs}\n\n` +
         'Usage: `/guess number num: <number>`\n\n' +
         '__**Options**__\n' +
         '*num:* The number you choose to guess. (Required)\n\n' +
         'Example: `/guess number num: 5`',
 
-    // Cooldown of 5 per 75 seconds.
-    cds: new CooldownMapping(5, 75),
-
     async execute(interaction) {
         const rich_cmd = await Utils.get_rich_cmd(interaction);
-        const cd = this.cds.get(interaction.user.id);
+        const cd = number_privates.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
         // Exists embeds to send.
-        if (ret.embeds) return interaction.editReply(ret).then(() => {
-        });
+        if (ret.embeds) return interaction.editReply(ret).then(Utils.VOID);
         // Generate a random number from 1 to 10.
         const embed = new EmbedBuilder();
         const num = Math.floor(Math.random() * 10) + 1;
@@ -198,42 +195,30 @@ const guess_number: SlashSubcommand & NumberPrivates = {
             cd.force_cd();
             // On error:
             const embed = new EmbedBuilder({
-                title:
-                                                   'You guessed wrong and you are poor. How dare you guess.\n' +
-                                                   `You are now on cooldown. More available ${cd.next_ready()}`,
+                title: 'You guessed wrong and you are poor. How dare you guess.\n' +
+                    `You are now on cooldown. More available ${cd.next_ready()}`,
                 description: `(Pssst try ${daily_cmd})`,
                 color: Colors.Red,
             });
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${interaction.client.bot_emojis.brons}`)
-            .setDescription(this.cds.get(interaction.user.id).tries_left())
+            .setDescription(number_privates.cds.get(interaction.user.id).tries_left())
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
         await interaction.editReply({ embeds: [embed], files: [`files/${num}.png`] });
     },
-};
+});
 
 // Guess Character here
 
-export const guess: SlashCommand = {
-    data: new SlashCommandBuilder()
-        .setName('guess')
-        .addSubcommand(guess_number.data)
-        .setDescription('Guess base command'),
+export const guess = new SlashCommandWithSubcommand({
+    data: new SlashCommandBuilder().setName('guess').setDescription('Guess base command'),
 
-    desc: 'Guess base command',
+    long_description: 'Guess base command',
 
-    subcommands: new Map()
-        .set(guess_number.data.name, guess_number),
-
-    async execute(interaction) {
-        await interaction.deferReply();
-        const cmd = this.subcommands!.get(interaction.options.getSubcommand())!;
-        return cmd.execute(interaction);
-    },
-};
+    subcommands: [guess_number],
+});
 
 const coin_docs =
     `Flip a coin and guess a side! You have a 2/3 chance of winning (unbalanced coin).
@@ -281,9 +266,8 @@ async function generate_flip(
     return [embed, [`files/${chosen}.png`], res];
 }
 
-const flip_heads: SlashSubcommand = {
-    data: new SlashCommandSubcommandBuilder()
-        .setName('heads')
+const flip_heads = new SlashSubcommand({
+    data: new SlashCommandSubcommandBuilder().setName('heads')
         .setDescription('Flip a coin and guess heads')
         .addIntegerOption(option =>
             option
@@ -293,20 +277,16 @@ const flip_heads: SlashSubcommand = {
                 .setMaxValue(500)
                 .setRequired(true)),
 
-    desc: `${coin_docs}\n\n` +
+    long_description:
+        `${coin_docs}\n\n` +
         'Usage: `/flip heads bet: <bet>`\n\n' +
         '__**Options**__\n' +
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip heads bet: 100`',
+});
 
-    // Unneeded function; defined for typing
-    async execute() {
-    },
-};
-
-const flip_tails: SlashSubcommand = {
-    data: new SlashCommandSubcommandBuilder()
-        .setName('tails')
+const flip_tails = new SlashSubcommand({
+    data: new SlashCommandSubcommandBuilder().setName('tails')
         .setDescription('Flip a coin and guess tails')
         .addIntegerOption(option =>
             option
@@ -316,61 +296,48 @@ const flip_tails: SlashSubcommand = {
                 .setMaxValue(500)
                 .setRequired(true)),
 
-    desc: `${coin_docs}\n\n` +
+    long_description:
+        `${coin_docs}\n\n` +
         'Usage: `/flip tails bet: <bet>`\n\n' +
         '__**Options**__\n' +
         '*bet:* The amount of brons you would like to bet. (Required)\n\n' +
         'Example: `/flip tails bet: 100`',
+});
 
-    // Unneeded function; defined for typing
-    async execute() {
-    },
+const flip_privates = {
+    cds: new CooldownMapping(5, 3 * 60 * 60),
 };
-
-type FlipPrivates = {
-    cds: CooldownMapping;
-};
-export const flip: SlashCommand & FlipPrivates = {
+export const flip = new SlashCommandWithSubcommand({
     data: new SlashCommandBuilder()
         .setName('flip')
-        .addSubcommand(flip_heads.data)
-        .addSubcommand(flip_tails.data)
         .setDescription('Flip base command'),
 
-    desc: 'Flip general command.',
+    long_description: 'Flip general command.',
 
-    cds: new CooldownMapping(5, 3 * 60 * 60),
-    subcommands: new Map()
-        .set(flip_heads.data.name, flip_heads)
-        .set(flip_tails.data.name, flip_tails),
-
+    subcommands: [flip_heads, flip_tails],
+}).register({
     async execute(interaction) {
         await interaction.deferReply();
         const bet = interaction.options.getInteger('bet')!;
         const rich_cmd = await Utils.get_rich_cmd(interaction);
-        const cd = this.cds.get(interaction.user.id);
+        const cd = flip_privates.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
-        if (ret.embeds) return interaction.editReply(ret).then(() => {
-        });
+        if (ret.embeds) return interaction.editReply(ret).then(Utils.VOID);
         const cmd = interaction.options.getSubcommand();
         const [embed, files, success] = await generate_flip(interaction.client, interaction, cmd as Coin, bet);
         if (!success) {
             const daily_cmd = await Utils.get_rich_cmd('daily', interaction.client);
             cd.force_cd();
             // On error:
-            const embed = new EmbedBuilder(
-                {
-                    title:
-                        'You guessed wrong and you are poor. How dare you guess.\n' +
-                        `You are now on cooldown. More available ${cd.next_ready()}`,
-                    description: `(Pssst try ${daily_cmd})`,
-                    color: Colors.Red,
-                },
-            );
-            return interaction.editReply({ embeds: [embed] }).then(() => {
+            const embed = new EmbedBuilder({
+                title: 'You guessed wrong and you are poor. How dare you guess.\n' +
+                    `You are now on cooldown. More available ${cd.next_ready()}`,
+                description: `(Pssst try ${daily_cmd})`,
+                color: Colors.Red,
             });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         embed.setDescription(cd.tries_left());
-        await interaction.editReply({ embeds: [embed], files });
+        return interaction.editReply({ embeds: [embed], files }).then(Utils.VOID);
     },
-};
+});

@@ -2,7 +2,7 @@ import http from 'http';
 import config from '@config';
 import * as DB from '@modules/database';
 import { Colors, EmbedBuilder, ShardEvents, ShardingManager } from 'discord.js';
-import type { SendMessage } from './collector/collect';
+import type { SendMessage } from 'collector/collect';
 
 const manager = new ShardingManager('./dist/bot.js', {
     token: config.token,
@@ -21,8 +21,7 @@ async function setupCache() {
             promises.push(shard.eval((client, uids) => {
                 const promises = [];
                 for (const uid of uids) {
-                    promises.push(client.users.fetch(uid).catch(() => {
-                    }));
+                    promises.push(client.users.fetch(uid).catch(() => { }));
                 }
                 return Promise.all(promises).then(() => {
                     console.log(`User cache ready for shard ${client.shard!.ids[0]}`);
@@ -33,7 +32,7 @@ async function setupCache() {
         Promise.all(promises).then(() => {
             for (const shard of manager.shards.values()) {
                 shard.eval(client => {
-                    client.user_cache_ready = true;
+                    client.is_user_cache_ready = true;
                 });
             }
         });
@@ -151,8 +150,7 @@ async function sendCollectorResults(body: SendMessage) {
                 icon_url: typeof user === 'string' ? '' : user.displayAvatarURL(),
             };
             if (typeof user !== 'string') {
-                await user.createDM(true).catch(() => {
-                });
+                await user.createDM(true).catch(() => { });
                 await user.send({ embeds: [embed] }).then(() => {
                     console.log(`Sent message to @${user.tag}`);
                 }).catch(() => {
