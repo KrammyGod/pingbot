@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import type { TextBasedChannel } from 'discord.js';
 import { Colors, EmbedBuilder } from 'discord.js';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
+import { NodePgJsonSerialized, NodePgJsonValue } from '@typings/node_pg_json';
 
 const enum GenderTypes {
     Female = '♀️',
@@ -14,27 +15,27 @@ const enum GenderTypes {
 
 export function toGenderTypes(gend: string) {
     switch (gend) {
-        case 'Female':
-            return GenderTypes.Female;
-        case 'Male':
-            return GenderTypes.Male;
-        case 'Unknown':
-            return GenderTypes.Unknown;
-        default:
-            throw new Error(`Invalid gender string: ${gend}`);
+    case 'Female':
+        return GenderTypes.Female;
+    case 'Male':
+        return GenderTypes.Male;
+    case 'Unknown':
+        return GenderTypes.Unknown;
+    default:
+        throw new Error(`Invalid gender string: ${gend}`);
     }
 }
 
 export function fromGenderTypes(gend: GenderTypes) {
     switch (gend) {
-        case GenderTypes.Female:
-            return 'Female';
-        case GenderTypes.Male:
-            return 'Male';
-        case GenderTypes.Unknown:
-            return 'Unknown';
-        default:
-            throw new Error(`Invalid gender type: ${gend}`);
+    case GenderTypes.Female:
+        return 'Female';
+    case GenderTypes.Male:
+        return 'Male';
+    case GenderTypes.Unknown:
+        return 'Unknown';
+    default:
+        throw new Error(`Invalid gender type: ${gend}`);
     }
 }
 
@@ -266,7 +267,7 @@ class Character {
             fields: [
                 {
                     name: `${this.getWFC(channel)} **${this.name} ${this.getGender()} ` +
-                                                `(Lvl ${this.displayLvl}${this.getUStatus(' ')})**`,
+                        `(Lvl ${this.displayLvl}${this.getUStatus(' ')})**`,
                     value: `__From:__ ${this.origin}\n[Source](${getSource(img)})\n[Raw Image](${img})`,
                     inline: true,
                 },
@@ -403,8 +404,7 @@ export function start() {
 }
 
 export function end() {
-    return pool.end().catch(() => {
-    });
+    return pool.end().catch(Utils.VOID);
 }
 
 export function getUidsList(shardId: number, totalShards: number) {
@@ -427,9 +427,9 @@ export function getUidsList(shardId: number, totalShards: number) {
 
 /* GETTERS/SETTERS FOR DATABASE */
 export function getUserCount() {
-    return query<{ count: string }>(
-        'SELECT COUNT(*) FROM user_info',
-    ).then(ret => parseInt(ret[0].count));
+    return query<{ count: number }>(
+        'SELECT COUNT(*)::int FROM user_info',
+    ).then(ret => ret[0].count);
 }
 
 export function getBrons(userID: string) {
@@ -515,7 +515,11 @@ export function getUserLBStats(userID: string) {
     return query<{ brons: number, idx: string }>(
         'SELECT brons, idx FROM leaderboard WHERE uid = $1',
         [userID],
-    ).then(res => res.at(0) ? ({ brons: res[0].brons, idx: parseInt(res[0].idx) }) : undefined);
+    ).then(res =>
+        res.at(0)
+            ? ({ brons: res[0].brons, idx: parseInt(res[0].idx) })
+            : undefined,
+    );
 }
 
 export function getLeaderboards(start: number) {
@@ -534,11 +538,13 @@ export function getUserStarLBStats(userID: string) {
     return query<{ brons: number, stars: string, idx: string }>(
         'SELECT brons, stars, idx FROM starLeaderboard WHERE uid = $1',
         [userID],
-    ).then(res => res.at(0) ? ({
-        brons: res[0].brons,
-        stars: parseInt(res[0].stars),
-        idx: parseInt(res[0].idx),
-    }) : undefined);
+    ).then(res =>
+        res.at(0) ? ({
+            brons: res[0].brons,
+            stars: parseInt(res[0].stars),
+            idx: parseInt(res[0].idx),
+        }) : undefined,
+    );
 }
 
 export function getStarLeaderboards(start: number) {
@@ -607,9 +613,9 @@ export function fetchWaifu(wid: string) {
 }
 
 export function fetchWaifuCount() {
-    return query<{ count: string }>(
-        'SELECT COUNT(*) FROM waifus',
-    ).then(ret => parseInt(ret[0].count));
+    return query<{ count: number }>(
+        'SELECT COUNT(*)::int FROM waifus',
+    ).then(ret => ret[0].count);
 }
 
 export function searchWaifuByName(name: string) {
@@ -650,14 +656,14 @@ export function fetchCompleteOrigin(origin: string) {
 }
 
 export function getAnimesCount() {
-    return query<{ count: string }>(
-        'SELECT COUNT(DISTINCT origin) FROM waifus',
-    ).then(ret => parseInt(ret[0].count));
+    return query<{ count: number }>(
+        'SELECT COUNT(DISTINCT origin)::int FROM waifus',
+    ).then(ret => ret[0].count);
 }
 
 export function getAnimes(start: number) {
-    return query<{ origin: string, count: string }>(
-        `SELECT origin, COUNT(*)
+    return query<{ origin: string, count: number }>(
+        `SELECT origin, COUNT(*)::int
          FROM waifus
          GROUP BY origin
          ORDER BY origin
@@ -685,44 +691,44 @@ export const enum Levels {
 
 export function fetchRandomWaifu(amt: number, level: Levels) {
     switch (level) {
-        case Levels.EASY:
-            return query<WaifuDetails>(
-                `SELECT name, gender, origin, img, nimg
-                 FROM waifus
-                 ORDER BY RANDOM()
-                 LIMIT $1`,
-                [amt],
-            ).then(Waifu.fromRows);
-        case Levels.MEDIUM:
-            return query<WaifuDetails>(
-                `SELECT A.*
-                 FROM (SELECT name,
-                              gender,
-                              origin,
-                              img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
-                       FROM waifus
-                       UNION ALL
-                       SELECT B.*
-                       FROM (SELECT name, gender, origin, img
-                             FROM commons
-                             ORDER BY RANDOM()
-                             LIMIT (SELECT COUNT(*)
-                                    FROM waifus)) B) A
-                 ORDER BY RANDOM()
-                 LIMIT $1`,
-                [amt],
-            ).then(Waifu.fromRows);
-        case Levels.HARD:
-            return query<WaifuDetails>(
-                `SELECT name,
-                        gender,
-                        origin,
-                        img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
-                 FROM chars
-                 ORDER BY RANDOM()
-                 LIMIT $1`,
-                [amt],
-            ).then(Waifu.fromRows);
+    case Levels.EASY:
+        return query<WaifuDetails>(
+            `SELECT name, gender, origin, img, nimg
+             FROM waifus
+             ORDER BY RANDOM()
+             LIMIT $1`,
+            [amt],
+        ).then(Waifu.fromRows);
+    case Levels.MEDIUM:
+        return query<WaifuDetails>(
+            `SELECT A.*
+             FROM (SELECT name,
+                          gender,
+                          origin,
+                          img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
+                   FROM waifus
+                   UNION ALL
+                   SELECT B.*
+                   FROM (SELECT name, gender, origin, img
+                         FROM commons
+                         ORDER BY RANDOM()
+                         LIMIT (SELECT COUNT(*)
+                                FROM waifus)) B) A
+             ORDER BY RANDOM()
+             LIMIT $1`,
+            [amt],
+        ).then(Waifu.fromRows);
+    case Levels.HARD:
+        return query<WaifuDetails>(
+            `SELECT name,
+                    gender,
+                    origin,
+                    img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
+             FROM chars
+             ORDER BY RANDOM()
+             LIMIT $1`,
+            [amt],
+        ).then(Waifu.fromRows);
     }
     // Says unreachable, however if an invalid level is provided,
     // will be reached.
@@ -771,12 +777,12 @@ export function fetchAutocollectByPage(userID: string, page: number) {
 }
 
 export function fetchAutocollectLength(userID: string) {
-    return query<{ count: string }>(
-        `SELECT COUNT(*)
+    return query<{ count: number }>(
+        `SELECT COUNT(*)::int
          FROM hoyolab_cookies_list
          WHERE id = $1`,
         [userID],
-    ).then(res => parseInt(res[0].count));
+    ).then(res => res[0].count);
 }
 
 export function toggleAutocollect(userID: string, game: GameType, type: CheckinType, idx: string) {
@@ -786,8 +792,7 @@ export function toggleAutocollect(userID: string, game: GameType, type: CheckinT
          WHERE id = $1
            AND idx = $3`,
         [userID, type, idx],
-    ).then(() => {
-    });
+    ).then(Utils.VOID);
 }
 
 export async function addCookie(userID: string, cookie: string) {
@@ -867,7 +872,7 @@ export function fetchUserCharacterCount(userID: string) {
 type Range = { start?: number, end?: number };
 
 export function fetchUserCommonCount(userID: string, { start, end }: Range = {}) {
-    let q = 'SELECT COUNT(*) FROM all_user_chars WHERE uid = $1 AND fc = FALSE';
+    let q = 'SELECT COUNT(*)::int FROM all_user_chars WHERE uid = $1 AND fc = FALSE';
     const params: (string | number)[] = [userID];
     if (start) {
         params.push(start);
@@ -877,17 +882,17 @@ export function fetchUserCommonCount(userID: string, { start, end }: Range = {})
         params.push(end);
         q += ` AND idx <= $${params.length}::bigint`;
     }
-    return query<{ count: string }>(q, params).then(ret => parseInt(ret[0].count));
+    return query<{ count: number }>(q, params).then(ret => ret[0].count);
 }
 
 export function fetchUserStarredCount(userID: string) {
-    return query<{ count: string }>(
-        `SELECT COUNT(*)
+    return query<{ count: number }>(
+        `SELECT COUNT(*)::int
          FROM all_user_chars
          WHERE uid = $1
            AND fc = TRUE`,
         [userID],
-    ).then(ret => parseInt(ret[0].count));
+    ).then(ret => ret[0].count);
 }
 
 export function fetchRandomStarred(userID: string) {
@@ -977,14 +982,14 @@ export function queryUserHighCharacter(userID: string, name: string) {
 }
 
 export function fetchUserAnimeCount(userID: string, origin: string) {
-    return query<{ count: string }>(
-        `SELECT COUNT(*)
+    return query<{ count: number }>(
+        `SELECT COUNT(*)::int
          FROM all_user_chars
          WHERE uid = $1
            AND origin = $2
            AND fc = TRUE`,
         [userID, origin],
-    ).then(ret => parseInt(ret[0].count));
+    ).then(ret => ret[0].count);
 }
 
 function getCommonQuery() {
@@ -1013,20 +1018,20 @@ const enum GuaranteeLevel {
 function generateCharacterQuery(level: GuaranteeLevel) {
     const random = Math.floor(Math.random() * 101);
     switch (level) {
-        case GuaranteeLevel.COMMON:
-            if (specialRate.includes(random)) {
-                return getStarredQuery();
-            } else {
-                return getCommonQuery();
-            }
-        case GuaranteeLevel.STARRED:
-            if (specialRate.includes(random)) {
-                return getMultiStarredQuery();
-            } else {
-                return getStarredQuery();
-            }
-        case GuaranteeLevel.MULTI_STARS:
+    case GuaranteeLevel.COMMON:
+        if (specialRate.includes(random)) {
+            return getStarredQuery();
+        } else {
+            return getCommonQuery();
+        }
+    case GuaranteeLevel.STARRED:
+        if (specialRate.includes(random)) {
             return getMultiStarredQuery();
+        } else {
+            return getStarredQuery();
+        }
+    case GuaranteeLevel.MULTI_STARS:
+        return getMultiStarredQuery();
     }
 }
 
@@ -1101,7 +1106,7 @@ export function generateAndAddCharacters(
         queries,
         params,
     ).then(res =>
-    // Whales has extra query for user_info
+        // Whales has extra query for user_info
         res.splice(1).map(x => {
             const c = new Character(x[0]) as CharacterInsert;
             c.new = x[0].new;
@@ -1172,10 +1177,9 @@ function setUserCharacterNsfw(userID: string, wid: string, nsfw: boolean) {
                AND wid = $2`,
         ],
         [[userID, wid, nsfw], [], [userID, wid]],
-    ).then(res => [res[0][0], res[2][0]] as [
-            { nsfw: boolean } | undefined,
-            { _nimg: number, nimg: string, nsfw: boolean },
-    ]);
+    ).then(res =>
+        [res[0][0], res[2][0]] as [{ nsfw: boolean } | undefined, { _nimg: number, nimg: string, nsfw: boolean }],
+    );
 }
 
 export async function deleteUserCharacter(char: Character) {
@@ -1253,8 +1257,7 @@ export function swapUserCharacters(char1: Character, char2: Character) {
             [char1.uid, char1.wid, char1.idx, char2.idx],
             [char2.uid, char2.wid, char2.idx, char1.idx],
         ],
-    ).then(() => {
-    });
+    ).then(Utils.VOID);
 }
 
 // Trade characters; deal with this in the far future
@@ -1319,8 +1322,7 @@ export function setGuild(settings: GuildSettings) {
          ON CONFLICT (gid)
              DO UPDATE SET ${colUpdates}`,
         params,
-    ).then(() => {
-    });
+    ).then(Utils.VOID);
 }
 
 /* Special functions for guessing streaks */
@@ -1364,39 +1366,50 @@ export function resetGuessStreak(userID: string, level: Levels) {
          SET ${level}_streak = 0
          WHERE uid = $1`,
         [userID],
-    ).then(() => {
-    });
+    ).then(Utils.VOID);
 }
 
-/* Special functions for storing local data */
-export class Cache<T extends object> {
+/*
+ * Special functions for storing local data.
+ * Can store any object that can be serialized.
+ */
+export class Cache<CacheType extends NodePgJsonValue> {
     constructor(private cmd: string) {
     }
 
-    get(id?: string) {
-        return query<{ data: T }>(
+    get(id: string): Promise<NodePgJsonSerialized<CacheType> | undefined>;
+    get(
+        id: string,
+        deserializer: (data: NodePgJsonSerialized<CacheType>) => CacheType,
+    ): Promise<CacheType | undefined>;
+    get(id: string, deserializer?: (data: NodePgJsonSerialized<CacheType>) => CacheType) {
+        return query<{ data: NodePgJsonSerialized<CacheType> }>(
             `SELECT data
              FROM local_data
              WHERE cmd = $1
                AND id = $2
                AND (CURRENT_DATE < expiry OR expiry IS NULL)`,
             [this.cmd, id],
-        ).then(res => res.at(0)?.data);
+        ).then(res => {
+            const data = res.at(0)?.data;
+            // Deserializer is only called if data was found.
+            if (deserializer && data) return deserializer(data);
+            return data;
+        });
     }
 
-    set(id: string, data: T, expiry: Date | null = null) {
+    set(id: string, data: CacheType, expiry: Date | null = null) {
         return query(
             `INSERT INTO local_data(cmd, id, data, expiry)
              VALUES ($1, $2, $3, $4)
              ON CONFLICT (cmd, id) DO UPDATE SET data   = EXCLUDED.data,
                                                  expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`,
             [this.cmd, id, data, expiry],
-        ).then(() => {
-        });
+        ).then(Utils.VOID);
     }
 
     delete(id: string | null = null) {
-        return query<T>(
+        return query<{ cmd: string, id: string, data: NodePgJsonSerialized<CacheType>, expiry: Date }>(
             'DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *',
             [this.cmd, id],
         );
@@ -1408,7 +1421,5 @@ export function deleteLocalData(id: string) {
     return query(
         'DELETE FROM local_data WHERE id = $1',
         [id],
-    ).then(() => {
-    }, () => {
-    });
+    ).then(Utils.VOID, Utils.VOID);
 }

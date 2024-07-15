@@ -36,11 +36,10 @@ export async function getRawImageLink(source: string) {
 
         const res = await pixiv.illust.get(source).catch(() => {
             // We try to refresh token to hopefully fix the error.
-            return pixiv.refreshToken().then(() => {
-                return pixiv.illust.get(source);
-            }, () => {
-                console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!');
-            });
+            return pixiv.refreshToken().then(
+                () => pixiv.illust.get(source),
+                () => console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!'),
+            );
         });
         if (res) {
             source = res.url!;
@@ -126,8 +125,7 @@ export async function getSauce(rawImageLink: string, retries: number = 2): Promi
         numres: '1',
         // pixiv, danbooru, gelbooru, twitter
         dbmask: (0x20 | 0x200 | 0x1000000 | 0x10000000000).toString(),
-        api_key: Buffer.from(config.saucenao,
-            'base64').toString(),
+        api_key: Buffer.from(config.saucenao, 'base64').toString(),
         url: rawImageLink,
     });
     console.log('(scraper/getSauce) fetching:', url);

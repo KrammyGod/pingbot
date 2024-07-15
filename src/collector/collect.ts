@@ -105,16 +105,18 @@ type RoleAPIResponse = {
     readonly retcode: number;
     readonly message: string;
     readonly data: {
-        readonly list: readonly [{
-            readonly game_biz: string;
-            readonly region: string;
-            readonly game_uid: string;
-            readonly nickname: string;
-            readonly level: number;
-            readonly is_chosen: boolean;
-            readonly region_name: string;
-            readonly is_official: boolean;
-        }]
+        readonly list: readonly [
+            {
+                readonly game_biz: string;
+                readonly region: string;
+                readonly game_uid: string;
+                readonly nickname: string;
+                readonly level: number;
+                readonly is_chosen: boolean;
+                readonly region_name: string;
+                readonly is_official: boolean;
+            },
+        ]
     } | null;
 };
 type SignAPIResponse = {
@@ -340,8 +342,7 @@ async function collect() {
         LOGGER.error(e);
         add('I encountered a really bad error... save me...\n```\n' + inspect(e) + '```');
     } finally {
-        await client.end().catch(() => {
-        });
+        await client.end().catch(() => { });
         LOGGER.end();
     }
 })();

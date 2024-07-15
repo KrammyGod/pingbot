@@ -10,6 +10,7 @@ import {
     joinVoiceChannel,
     VoiceConnectionStatus,
 } from '@discordjs/voice';
+import { VOID } from '@modules/utils';
 
 export const enum LoopType {
     none = 'NONE',
@@ -192,8 +193,7 @@ export default class GuildVoice {
                 return this.playNextSong();
             }
         }
-        const source = await Play.stream(song.playUrl).catch(() => {
-        });
+        const source = await Play.stream(song.playUrl).catch(VOID);
         if (!source) {
             // Forcefully skip song on error
             if (this.loop === LoopType.one) {
@@ -232,7 +232,10 @@ export default class GuildVoice {
 
     _shuffleFullQueue() {
         for (let i = this.fullQueue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(Math.random() *
+                (
+                    i + 1
+                ));
             [this.fullQueue[i], this.fullQueue[j]] = [this.fullQueue[j], this.fullQueue[i]];
         }
     }
@@ -267,8 +270,8 @@ export default class GuildVoice {
         this.player.on('error', async err => {
             await this.textChannel.send({
                 content:
-                                                'Something bad happened while I was playing...\n' +
-                                                'Sorry! I will continue to play the next song.',
+                    'Something bad happened while I was playing...\n' +
+                    'Sorry! I will continue to play the next song.',
             });
             throw err;
         });
@@ -294,7 +297,7 @@ export default class GuildVoice {
                         this.destroy();
                         return this.textChannel.send({
                             content: 'No one wants to listen to me in ' +
-                                                             `${this.voiceChannel} so I'm leaving... 😭`,
+                                `${this.voiceChannel} so I'm leaving... 😭`,
                         });
                     }
                 } else {

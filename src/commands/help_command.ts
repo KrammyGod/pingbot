@@ -15,7 +15,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
-import type { CommandFile, SlashCommand } from '@typings/commands';
+import { Cog, SlashCommandNoSubcommand } from '@classes/commands';
 
 export const name = 'Help';
 export const desc = 'This is a special category dedicated for you!';
@@ -36,7 +36,7 @@ const asyncReplace = (str: string, regex: RegExp, replace_fn: (match: string) =>
 // Since help is just a single command, all helpers are globally scoped
 async function get_results_category(
     interaction: RepliableInteraction,
-    choices: CommandFile[],
+    choices: Cog[],
 ) {
     if (choices.length === 0) return undefined;
     else if (choices.length === 1) return choices[0];
@@ -68,8 +68,9 @@ async function get_results_category(
 
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            menu)],
+        components: [
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
+        ],
         ephemeral: true,
     });
 
@@ -91,28 +92,32 @@ type FullCommand = {
 
 async function get_results_cmd(interaction: RepliableInteraction, search: string) {
     let choices: FullCommand[] = [];
-    for (const cmd of [...interaction.client.commands.values(), ...interaction.client.message_commands.values()]) {
-        if (Utils.isMessageCommand(cmd)) {
+    const allCommands = [
+        ...interaction.client.interaction_commands.values(),
+        ...interaction.client.message_commands.values(),
+    ];
+    for (const cmd of allCommands) {
+        if (cmd.isMessageCommand()) {
             choices.push({
                 name: cmd.name,
-                desc: cmd.desc,
+                desc: cmd.long_description,
                 is_slash: false,
             });
-        } else if (Utils.isSlashCommand(cmd)) {
-            if (cmd.subcommands) {
+        } else if (cmd.isSlashCommand()) {
+            if (cmd.isSlashCommandWithSubcommand()) {
                 for (const subcmd of cmd.subcommands.values()) {
-                    if (Utils.isSlashSubcommandGroup(subcmd)) {
+                    if (subcmd.isSlashSubcommandGroup()) {
                         for (const subsubcmd of subcmd.subcommands.values()) {
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
-                                desc: subsubcmd.desc,
+                                desc: subsubcmd.long_description,
                                 is_slash: true,
                             });
                         }
                     } else {
                         choices.push({
                             name: `${cmd.data.name} ${subcmd.data.name}`,
-                            desc: subcmd.desc,
+                            desc: subcmd.long_description,
                             is_slash: true,
                         });
                     }
@@ -120,7 +125,7 @@ async function get_results_cmd(interaction: RepliableInteraction, search: string
             } else {
                 choices.push({
                     name: cmd.data.name,
-                    desc: cmd.desc,
+                    desc: cmd.long_description,
                     is_slash: true,
                 });
             }
@@ -147,13 +152,9 @@ async function get_results_cmd(interaction: RepliableInteraction, search: string
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
-        if (Utils.isSlashCommand(choice)) {
-            desc += `${idx + 1}. **${choice.data.name}**\n`;
-        } else {
-            desc += `${idx + 1}. **${choice.name}**\n`;
-        }
+        desc += `${idx + 1}. **${choice.name}**\n`;
         menu.addOptions({
-            label: `${idx + 1}. ${Utils.isSlashCommand(choice) ? choice.data.name : choice.name}`,
+            label: `${idx + 1}. ${choice.name}`,
             value: `${idx}`,
         });
     }
@@ -162,8 +163,9 @@ async function get_results_cmd(interaction: RepliableInteraction, search: string
 
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-            menu)],
+        components: [
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
+        ],
         ephemeral: true,
     });
 
@@ -228,32 +230,36 @@ async function get_cog_page(client: Client<true>, authorID: string, page: number
     embed.setDescription(`Page ${page}/${max_pages}`);
     let field = '';
     const cog = client.cogs[page - 1];
-    for (const command of cog.commands) {
-        if (Utils.isSlashCommand(command)) {
+
+    for (const command of cog.displayed_commands) {
+        if (command.isSlashCommand()) {
             const commands: { name: string; description: string; }[] = [];
-            // Try to add all subcommands to list
-            for (const subcommand of command.subcommands?.values() ?? []) {
-                if (Utils.isSlashSubcommandGroup(subcommand)) {
-                    for (const subsubcommand of subcommand.subcommands.values()) {
+            if (command.isSlashCommandWithSubcommand()) {
+                // Try to add all subcommands to list
+                for (const subcommand of command.subcommands.values() ?? []) {
+                    if (subcommand.isSlashSubcommandGroup()) {
+                        for (const subsubcommand of subcommand.subcommands.values()) {
+                            commands.push({
+                                name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
+                                description: subsubcommand.data.description,
+                            });
+                        }
+                    } else {
                         commands.push({
-                            name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
-                            description: subsubcommand.data.description,
+                            name: `${command.data.name} ${subcommand.data.name}`,
+                            description: subcommand.data.description,
                         });
                     }
-                } else {
-                    commands.push({
-                        name: `${command.data.name} ${subcommand.data.name}`,
-                        description: subcommand.data.description,
-                    });
                 }
+            } else {
+                // No subcommands, then only main command left.
+                commands.push(command.data);
             }
-            // No subcommands, then only main command left.
-            if (!commands.length) commands.push(command.data);
             for (const cmd of commands) {
                 const app_cmd = await Utils.get_rich_cmd(cmd.name, client);
                 field += `> ${app_cmd} - ${cmd.description}\n`;
             }
-        } else if (Utils.isMessageCommand(command)) {
+        } else if (command.isMessageCommand()) {
             // Replace all `/command` with new shiny command mention.
             const replace_fn = (match: string) => {
                 const full_name = match.slice(2, -1);
@@ -261,7 +267,7 @@ async function get_cog_page(client: Client<true>, authorID: string, page: number
             };
             // Don't ask me about the regex, it was way too long ago...
             // Shouldn't be that hard to figure out though...
-            const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
+            const desc = await asyncReplace(command.long_description, /{\/\S+(?: \S+)?}/g, replace_fn);
             field += `> \`${client.prefix}${command.name}\` - ${desc}\n`;
         }
     }
@@ -333,13 +339,10 @@ async function get_cmd_page(client: Client<true>, authorID: string, command: Ful
     const embed = new EmbedBuilder({
         title: `__Command ${cmd_tag}__`,
         color: Colors.Aqua,
-    }).setFooter(
-        {
-            text:
-                'Options surrounded with <> are required, and [] are optional.\n' +
-                'Send me a direct message to create a ticket anytime!',
-        },
-    );
+    }).setFooter({
+        text: 'Options surrounded with <> are required, and [] are optional.\n' +
+            'Send me a direct message to create a ticket anytime!',
+    });
 
     // Replace all `/command` with new shiny command mention.
     const replace_fn = (match: string) => Utils.get_rich_cmd(match.slice(2, -1), client);
@@ -366,7 +369,7 @@ async function get_cmd_page(client: Client<true>, authorID: string, command: Ful
     return { embeds: [embed], components: [row] };
 }
 
-export const help: SlashCommand = {
+export const help = new SlashCommandNoSubcommand({
     data: new SlashCommandBuilder()
         .setName('help')
         .addStringOption(option =>
@@ -379,7 +382,8 @@ export const help: SlashCommand = {
                 .setDescription('The category to jump to.'))
         .setDescription('Use me for help!'),
 
-    desc: 'What does {/help} do? Well, it shows you description messages.\n' +
+    long_description:
+        'What does {/help} do? Well, it shows you description messages.\n' +
         '...\n...\n...\n...\n...\n...\n...\n...\n... ' +
         '...   ...  ...like this one...',
 
@@ -395,15 +399,14 @@ export const help: SlashCommand = {
                         components: [
                             new ActionRowBuilder<TextInputBuilder>({
                                 components: [
-                                    new TextInputBuilder(
-                                        {
-                                            label: 'Name/Page #',
-                                            customId: 'value',
-                                            placeholder: 'Enter the name/page number to jump to...',
-                                            style: TextInputStyle.Short,
-                                            maxLength: 100,
-                                            required: true,
-                                        }),
+                                    new TextInputBuilder({
+                                        label: 'Name/Page #',
+                                        customId: 'value',
+                                        placeholder: 'Enter the name/page number to jump to...',
+                                        style: TextInputStyle.Short,
+                                        maxLength: 100,
+                                        required: true,
+                                    }),
                                 ],
                             }),
                         ],
@@ -414,15 +417,14 @@ export const help: SlashCommand = {
                         components: [
                             new ActionRowBuilder<TextInputBuilder>({
                                 components: [
-                                    new TextInputBuilder(
-                                        {
-                                            label: 'Name',
-                                            customId: 'value',
-                                            placeholder: 'Enter name of command...',
-                                            style: TextInputStyle.Short,
-                                            maxLength: 100,
-                                            required: true,
-                                        }),
+                                    new TextInputBuilder({
+                                        label: 'Name',
+                                        customId: 'value',
+                                        placeholder: 'Enter name of command...',
+                                        style: TextInputStyle.Short,
+                                        maxLength: 100,
+                                        required: true,
+                                    }),
                                 ],
                             }),
                         ],
@@ -430,31 +432,25 @@ export const help: SlashCommand = {
                 return interaction.showModal(input);
             } else if (page === 'help') {
                 if (cmdName === 'cmd') {
-                    return interaction.reply(
-                        {
-                            content:
-                                '📄: Search and jump to a specific page/category\n' +
-                                '🔍: Search and jump to a specific command\n' +
-                                '❓: This help message',
-                            ephemeral: true,
-                        },
-                    ).then(() => {
-                    });
+                    return interaction.reply({
+                        content:
+                            '📄: Search and jump to a specific page/category\n' +
+                            '🔍: Search and jump to a specific command\n' +
+                            '❓: This help message',
+                        ephemeral: true,
+                    }).then(Utils.VOID);
                 } else if (cmdName === 'cog') {
-                    return interaction.reply(
-                        {
-                            content:
-                                '⏪: First page\n' +
-                                '⬅️: Previous page\n' +
-                                '➡️: Next page\n' +
-                                '⏩: Last page\n' +
-                                '❓: This help message\n' +
-                                '📄: Search and jump to a specific page/category\n' +
-                                '🔍: Search and jump to a specific command',
-                            ephemeral: true,
-                        },
-                    ).then(() => {
-                    });
+                    return interaction.reply({
+                        content:
+                            '⏪: First page\n' +
+                            '⬅️: Previous page\n' +
+                            '➡️: Next page\n' +
+                            '⏩: Last page\n' +
+                            '❓: This help message\n' +
+                            '📄: Search and jump to a specific page/category\n' +
+                            '🔍: Search and jump to a specific command',
+                        ephemeral: true,
+                    }).then(Utils.VOID);
                 } else {
                     throw new Error(`Command type: ${cmdName} not found.`);
                 }
@@ -484,12 +480,10 @@ export const help: SlashCommand = {
                 // Either null or undefined, doesn't matter
                 if (!category) {
                     const error_embed = new EmbedBuilder({
-                        title: `No category with name \`${value.replaceAll('`',
-                            '\\`')}\` found.`,
+                        title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
                         color: Colors.Red,
                     });
-                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
-                    });
+                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
                 }
                 const { embeds, components, followUp } = await get_cog_page(
                     interaction.client, interaction.user.id, interaction.client.cogs.indexOf(category) + 1,
@@ -508,12 +502,10 @@ export const help: SlashCommand = {
             // Either null or undefined, doesn't matter
             if (!command) {
                 const error_embed = new EmbedBuilder({
-                    title: `No command with name \`${value.replaceAll('`',
-                        '\\`')}\` found.`,
+                    title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
                     color: Colors.Red,
                 });
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
-                });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
             }
             const res = await get_cmd_page(interaction.client, interaction.user.id, command);
             await interaction.editReply(res);
@@ -541,12 +533,10 @@ export const help: SlashCommand = {
                 return interaction.deleteReply();
             } else if (!command) {
                 const error_embed = new EmbedBuilder({
-                    title: `No command with name \`${commandName.replaceAll('`',
-                        '\\`')}\` found.`,
+                    title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
                     color: Colors.Red,
                 });
-                return interaction.editReply({ embeds: [error_embed] }).then(() => {
-                });
+                return interaction.editReply({ embeds: [error_embed] }).then(Utils.VOID);
             }
             res = await get_cmd_page(interaction.client, interaction.user.id, command);
         } else if (categoryName) {
@@ -560,16 +550,20 @@ export const help: SlashCommand = {
                 res = await get_cog_page(interaction.client, interaction.user.id, 1);
             } else if (!category) {
                 const error_embed = new EmbedBuilder({
-                    title: `No category with name \`${categoryName.replaceAll('`',
-                        '\\`')}\` found.`,
+                    title: `No category with name \`${categoryName.replaceAll(
+                        '`',
+                        '\\`',
+                    )}\` found.`,
                     color: Colors.Red,
                 });
                 res = await get_cog_page(interaction.client, interaction.user.id, 1);
                 interaction.followUp({ embeds: [error_embed], ephemeral: true });
             } else {
-                res = await get_cog_page(interaction.client,
+                res = await get_cog_page(
+                    interaction.client,
                     interaction.user.id,
-                    interaction.client.cogs.indexOf(category) + 1);
+                    interaction.client.cogs.indexOf(category) + 1,
+                );
             }
         } else {
             res = await get_cog_page(interaction.client, interaction.user.id, 1);
@@ -577,4 +571,4 @@ export const help: SlashCommand = {
         const { embeds, components } = res;
         await interaction.editReply({ embeds, components });
     },
-};
+});

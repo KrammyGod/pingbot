@@ -74,7 +74,11 @@ function loadFromFile() {
     for (const line of toParse) {
         // Remove first and last connector
         const [iid, name, _gender, origin, img, nimg] = line.split('|').map(x => x.trim()).slice(1, -1);
-        const gender = _gender === 'Female' ? _gender : (_gender === 'Male' ? _gender : 'Unknown');
+        const gender = _gender === 'Female' ?
+            _gender :
+            (
+                _gender === 'Male' ? _gender : 'Unknown'
+            );
         backupWaifus.push(new Waifu({ iid, name, gender, origin, img, nimg }));
     }
     return backupWaifus;
@@ -103,76 +107,84 @@ function center(str: string, size: number) {
 }
 
 if (require.main === module) {
-    (async () => {
-        const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);
-        let loadedWaifus: Waifu[];
-        try {
-            loadedWaifus = loadFromFile();
-        } catch (e) {
-            // File doesn't exist, ignore
-            loadedWaifus = [];
-        }
-        if (loadedWaifus.length) {
-            let confirmed = true;
-            for (const w of loadedWaifus) {
-                const found = waifus.find(waifu => waifu.iid === w.iid);
-                if (!found || !found.equal(w)) {
-                    confirmed = await confirm('Local differs from remote, continue? (y/n) ');
-                    break;
+    (
+        async () => {
+            const waifus = await query<WaifuDetails>('SELECT * FROM waifus ORDER BY name, iid').then(Waifu.fromRows);
+            let loadedWaifus: Waifu[];
+            try {
+                loadedWaifus = loadFromFile();
+            } catch (e) {
+                // File doesn't exist, ignore
+                loadedWaifus = [];
+            }
+            if (loadedWaifus.length) {
+                let confirmed = true;
+                for (const w of loadedWaifus) {
+                    const found = waifus.find(waifu => waifu.iid === w.iid);
+                    if (!found || !found.equal(w)) {
+                        confirmed = await confirm('Local differs from remote, continue? (y/n) ');
+                        break;
+                    }
+                }
+                if (!confirmed) {
+                    console.log('Aborting...');
+                    return;
                 }
             }
-            if (!confirmed) {
-                console.log('Aborting...');
-                return;
+            const writer = fs.createWriteStream(filePath);
+            const headers = ['iid', 'name', 'gender', 'origin', 'img', 'nimg'];
+            const maxIIDLength = Math.max(...waifus.map(w => w.iid.length)) + 2;
+            const maxNameLength = Math.max(...waifus.map(w => w.name.length)) + 2;
+            const maxOriginLength = Math.max(...waifus.map(w => w.origin.length)) + 2;
+            const maxGenderLength = 7 + 2; // 'Unknown'.length + 2
+            const maxImgLength = Math.max(...waifus.map(w => w.img.length)) + 2;
+            const maxNimgLength = Math.max(...waifus.map(w => w.nimg.length)) + 2;
+            const headerLengths = [
+                maxIIDLength, maxNameLength, maxGenderLength, maxOriginLength, maxImgLength, maxNimgLength,
+            ];
+            let headerStr = '';
+            for (let i = 0; i < headers.length; ++i) {
+                headerStr += `${verticalLine}${center(headers[i], headerLengths[i])}`;
             }
-        }
-        const writer = fs.createWriteStream(filePath);
-        const headers = ['iid', 'name', 'gender', 'origin', 'img', 'nimg'];
-        const maxIIDLength = Math.max(...waifus.map(w => w.iid.length)) + 2;
-        const maxNameLength = Math.max(...waifus.map(w => w.name.length)) + 2;
-        const maxOriginLength = Math.max(...waifus.map(w => w.origin.length)) + 2;
-        const maxGenderLength = 7 + 2; // 'Unknown'.length + 2
-        const maxImgLength = Math.max(...waifus.map(w => w.img.length)) + 2;
-        const maxNimgLength = Math.max(...waifus.map(w => w.nimg.length)) + 2;
-        const headerLengths = [
-            maxIIDLength, maxNameLength, maxGenderLength, maxOriginLength, maxImgLength, maxNimgLength,
-        ];
-        let headerStr = '';
-        for (let i = 0; i < headers.length; ++i) {
-            headerStr += `${verticalLine}${center(headers[i], headerLengths[i])}`;
-        }
-        // Header
-        writer.write(
-            `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
-            `${connector}${horizontalLine.repeat(maxGenderLength)}` +
-            `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
-            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n` +
-            `${headerStr}${verticalLine}\n` +
-            `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
-            `${connector}${horizontalLine.repeat(maxGenderLength)}` +
-            `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
-            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`,
-        );
-
-        // Body
-        for (const waifu of waifus) {
+            // Header
             writer.write(
-                `${verticalLine} ${waifu.iid.padEnd(maxIIDLength - 1)}` +
-                `${verticalLine} ${waifu.name.padEnd(maxNameLength - 1)}` +
-                `${verticalLine} ${waifu.gender.padEnd(maxGenderLength - 1)}` +
-                `${verticalLine} ${waifu.origin.padEnd(maxOriginLength - 1)}` +
-                `${verticalLine} ${waifu.img.padEnd(maxImgLength - 1)}` +
-                `${verticalLine} ${waifu.nimg.padEnd(maxNimgLength - 1)}${verticalLine}\n`,
+                `${connector + horizontalLine.repeat(maxIIDLength)}` +
+                `${connector}${horizontalLine.repeat(maxNameLength)}` +
+                `${connector}${horizontalLine.repeat(maxGenderLength)}` +
+                `${connector}${horizontalLine.repeat(maxOriginLength)}` +
+                `${connector}${horizontalLine.repeat(maxImgLength)}` +
+                `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n` +
+                `${headerStr}${verticalLine}\n` +
+                `${connector}${horizontalLine.repeat(maxIIDLength)}` +
+                `${connector}${horizontalLine.repeat(maxNameLength)}` +
+                `${connector}${horizontalLine.repeat(maxGenderLength)}` +
+                `${connector}${horizontalLine.repeat(maxOriginLength)}` +
+                `${connector}${horizontalLine.repeat(maxImgLength)}` +
+                `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`,
             );
-        }
 
-        // Footer
-        writer.write(
-            `${connector}${horizontalLine.repeat(maxIIDLength)}${connector}${horizontalLine.repeat(maxNameLength)}` +
-            `${connector}${horizontalLine.repeat(maxGenderLength)}` +
-            `${connector}${horizontalLine.repeat(maxOriginLength)}${connector}${horizontalLine.repeat(maxImgLength)}` +
-            `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`,
-        );
-        writer.end(() => pool.end());
-    })();
+            // Body
+            for (const waifu of waifus) {
+                writer.write(
+                    `${verticalLine} ${waifu.iid.padEnd(maxIIDLength - 1)}` +
+                    `${verticalLine} ${waifu.name.padEnd(maxNameLength - 1)}` +
+                    `${verticalLine} ${waifu.gender.padEnd(maxGenderLength - 1)}` +
+                    `${verticalLine} ${waifu.origin.padEnd(maxOriginLength - 1)}` +
+                    `${verticalLine} ${waifu.img.padEnd(maxImgLength - 1)}` +
+                    `${verticalLine} ${waifu.nimg.padEnd(maxNimgLength - 1)}${verticalLine}\n`,
+                );
+            }
+
+            // Footer
+            writer.write(
+                `${connector}${horizontalLine.repeat(maxIIDLength)}` +
+                `${connector}${horizontalLine.repeat(maxNameLength)}` +
+                `${connector}${horizontalLine.repeat(maxGenderLength)}` +
+                `${connector}${horizontalLine.repeat(maxOriginLength)}` +
+                `${connector}${horizontalLine.repeat(maxImgLength)}` +
+                `${connector}${horizontalLine.repeat(maxNimgLength)}${connector}\n`,
+            );
+            writer.end(() => pool.end());
+        }
+    )();
 }

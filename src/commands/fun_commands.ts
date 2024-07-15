@@ -16,20 +16,19 @@ import {
     ComponentType,
     ContextMenuCommandBuilder,
     EmbedBuilder,
-    InteractionReplyOptions,
     Message,
-    MessagePayloadOption,
     ModalBuilder,
     NewsChannel,
     OAuth2Scopes,
     PermissionsBitField,
     RepliableInteraction,
+    Serialized,
     SlashCommandBuilder,
     TextChannel,
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
-import type { CachedSlashCommand, ContextCommand, SlashCommand } from '@typings/commands';
+import { ContextCommand, SlashCommandNoSubcommand } from '@classes/commands';
 
 export const name = 'Fun';
 export const desc = 'This category contains all the commands for fun, or are informational.';
@@ -51,34 +50,29 @@ const images = [
     'https://i.imgur.com/Ldr5DBI.jpg',
     'https://i.imgur.com/q0jk1HQ.jpg',
 ];
-type CountPrivates = {
-    counter: Map<string, number>;
-};
-export const count: SlashCommand & CountPrivates = {
+export const count = new SlashCommandNoSubcommand<{ amt: number }>({
     data: new SlashCommandBuilder()
         .setName('count')
         .setDescription('Count me, because why not?'),
 
-    desc: 'Count how many times you wasted on this command!\n\n' +
+    long_description:
+        'Count how many times you wasted on this command!\n\n' +
         'Usage: `/count`',
-
-    counter: new Map(),
 
     async execute(interaction) {
         const id = interaction.user.id;
         await interaction.deferReply({ ephemeral: true });
-        if (!this.counter.has(id)) {
-            this.counter.set(id, 1);
-        }
-        const amt = this.counter.get(id)!;
-        this.counter.set(id, amt + 1);
+        let cache = await this.cache.get(id);
+        if (!cache) cache = { amt: 0 };
+        cache.amt++;
+        await this.cache.set(id, cache);
         const image = images[Math.floor(Math.random() * images.length)];
         await interaction.editReply({
-            content: `Hey there, its been ${amt} times already...\nTake this....`,
+            content: `Hey there, its been ${cache.amt} times already...\nTake this....`,
             embeds: [new EmbedBuilder().setImage(image).setColor('Random')],
         });
     },
-};
+});
 
 const invite_docs =
     `Get the invite link for the bot. 
@@ -104,11 +98,12 @@ __Permissions required:__
 
 Usage: \`/invite\``;
 
-export const invite: SlashCommand = {
+export const invite = new SlashCommandNoSubcommand({
     data: new SlashCommandBuilder()
         .setName('invite')
         .setDescription('Get the invite link for me! (See /help command: invite)'),
-    desc: invite_docs,
+
+    long_description: invite_docs,
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
@@ -118,21 +113,20 @@ export const invite: SlashCommand = {
             permissions: permissions,
             scopes: [OAuth2Scopes.Bot, OAuth2Scopes.ApplicationsCommands],
         });
-        await interaction.editReply(
-            {
-                content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
-                    'Please do not forget to use `/help command: invite` to verify permissions required!',
-            },
-        );
+        await interaction.editReply({
+            content: `Hey there, here's the [invite link](${url}) for the bot!\n` +
+                'Please do not forget to use `/help command: invite` to verify permissions required!',
+        });
     },
-};
+});
 
-export const support: SlashCommand = {
+export const support = new SlashCommandNoSubcommand({
     data: new SlashCommandBuilder()
         .setName('support')
         .setDescription('Join the support server!'),
 
-    desc: 'Join a server to hang out and bond with others over your favourite waifus!' +
+    long_description:
+        'Join a server to hang out and bond with others over your favourite waifus!' +
         '~~And get bot support if needed.~~\n' +
         'Usage: `/support`',
 
@@ -150,9 +144,9 @@ export const support: SlashCommand = {
             content: `Hey there, here's the [invite link](${link}) for the support server!\n`,
         });
     },
-};
+});
 
-export const getid: SlashCommand = {
+export const getid = new SlashCommandNoSubcommand({
     data: new SlashCommandBuilder()
         .setName('getid')
         .addStringOption(option =>
@@ -162,7 +156,8 @@ export const getid: SlashCommand = {
                 .setRequired(true))
         .setDescription('Get the discord ID of a user'),
 
-    desc: 'Get the discord ID of a user, so you can use it for all the anime commands!\n' +
+    long_description:
+        'Get the discord ID of a user, so you can use it for all the anime commands!\n' +
         'You can search for partial matches too!\n\n' +
         'Usage: `/getid user: <username>`\n\n' +
         '__**Options**__\n' +
@@ -178,7 +173,7 @@ export const getid: SlashCommand = {
             (client, query) => {
                 const u = client.users.cache.filter(u =>
                     u.displayName.toLowerCase().includes(query) ||
-                                                        u.tag.toLowerCase().includes(query),
+                    u.tag.toLowerCase().includes(query),
                 );
                 return u.map(u => ({ name: `@${u.username}`, id: u.id }));
             }, { context: query },
@@ -196,7 +191,7 @@ export const getid: SlashCommand = {
             await interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
         }
     },
-};
+});
 
 const all_collector_docs =
     `Edit your entries in the auto-collect system.
@@ -250,36 +245,26 @@ function get_collector_buttons(cmd_name: string, hoyo: HoyoStrings[], idx: strin
     return rows;
 }
 
-type HoyolabPrivates = {
-    input: ModalBuilder;
-    delete: (interaction: RepliableInteraction, id: string) => Promise<void>;
-    toggleNotify: (interaction: RepliableInteraction, type: string, g: string, idx: string) => Promise<void>;
-    getAccount: (interaction: RepliableInteraction, pageOrIdx: number | string) => Promise<InteractionReplyOptions>;
-};
-export const hoyolab: SlashCommand & HoyolabPrivates = {
-    data: new SlashCommandBuilder()
-        .setName('hoyolab')
-        .setDescription('Change hoyolab auto collector settings.'),
-
-    desc: all_collector_docs + 'Usage: `/hoyolab`',
-
+const hoyolab_privates = {
     input: new ModalBuilder({
         title: 'Add to auto-collector',
         customId: 'hoyolab',
         components: [
             new ActionRowBuilder<TextInputBuilder>({
-                components: [new TextInputBuilder({
-                    label: 'Cookie',
-                    customId: 'cookie',
-                    placeholder: 'Enter your hoyolab cookie here.',
-                    style: TextInputStyle.Short,
-                    required: true,
-                })],
+                components: [
+                    new TextInputBuilder({
+                        label: 'Cookie',
+                        customId: 'cookie',
+                        placeholder: 'Enter your hoyolab cookie here.',
+                        style: TextInputStyle.Short,
+                        required: true,
+                    }),
+                ],
             }),
         ],
     }),
 
-    async delete(interaction, id) {
+    async delete(interaction: RepliableInteraction, id: string, name: string) {
         const buttons = [
             new ButtonBuilder({
                 label: 'Yes!',
@@ -295,16 +280,18 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         ];
         const message = await interaction.followUp({
             content: '# Are you sure you want to delete this account?',
-            components: [new ActionRowBuilder<ButtonBuilder>({
-                components: buttons,
-            })],
+            components: [
+                new ActionRowBuilder<ButtonBuilder>({
+                    components: buttons,
+                }),
+            ],
             ephemeral: true,
         });
 
         const confirmed = await message.awaitMessageComponent({
             componentType: ComponentType.Button,
             time: 10 * 60 * 1000, // 10 mins before interaction expires
-        }).then(async i => {
+        }).then(i => {
             if (i.customId === 'hcancel') return;
             return true;
         }).catch(() => undefined);
@@ -315,21 +302,19 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         if (!res) {
             return interaction.followUp({
                 content: 'Failed to delete cookie, the embed is out of date!\n' +
-                                                'Please make sure to only use this command once!',
+                    'Please make sure to only use this command once!',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
-        const retval = await this.getAccount(interaction, 1);
+        const retval = await hoyolab_privates.getAccount(interaction, 1, name);
         await interaction.editReply(retval);
         return interaction.followUp({
             content: 'Successfully deleted cookie!',
             ephemeral: true,
-        }).then(() => {
-        });
+        }).then(Utils.VOID);
     },
 
-    async getAccount(interaction, pageOrIdx) {
+    async getAccount(interaction: RepliableInteraction, pageOrIdx: number | string, name: string) {
         const max_pages = await DB.fetchAutocollectLength(interaction.user.id);
         let account;
         // If there exists an account, and we're getting a page #
@@ -399,12 +384,12 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
 
         function getStatus(notifyStatus: string | undefined) {
             switch (notifyStatus) {
-                case 'none':
-                    return '> **Status:** *Disabled* ❌\n';
-                case 'checkin':
-                    return '> **Status:** *Check-in only* 🔕\n';
-                case 'notify':
-                    return '> **Status:** *Notified* 🔔\n';
+            case 'none':
+                return '> **Status:** *Disabled* ❌\n';
+            case 'checkin':
+                return '> **Status:** *Check-in only* 🔕\n';
+            case 'notify':
+                return '> **Status:** *Notified* 🔔\n';
             }
         }
 
@@ -415,41 +400,48 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
         });
         desc += retval;
         embed.setDescription(desc);
-        components.push(...get_collector_buttons(this.data.name, Object.keys(games) as HoyoStrings[], account.idx));
+        components.push(...get_collector_buttons(name, Object.keys(games) as HoyoStrings[], account.idx));
         return { embeds: [embed], components };
     },
 
-    async toggleNotify(interaction, type, g, idx) {
+    async toggleNotify(interaction: RepliableInteraction, type: string, g: string, idx: string) {
         let game: 'honkai' | 'genshin' | 'star_rail' | undefined;
         let toggle: 'none' | 'checkin' | 'notify' | undefined;
         switch (type) {
-            case 'd':
-                toggle = 'none';
-                break;
-            case 'c':
-                toggle = 'checkin';
-                break;
-            case 'n':
-                toggle = 'notify';
-                break;
-            default:
-                throw new Error(`Invalid type ${type}!`);
+        case 'd':
+            toggle = 'none';
+            break;
+        case 'c':
+            toggle = 'checkin';
+            break;
+        case 'n':
+            toggle = 'notify';
+            break;
+        default:
+            throw new Error(`Invalid type ${type}!`);
         }
         switch (g) {
-            case 'h':
-                game = 'honkai';
-                break;
-            case 'g':
-                game = 'genshin';
-                break;
-            case 's':
-                game = 'star_rail';
-                break;
-            default:
-                throw new Error(`Invalid game ${g}!`);
+        case 'h':
+            game = 'honkai';
+            break;
+        case 'g':
+            game = 'genshin';
+            break;
+        case 's':
+            game = 'star_rail';
+            break;
+        default:
+            throw new Error(`Invalid game ${g}!`);
         }
         return DB.toggleAutocollect(interaction.user.id, game!, toggle!, idx);
     },
+};
+export const hoyolab = new SlashCommandNoSubcommand({
+    data: new SlashCommandBuilder()
+        .setName('hoyolab')
+        .setDescription('Change hoyolab auto collector settings.'),
+
+    long_description: all_collector_docs + 'Usage: `/hoyolab`',
 
     async textInput(interaction) {
         const cookie = interaction.fields.getTextInputValue('cookie').trim().replaceAll(/^'+|'+$/g, '');
@@ -459,20 +451,18 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
         if (!res) {
             return interaction.followUp({
                 content: 'Failed to add account to autocollector.\nEither you reached the max of 5 accounts, ' +
-                                                'or you are entering a duplicate cookie.',
+                    'or you are entering a duplicate cookie.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         // Adding new account always brings user to first page to properly reload everything.
-        const retval = await this.getAccount(interaction, 1);
+        const retval = await hoyolab_privates.getAccount(interaction, 1, this.data.name);
         await interaction.editReply(retval);
         await interaction.followUp({
             content: 'Successfully added account to autocollector!',
@@ -483,56 +473,32 @@ export const hoyolab: SlashCommand & HoyolabPrivates = {
     async buttonReact(interaction) {
         const [action, id] = interaction.customId.split('/').slice(2);
         if (action === 'add') {
-            return interaction.showModal(this.input);
+            return interaction.showModal(hoyolab_privates.input);
         }
         const page = parseInt(action);
         await interaction.deferUpdate();
         if (!isNaN(page)) {
-            const retval = await this.getAccount(interaction, page);
-            return interaction.editReply(retval).then(() => {
-            });
+            const retval = await hoyolab_privates.getAccount(interaction, page, this.data.name);
+            return interaction.editReply(retval).then(Utils.VOID);
         } else if (action === 'delete') {
-            return this.delete(interaction, id);
+            return hoyolab_privates.delete(interaction, id, this.data.name);
         }
         // Reached here means it is some sort of toggle.
-        await this.toggleNotify(interaction, action[0], action[1], id);
-        const retval = await this.getAccount(interaction, id);
+        await hoyolab_privates.toggleNotify(interaction, action[0], action[1], id);
+        const retval = await hoyolab_privates.getAccount(interaction, id, this.data.name);
         await interaction.editReply(retval);
     },
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
-        const retval = await this.getAccount(interaction, 1);
+        const retval = await hoyolab_privates.getAccount(interaction, 1, this.data.name);
         await interaction.editReply(retval);
     },
-};
+});
 
-type PollPrivates = {
-    getPollEditor: (id: string) => Promise<InteractionReplyOptions>;
-    getPoll: (client: Client, id: string) => Promise<MessagePayloadOption>;
-};
-type PollObject = {
-    uid: string; // User ID
-    cid: string; // Channel ID
-    mid?: string; // Message ID (for editing)
-    title: string;
-    choices: { name: string, users: string[] }[];
-    expires?: Date;
-};
-export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
-    data: new SlashCommandBuilder()
-        .setName('poll')
-        .setDescription('Start a poll for users to vote on.')
-        .setDMPermission(false),
-
-    desc: 'Start a poll that allows users to vote for a choice!\n' +
-        'The maximum number of options is 25.\n\n' +
-        'Usage: `/poll`',
-
-    cache: new DB.Cache('poll'),
-
-    async getPollEditor(id) {
-        const pollInfo = await this.cache.get(id);
+const poll_privates = {
+    async getPollEditor(id: string) {
+        const pollInfo = await poll.cache.get(id);
         let desc = '';
         desc += `**Poll Title:**\n${pollInfo!.title || '*(empty)*'}\n\n`;
         desc += `**Destination Channel:**\n<#${pollInfo!.cid}>\n\n`;
@@ -595,8 +561,8 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         return { embeds: [embed], components };
     },
 
-    async getPoll(client: Client, id) {
-        const pollInfo = await this.cache.get(id);
+    async getPoll(client: Client, id: string) {
+        const pollInfo = await poll.cache.get(id);
         const user = await Utils.fetch_user_fast(client, pollInfo!.uid, u => {
             return u ? { name: u.displayName, avatar: u.displayAvatarURL() } : undefined;
         });
@@ -605,7 +571,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             if (new Date >= new Date(pollInfo!.expires)) {
                 pollInfo!.title = `(ENDED) ${pollInfo!.title}`;
                 desc += `**This poll has ended on ${Utils.timestamp(new Date())}**\n\n`;
-                await this.cache.delete(id); // Remove from cache
+                await poll.cache.delete(id); // Remove from cache
             } else {
                 desc += `**This poll expires on ${Utils.timestamp(new Date(pollInfo!.expires))}**\n\n`;
             }
@@ -643,15 +609,42 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
         return { embeds: [embed], components };
     },
 
+    deserialize(pollInfoSerialized: Serialized<PollObject>) {
+        return {
+            ...pollInfoSerialized,
+            expires: pollInfoSerialized.expires ? new Date(pollInfoSerialized.expires) : undefined,
+        };
+    },
+};
+type PollObject = {
+    uid: string; // User ID
+    cid: string; // Channel ID
+    mid?: string; // Message ID (for editing)
+    title: string;
+    choices: { name: string, users: string[] }[];
+    expires?: Date;
+};
+export const poll = new SlashCommandNoSubcommand<PollObject>({
+    data: new SlashCommandBuilder()
+        .setName('poll')
+        .setDescription('Start a poll for users to vote on.')
+        .setDMPermission(false),
+
+    long_description:
+        'Start a poll that allows users to vote for a choice!\n' +
+        'The maximum number of options is 25.\n\n' +
+        'Usage: `/poll`',
+
     async textInput(interaction) {
         await interaction.deferUpdate();
         const action = interaction.customId.split('/')[1];
-        let pollInfo = await this.cache.get(interaction.message!.id);
-        if (!pollInfo) return interaction.message?.delete().then(() => {
-        }, () => {
-        }); // Somehow lost cache
+
+        let pollInfo = await this.cache.get(interaction.message!.id, poll_privates.deserialize);
+        // Somehow lost cache, delete poll
+        if (!pollInfo) return interaction.message?.delete().then(Utils.VOID, Utils.VOID);
+        // Not sure why this is needed, maybe to get the most up to date?
         if (pollInfo.mid) {
-            pollInfo = await this.cache.get(pollInfo.mid) ?? pollInfo;
+            pollInfo = await this.cache.get(pollInfo.mid, poll_privates.deserialize) ?? pollInfo;
         }
         if (action === 'title') {
             pollInfo.title = interaction.fields.getTextInputValue('title');
@@ -661,18 +654,15 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             if (!choices.length) {
                 return interaction.followUp({
                     content: 'You must provide at least one choice.', ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             } else if (choices.length > 25) {
                 return interaction.followUp({
                     content: 'You cannot provide more than 25 choices.', ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             } else if (new Set(choices).size !== choices.length) {
                 return interaction.followUp({
                     content: 'All choices must be unique.', ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             pollInfo.choices = choices.map(c => {
                 const prevChoice = pollInfo!.choices.find(x => x.name === c);
@@ -686,14 +676,12 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
                         ephemeral: true,
-                    }).then(() => {
-                    });
+                    }).then(Utils.VOID);
                 } else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
                         ephemeral: true,
-                    }).then(() => {
-                    });
+                    }).then(Utils.VOID);
                 }
                 pollInfo.expires = date;
             } else {
@@ -703,22 +691,20 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             throw new Error(`Invalid action ${action}!`);
         }
         await this.cache.set(interaction.message!.id, pollInfo);
-        const retval = await this.getPollEditor(interaction.message!.id);
+        const retval = await poll_privates.getPollEditor(interaction.message!.id);
         await interaction.editReply(retval);
     },
 
     async buttonReact(interaction) {
         const action = interaction.customId.split('/')[2];
-        const pollInfo = await this.cache.get(interaction.message.id);
-        if (!pollInfo) return interaction.message.delete().then(() => {
-        }, () => {
-        }); // Somehow lost cache
+        const pollInfo = await this.cache.get(interaction.message.id, poll_privates.deserialize);
+        if (!pollInfo) return interaction.message.delete().then(Utils.VOID, Utils.VOID); // Somehow lost cache
         const idx = parseInt(action);
         if (isNaN(idx)) {
             const send = async () => {
                 await interaction.deferUpdate();
                 const channel = await interaction.client.channels.fetch(pollInfo.cid) as TextChannel;
-                const { embeds, components } = await this.getPoll(interaction.client, interaction.message.id);
+                const { embeds, components } = await poll_privates.getPoll(interaction.client, interaction.message.id);
                 let message: Message | undefined;
                 if (pollInfo.mid) {
                     // This means that we are editing the poll.
@@ -733,9 +719,7 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                     await interaction.deleteReply().catch(() => {
                         // If we can't delete the reply, we can't delete the original message either.
                         // So we just edit it to remove the buttons.
-                        return interaction.message.edit({ embeds, components: [] }).then(() => {
-                        }, () => {
-                        });
+                        return interaction.message.edit({ embeds, components: [] }).then(Utils.VOID, Utils.VOID);
                     });
                 } else {
                     message = await channel.send({ embeds, components });
@@ -751,27 +735,30 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
 
             const input = new ModalBuilder();
             switch (action) {
-                case 'title':
-                    input.setTitle('Edit Poll Title')
-                        .setCustomId('poll/title')
-                        .addComponents(
-                            new ActionRowBuilder({
-                                components: [new TextInputBuilder({
+            case 'title':
+                input.setTitle('Edit Poll Title')
+                    .setCustomId('poll/title')
+                    .addComponents(
+                        new ActionRowBuilder({
+                            components: [
+                                new TextInputBuilder({
                                     label: 'Set New Title',
                                     customId: 'title',
                                     placeholder: 'Enter the new title here.',
                                     style: TextInputStyle.Short,
                                     required: true,
-                                })],
-                            }),
-                        );
-                    return interaction.showModal(input);
-                case 'add':
-                    input.setTitle('Edit Poll Choices')
-                        .setCustomId('poll/add')
-                        .addComponents(
-                            new ActionRowBuilder({
-                                components: [new TextInputBuilder({
+                                }),
+                            ],
+                        }),
+                    );
+                return interaction.showModal(input);
+            case 'add':
+                input.setTitle('Edit Poll Choices')
+                    .setCustomId('poll/add')
+                    .addComponents(
+                        new ActionRowBuilder({
+                            components: [
+                                new TextInputBuilder({
                                     label: 'Add New Choices',
                                     customId: 'choice',
                                     value: pollInfo.choices.map(
@@ -779,16 +766,18 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     placeholder: 'Enter choices here, separated by newlines.',
                                     style: TextInputStyle.Paragraph,
                                     required: true,
-                                })],
-                            }),
-                        );
-                    return interaction.showModal(input);
-                case 'expiry':
-                    input.setTitle('Edit Poll Expiry')
-                        .setCustomId('poll/expiry')
-                        .addComponents(
-                            new ActionRowBuilder({
-                                components: [new TextInputBuilder({
+                                }),
+                            ],
+                        }),
+                    );
+                return interaction.showModal(input);
+            case 'expiry':
+                input.setTitle('Edit Poll Expiry')
+                    .setCustomId('poll/expiry')
+                    .addComponents(
+                        new ActionRowBuilder({
+                            components: [
+                                new TextInputBuilder({
                                     label: 'Set New Expiry (Leave blank to remove)',
                                     customId: 'expiry',
                                     value: pollInfo.expires ?
@@ -797,14 +786,15 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
                                     placeholder: 'Enter the date/relative time in UTC/GMT.',
                                     style: TextInputStyle.Short,
                                     required: false,
-                                })],
-                            }),
-                        );
-                    return interaction.showModal(input);
-                case 'send':
-                    return send();
-                default:
-                    throw new Error(`Invalid action ${action}!`);
+                                }),
+                            ],
+                        }),
+                    );
+                return interaction.showModal(input);
+            case 'send':
+                return send();
+            default:
+                throw new Error(`Invalid action ${action}!`);
             }
         }
 
@@ -827,36 +817,30 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             pollInfo.choices[idx].users.push(uid);
         }
         await this.cache.set(interaction.message.id, pollInfo);
-        const retval = await this.getPoll(interaction.client, interaction.message.id);
+        const retval = await poll_privates.getPoll(interaction.client, interaction.message.id);
         await interaction.editReply(retval);
     },
 
     async menuReact(interaction) {
         await interaction.deferUpdate();
-        const pollInfo = await this.cache.get(interaction.message.id);
-        if (!pollInfo) return interaction.message.delete().then(() => {
-        }, () => {
-        }); // Somehow lost cache
-        const channel = (
-            interaction as ChannelSelectMenuInteraction
-        ).channels.first() as TextChannel | NewsChannel;
+        const pollInfo = await this.cache.get(interaction.message.id, poll_privates.deserialize);
+        if (!pollInfo) return interaction.message.delete().then(Utils.VOID, Utils.VOID); // Somehow lost cache
+        const channel = (interaction as ChannelSelectMenuInteraction).channels.first() as TextChannel | NewsChannel;
         if (!channel.permissionsFor(interaction.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         } else if (!channel.permissionsFor(interaction.client.user.id)!.has(PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
 
         pollInfo.cid = channel.id;
         await this.cache.set(interaction.message.id, pollInfo);
-        const retval = await this.getPollEditor(interaction.message.id);
+        const retval = await poll_privates.getPollEditor(interaction.message.id);
         await interaction.editReply(retval);
     },
 
@@ -869,56 +853,59 @@ export const poll: CachedSlashCommand<PollObject> & PollPrivates = {
             title: '',
             choices: [],
         }, Utils.date_after_hours(24)); // Expires in 24 hours.
-        const retval = await this.getPollEditor(id);
+        const retval = await poll_privates.getPollEditor(id);
         await interaction.editReply(retval);
     },
-};
+});
 
-export const poll_edit: ContextCommand = {
+export const poll_edit = new ContextCommand({
     data: new ContextMenuCommandBuilder()
         .setName('Edit Poll')
         .setType(ApplicationCommandType.Message),
+
+    long_description: 'Edit a poll that you have created, as a message context command.',
 
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand()) return;
         await interaction.deferReply({ ephemeral: true });
         const thisId = await interaction.fetchReply().then(m => m.id);
         const id = interaction.targetId;
-        const pollInfo = await poll.cache.get(id);
+        const pollInfo = await poll.cache.get(id, poll_privates.deserialize);
         // Cache outdated, ignore
         if (!pollInfo) {
             return interaction.deleteReply();
         } else if (pollInfo.uid !== interaction.user.id) {
             return interaction.editReply({
                 content: 'You are not the owner of this poll!',
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         // Create a new edit dialog, and make it expire in 24 hours.
         await poll.cache.set(thisId, pollInfo, Utils.date_after_hours(24));
-        const retval = await poll.getPollEditor(thisId);
+        const retval = await poll_privates.getPollEditor(thisId);
         await interaction.editReply(retval);
     },
-};
+});
 
-export const poll_end: ContextCommand = {
+export const poll_end = new ContextCommand({
     data: new ContextMenuCommandBuilder()
         .setName('End Poll')
         .setType(ApplicationCommandType.Message),
+
+    long_description: 'End a poll that you have created, as a message context command.',
 
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand()) return;
         await interaction.deferReply({ ephemeral: true });
         const id = interaction.targetId;
-        const pollInfo = await poll.cache.get(id);
+        const pollInfo = await poll.cache.get(id, poll_privates.deserialize);
         // Cache outdated, ignore
         if (!pollInfo) {
             return interaction.deleteReply();
         }
         pollInfo.expires = new Date();
         await poll.cache.set(id, pollInfo);
-        const { embeds } = await poll.getPoll(interaction.client, id);
+        const { embeds } = await poll_privates.getPoll(interaction.client, id);
         await interaction.targetMessage.edit({ embeds, components: [] });
         return interaction.deleteReply();
     },
-};
+});

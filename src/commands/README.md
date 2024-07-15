@@ -12,6 +12,7 @@ be an updated list of files, however effort will be made to keep it updated.
   entertainment. This file contains all the commands listed under "Fun" in the help command.
 - [help_command.ts](help_command.ts): A complex custom help slash command that displays all commands in an interactive
   and easy to read format.
+- [index.ts](index.ts): The entry point for all commands. This file is used to register all commands in the bot.
 - [minigame_commands.ts](minigame_commands.ts): A compilation of mini-games in the form of slash commands that uses the
   currency of the anime character system to play. This file contains all the commands listed under "Minigames" in the
   help command.

@@ -65,34 +65,34 @@ class HoyoAccountInfo {
         const gameInfo = this.list.find(g => g.game_id === game_id);
         let game_name;
         switch (game_id) {
-            case 1:
-                game_name = 'Honkai Impact 3rd';
-                break;
-            case 2:
-                game_name = 'Genshin Impact';
-                break;
-            case 6:
-                game_name = 'Honkai Star Rail';
-                break;
-            default:
-                game_name = 'Unknown Game';
+        case 1:
+            game_name = 'Honkai Impact 3rd';
+            break;
+        case 2:
+            game_name = 'Genshin Impact';
+            break;
+        case 6:
+            game_name = 'Honkai Star Rail';
+            break;
+        default:
+            game_name = 'Unknown Game';
         }
         if (!gameInfo) return null;
         let nickname = gameInfo.nickname;
         // Entire nickname is empty, replace with placeholder
         if (nickname.match(/^[\s\u{3164}]+$/u)) {
             switch (game_id) {
-                case 1:
-                    nickname = 'Captain';
-                    break;
-                case 2:
-                    nickname = 'Traveler';
-                    break;
-                case 6:
-                    nickname = 'Nameless';
-                    break;
-                default:
-                    game_name = 'Empty';
+            case 1:
+                nickname = 'Captain';
+                break;
+            case 2:
+                nickname = 'Traveler';
+                break;
+            case 6:
+                nickname = 'Nameless';
+                break;
+            default:
+                game_name = 'Empty';
             }
         }
         return `**${game_name}:**\n` +
