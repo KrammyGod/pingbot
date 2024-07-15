@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContextCommand = exports.SlashSubcommand = exports.SlashSubcommandGroup = exports.SlashCommandWithSubcommand = exports.SlashCommandNoSubcommand = exports.MessageCommand = void 0;
+const util_1 = require("util");
 const database_1 = require("../modules/database");
-const DEFAULT_COMMAND_FUNCTION = async (...args) => {
+const DEFAULT_COMMAND_FUNCTION = () => {
     // We guarantee that the last argument is the command object based on usage
-    throw new Error(`No function defined for ${args}`);
+    throw new Error(`No function defined for ${(0, util_1.inspect)(this)}`);
 };
 var CommandType;
 (function (CommandType) {

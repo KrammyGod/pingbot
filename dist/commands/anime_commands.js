@@ -191,8 +191,7 @@ const animes_privates = {
                 else {
                     field += '✳️ ';
                     if (authorID === target.id) {
-                        const total_gain = (anime.count -
-                            (completed.get(anime.origin) ?? 0)) * 100;
+                        const total_gain = (anime.count - (completed.get(anime.origin) ?? 0)) * 100;
                         // Add if there exists an uncollected series.
                         menu.setPlaceholder('Click me to claim bonuses!')
                             .addOptions({
