@@ -29,35 +29,20 @@ const Utils = __importStar(require("../modules/utils"));
 const Purge = __importStar(require("../modules/purge_utils"));
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
+const commands_1 = require("../classes/commands");
 exports.name = 'Moderation';
 exports.desc = 'Helpful bunch of commands for moderators who want an easier time.';
-exports.purge = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('purge')
-        .addStringOption(options => options
-        .setName('amount')
-        .setDescription('Amount of messages to delete.')
-        .setRequired(true))
-        .addUserOption(options => options
-        .setName('user')
-        .setDescription('User to filter messages (only delete from this user).'))
-        .setDescription('Purge messages from a channel.')
-        .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageMessages),
-    desc: 'Want an easy way to purge any amount of message? You came to the right command!\n\n' +
+const purge_privates = {
+    buttons: new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('purge/confirm').setLabel('Yes!').setEmoji('🚮').setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder().setCustomId('purge/cancel').setLabel('No').setStyle(discord_js_1.ButtonStyle.Secondary)),
+};
+exports.purge = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder().setName('purge').addStringOption(options => options.setName('amount').setDescription('Amount of messages to delete.').setRequired(true)).addUserOption(options => options.setName('user').setDescription('User to filter messages (only delete from this user).')).setDescription('Purge messages from a channel.').setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageMessages),
+    long_description: 'Want an easy way to purge any amount of message? You came to the right command!\n\n' +
         'Usage: `/purge amount: <amount> user: [user]`\n\n' +
         '__**Options**__\n' +
         '*amount:* The amount of messages to delete. Enter a number, or `all`\n' +
         '*user:* Delete only messages sent by this user. (Default: everyone)\n\n' +
         'Examples: `/purge amount: all`, `/purge amount: 5 user: @krammygod`',
-    buttons: new discord_js_1.ActionRowBuilder()
-        .addComponents(new discord_js_1.ButtonBuilder()
-        .setCustomId('purge/confirm')
-        .setLabel('Yes!')
-        .setEmoji('🚮')
-        .setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder()
-        .setCustomId('purge/cancel')
-        .setLabel('No')
-        .setStyle(discord_js_1.ButtonStyle.Secondary)),
     async execute(interaction) {
         const message = await interaction.reply({
             content: 'Performing intensive calculations...',
@@ -67,20 +52,19 @@ exports.purge = {
         // amount being NaN means all is true.
         const amt = interaction.options.getString('amount', true);
         const amount = parseInt(amt);
-        if (amt.toLowerCase() !== 'all' && (isNaN(amount) || amount <= 0)) {
-            return interaction.editReply({ content: 'Enter a positive number.' }).then(() => {
-            });
+        if (amt.toLowerCase() !==
+            'all' &&
+            (isNaN(amount) || amount <= 0)) {
+            return interaction.editReply({ content: 'Enter a positive number.' }).then(Utils.VOID);
         }
         const user = interaction.options.getUser('user');
         if (interaction.channel.isDMBased() && !interaction.inGuild()) {
             // DMs
             if (isNaN(amount)) {
-                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(() => {
-                });
+                return interaction.editReply({ content: "Can't delete all messages in DMs." }).then(Utils.VOID);
             }
             const deleted = await Purge.purge_from_dm(interaction.channel, amount);
-            return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` })
-                .then(m => {
+            return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` }).then(m => {
                 setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000);
             });
         }
@@ -92,16 +76,14 @@ exports.purge = {
             return interaction.editReply({
                 content: 'You do not have permission to purge.\n' +
                     'You need the `Manage Messages` permission.',
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ManageMessages)) {
             return interaction.editReply({
                 content: "I don't have permission to purge.\n" +
                     'I need the `Manage Messages` permission.',
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         // Purge all, or anything over 100 messages, really
         if (isNaN(amount) || amount >= 100) {
@@ -110,15 +92,13 @@ exports.purge = {
                     `you want to delete ${isNaN(amount) ?
                         'all' :
                         amount} messages?`,
-                components: [this.buttons],
+                components: [purge_privates.buttons],
             });
             const confirmed = await buttonMessage.awaitMessageComponent({
                 componentType: discord_js_1.ComponentType.Button,
                 filter: i => i.user.id === interaction.user.id,
                 time: 60_000,
-            })
-                .then(i => i.customId === 'purge/confirm')
-                .catch(() => false);
+            }).then(i => i.customId === 'purge/confirm').catch(() => false);
             if (!confirmed)
                 return interaction.deleteReply();
             await interaction.editReply({ components: [] });
@@ -131,23 +111,19 @@ exports.purge = {
                 return interaction.editReply({
                     content: 'You do not have permission to purge all.\n' +
                         'You need the `Manage Channels` permission.',
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
-            else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
-                .has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
+            else if (!interaction.channel.permissionsFor(interaction.guild.members.me).has(discord_js_1.PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.editReply({
                     content: "I don't have permission to purge all.\n" +
                         'I need the `Manage Channels` permission.',
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             // Check to satisfy typescript
             if (interaction.channel.isThread()) {
                 return interaction.editReply({
                     content: 'To purge all in threads, just simply delete the thread.',
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             const new_channel = await Purge.purge_clean_channel(interaction.channel).catch(() => {
                 interaction.editReply({
@@ -155,11 +131,9 @@ exports.purge = {
                 });
                 throw new exceptions_1.PermissionError();
             });
-            return new_channel.send({ content: `${interaction.user} Purged all messages.` })
-                .then(msg => {
+            return new_channel.send({ content: `${interaction.user} Purged all messages.` }).then(msg => {
                 setTimeout(() => msg.delete(), 3000);
-            }).catch(() => {
-            });
+            }).catch(Utils.VOID);
         }
         else if (!interaction.channel.permissionsFor(interaction.guild.members.me)
             .has(discord_js_1.PermissionsBitField.Flags.ReadMessageHistory)) {
@@ -167,18 +141,17 @@ exports.purge = {
             return interaction.editReply({
                 content: "I don't have permission to purge here.\n" +
                     'I need the `Read Message History` permission.',
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         const user_filter = (m) => !user || m.author.id === user.id;
         // Use our handy helper to purge for us.
         const deleted = await Purge.purge_from_channel(interaction.channel, amount, user_filter);
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
-            .then(m => setTimeout(() => m.delete(), 3000)).catch(() => {
-        });
+            .then(m => setTimeout(() => m.delete(), 3000))
+            .catch(Utils.VOID);
     },
-};
+});
 const main_menu = {
     buildEmbeds(guild) {
         let description = 'Use the menu below to select a setting to edit.\n\n**Current Settings:**\n\n';
@@ -204,24 +177,22 @@ const main_menu = {
             description += 'no role.\n';
         }
         description += `\n__Emoji Replacement:__ **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
-        return [new discord_js_1.EmbedBuilder({
+        return [
+            new discord_js_1.EmbedBuilder({
                 title: 'Guild Settings',
                 color: discord_js_1.Colors.Blue,
                 description,
-            })];
+            }),
+        ];
     },
     buildComponents(userID) {
-        return [new discord_js_1.ActionRowBuilder()
-                .addComponents(new discord_js_1.StringSelectMenuBuilder()
-                .addOptions(new discord_js_1.StringSelectMenuOptionBuilder()
-                .setLabel('Edit welcome message for new members')
-                .setValue('welcome_menu'), new discord_js_1.StringSelectMenuOptionBuilder()
-                .setLabel('Emoji Replacement')
-                .setValue('emoji_menu'))
+        return [
+            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.StringSelectMenuBuilder().addOptions(new discord_js_1.StringSelectMenuOptionBuilder().setLabel('Edit welcome message for new members').setValue('welcome_menu'), new discord_js_1.StringSelectMenuOptionBuilder().setLabel('Emoji Replacement').setValue('emoji_menu'))
                 .setPlaceholder('Select a setting to edit...')
                 .setCustomId(`guild/${userID}/main_menu`)
                 .setMinValues(1)
-                .setMaxValues(1))];
+                .setMaxValues(1)),
+        ];
     },
     buttonReact() {
         throw new Error('/guild: main_menu does not have button reactions!');
@@ -257,36 +228,28 @@ const welcome_menu = {
         else {
             description += '*No role found.*\n';
         }
-        return [new discord_js_1.EmbedBuilder({
+        return [
+            new discord_js_1.EmbedBuilder({
                 title: 'Welcome Settings',
                 color: discord_js_1.Colors.Blue,
                 description,
                 footer: { text: 'Note: Click ❓ to see dynamic welcome message options.' },
-            })];
+            }),
+        ];
     },
     buildComponents(userID, guild) {
         return [
-            new discord_js_1.ActionRowBuilder()
-                .addComponents(new discord_js_1.ButtonBuilder()
-                .setEmoji('📝')
-                .setCustomId(`guild/${userID}/welcome_menu/editmsg`)
-                .setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder()
-                .setEmoji('🔙')
+            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setEmoji('📝').setCustomId(`guild/${userID}/welcome_menu/editmsg`).setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder().setEmoji('🔙')
                 .setCustomId(`guild/${userID}/welcome_menu/back`)
-                .setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder()
-                .setEmoji('❓')
+                .setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder().setEmoji('❓')
                 .setCustomId(`guild/${userID}/welcome_menu/help`)
                 .setStyle(discord_js_1.ButtonStyle.Secondary)),
-            new discord_js_1.ActionRowBuilder()
-                .addComponents(new discord_js_1.ChannelSelectMenuBuilder()
-                .setCustomId(`guild/${userID}/welcome_menu/channel`)
+            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ChannelSelectMenuBuilder().setCustomId(`guild/${userID}/welcome_menu/channel`)
                 .setPlaceholder('Select a channel...')
                 .setDefaultChannels(guild.welcome_channelid ? [guild.welcome_channelid] : [])
                 .setMinValues(0)
                 .setMaxValues(1)),
-            new discord_js_1.ActionRowBuilder()
-                .addComponents(new discord_js_1.RoleSelectMenuBuilder()
-                .setCustomId(`guild/${userID}/welcome_menu/role`)
+            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.RoleSelectMenuBuilder().setCustomId(`guild/${userID}/welcome_menu/role`)
                 .setPlaceholder('Select a role...')
                 .setDefaultRoles(guild.welcome_roleid ? [guild.welcome_roleid] : [])
                 .setMinValues(0)
@@ -299,8 +262,10 @@ const welcome_menu = {
                 const input = new discord_js_1.ModalBuilder({
                     title: 'Change Welcome Message',
                     custom_id: 'guild/0/welcome_menu/msg',
-                    components: [new discord_js_1.ActionRowBuilder({
-                            components: [new discord_js_1.TextInputBuilder({
+                    components: [
+                        new discord_js_1.ActionRowBuilder({
+                            components: [
+                                new discord_js_1.TextInputBuilder({
                                     label: 'Enter your welcome message:',
                                     custom_id: 'guild/welcome_menu/msg',
                                     placeholder: 'Leave me blank to remove!',
@@ -308,8 +273,10 @@ const welcome_menu = {
                                     value: guild?.welcome_msg ?? '',
                                     max_length: 2000,
                                     required: false,
-                                })],
-                        })],
+                                }),
+                            ],
+                        }),
+                    ],
                 });
                 await interaction.showModal(input);
                 break;
@@ -324,7 +291,7 @@ const welcome_menu = {
                         '__Replacement Options For Welcome Message:__\n' +
                         '> ${USER} - Mentions the newly joined member.\n' +
                         '> ${SERVER} - Replaces with the name of the server.\n' +
-                        '> ${MEMBERCOUNT} - Replaces with the number of current members in the server.',
+                        '> ${MEMBER_COUNT} - Replaces with the number of current members in the server.',
                     ephemeral: true,
                 });
                 break;
@@ -417,7 +384,8 @@ const emoji_menu = {
     buildEmbeds(guild) {
         let description = '**Current Setting:**\n\n__Emoji Replacement:__';
         description += ` **${guild.emoji_replacement ? 'Enabled' : 'Disabled'}**`;
-        return [new discord_js_1.EmbedBuilder({
+        return [
+            new discord_js_1.EmbedBuilder({
                 title: 'Emoji Replacement Settings',
                 color: discord_js_1.Colors.Blue,
                 description,
@@ -425,20 +393,19 @@ const emoji_menu = {
                     text: 'Toggling this option will enable/disable server-wide emoji replacement.\n' +
                         'To toggle for individual channels, disable webhook permissions for the bot.',
                 },
-            })];
+            }),
+        ];
     },
     buildComponents(userID) {
-        return [new discord_js_1.ActionRowBuilder()
-                .addComponents(new discord_js_1.ButtonBuilder()
-                .setEmoji('🟢')
+        return [
+            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setEmoji('🟢')
                 .setCustomId(`guild/${userID}/emoji_menu/enable`)
-                .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder()
-                .setEmoji('🔴')
+                .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder().setEmoji('🔴')
                 .setCustomId(`guild/${userID}/emoji_menu/disable`)
-                .setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder()
-                .setEmoji('🔙')
+                .setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder().setEmoji('🔙')
                 .setCustomId(`guild/${userID}/emoji_menu/back`)
-                .setStyle(discord_js_1.ButtonStyle.Primary))];
+                .setStyle(discord_js_1.ButtonStyle.Primary)),
+        ];
     },
     buttonReact(guild, menu, action) {
         switch (action) {
@@ -463,20 +430,7 @@ const emoji_menu = {
         throw new Error('/guild: emoji_menu does not have text inputs!');
     },
 };
-exports.guild = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('guild')
-        .setDescription('Edits bot specific guild settings.')
-        .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageGuild)
-        .setDMPermission(false),
-    desc: 'Starts a dialogue to edit some guild settings.\n\n' +
-        '__**<<RESTRICTED FOR USERS WITH MANAGE GUILD PERMISSIONS ONLY>>**__\n\n' +
-        '__Replacement Options For Welcome Message:__\n' +
-        '${USER} - Mentions the newly joined member.\n' +
-        '${SERVER} - Replaces with the name of the server.\n' +
-        '${MEMBERCOUNT} - Replaces with the number of current members in the server.\n\n' +
-        'Usage: `/guild`',
-    cache: new DB.Cache('guild'),
+const guild_privates = {
     buildComponents(userID, guild, menu) {
         switch (menu) {
             case 'main_menu':
@@ -497,40 +451,53 @@ exports.guild = {
                 return emoji_menu.buildEmbeds(guild);
         }
     },
+};
+exports.guild = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder().setName('guild')
+        .setDescription('Edits bot specific guild settings.')
+        .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageGuild)
+        .setDMPermission(false),
+    long_description: 'Starts a dialogue to edit some guild settings.\n\n' +
+        '__**<<RESTRICTED FOR USERS WITH MANAGE GUILD PERMISSIONS ONLY>>**__\n\n' +
+        '__Replacement Options For Welcome Message:__\n' +
+        '${USER} - Mentions the newly joined member.\n' +
+        '${SERVER} - Replaces with the name of the server.\n' +
+        '${MEMBER_COUNT} - Replaces with the number of current members in the server.\n\n' +
+        'Usage: `/guild`',
     async buttonReact(interaction) {
         const [m, action] = interaction.customId.split('/').splice(2, 2);
         // A custom list of IDs that show modals, so we can't defer
-        if (!(m === 'welcome_menu' && action === 'editmsg')) {
+        if (m !== 'welcome_menu' || action !== 'editmsg') {
             await interaction.deferUpdate();
         }
         let menu = m;
         if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
         }
-        const guild = await this.cache.get(interaction.guildId);
-        if (!guild)
+        const guildCache = await this.cache.get(interaction.guildId);
+        if (!guildCache)
             return; // This can happen if a button react comes late, just ignore.
-        else if (guild.mid !== interaction.message.id) {
+        else if (guildCache.mid !== interaction.message.id) {
             // Expired guild dialog, try to delete message.
             return interaction.deleteReply();
         }
         switch (menu) {
             case 'main_menu':
-                menu = await main_menu.buttonReact(guild, menu, action, interaction);
+                menu = await main_menu.buttonReact(guildCache, menu, action, interaction);
                 break;
             case 'welcome_menu':
-                menu = await welcome_menu.buttonReact(guild, menu, action, interaction);
+                menu = await welcome_menu.buttonReact(guildCache, menu, action, interaction);
                 break;
             case 'emoji_menu':
-                menu = await emoji_menu.buttonReact(guild, menu, action, interaction);
+                menu = await emoji_menu.buttonReact(guildCache, menu, action, interaction);
                 break;
             default:
                 throw new Error(`/guild: buttonReact invalid menu: ${menu}`);
         }
-        await this.cache.set(interaction.guildId, guild);
-        await DB.setGuild(guild);
-        const embeds = this.buildEmbeds(guild, menu);
-        const components = this.buildComponents(interaction.user.id, guild, menu);
+        await this.cache.set(interaction.guildId, guildCache);
+        await DB.setGuild(guildCache);
+        const embeds = guild_privates.buildEmbeds(guildCache, menu);
+        const components = guild_privates.buildComponents(interaction.user.id, guildCache, menu);
         await interaction.editReply({ embeds, components });
     },
     async menuReact(interaction) {
@@ -540,30 +507,30 @@ exports.guild = {
         if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
         }
-        const guild = await this.cache.get(interaction.guildId);
-        if (!guild)
+        const guildCache = await this.cache.get(interaction.guildId);
+        if (!guildCache)
             return; // This can happen if a menu react comes late, just ignore.
-        else if (guild.mid !== interaction.message.id) {
+        else if (guildCache.mid !== interaction.message.id) {
             // Expired guild dialog, try to delete message.
             return interaction.deleteReply();
         }
         switch (menu) {
             case 'main_menu':
-                menu = await main_menu.menuReact(guild, menu, interaction.values, interaction);
+                menu = await main_menu.menuReact(guildCache, menu, interaction.values, interaction);
                 break;
             case 'welcome_menu':
-                menu = await welcome_menu.menuReact(guild, menu, [...interaction.values, type], interaction);
+                menu = await welcome_menu.menuReact(guildCache, menu, [...interaction.values, type], interaction);
                 break;
             case 'emoji_menu':
-                menu = await emoji_menu.menuReact(guild, menu, interaction.values, interaction);
+                menu = await emoji_menu.menuReact(guildCache, menu, interaction.values, interaction);
                 break;
             default:
                 throw new Error(`/guild: menuReact invalid menu: ${menu}`);
         }
-        await this.cache.set(interaction.guildId, guild);
-        await DB.setGuild(guild);
-        const embeds = this.buildEmbeds(guild, menu);
-        const components = this.buildComponents(interaction.user.id, guild, menu);
+        await this.cache.set(interaction.guildId, guildCache);
+        await DB.setGuild(guildCache);
+        const embeds = guild_privates.buildEmbeds(guildCache, menu);
+        const components = guild_privates.buildComponents(interaction.user.id, guildCache, menu);
         await interaction.editReply({ embeds, components });
     },
     async textInput(interaction) {
@@ -574,26 +541,26 @@ exports.guild = {
         if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
         }
-        const guild = await this.cache.get(interaction.guildId);
-        if (!guild)
+        const guildCache = await this.cache.get(interaction.guildId);
+        if (!guildCache)
             return; // This can happen if a button react comes late, just ignore.
         switch (menu) {
             case 'main_menu':
-                menu = await main_menu.textInput(guild, menu, interaction.fields, interaction);
+                menu = await main_menu.textInput(guildCache, menu, interaction.fields, interaction);
                 break;
             case 'welcome_menu':
-                menu = await welcome_menu.textInput(guild, menu, interaction.fields, interaction);
+                menu = await welcome_menu.textInput(guildCache, menu, interaction.fields, interaction);
                 break;
             case 'emoji_menu':
-                menu = await emoji_menu.textInput(guild, menu, interaction.fields, interaction);
+                menu = await emoji_menu.textInput(guildCache, menu, interaction.fields, interaction);
                 break;
             default:
                 throw new Error(`/guild: textInput invalid menu: ${menu}`);
         }
-        await this.cache.set(interaction.guildId, guild);
-        await DB.setGuild(guild);
-        const embeds = this.buildEmbeds(guild, menu);
-        const components = this.buildComponents(interaction.user.id, guild, menu);
+        await this.cache.set(interaction.guildId, guildCache);
+        await DB.setGuild(guildCache);
+        const embeds = guild_privates.buildEmbeds(guildCache, menu);
+        const components = guild_privates.buildComponents(interaction.user.id, guildCache, menu);
         await interaction.editReply({ embeds, components });
     },
     async execute(interaction) {
@@ -601,19 +568,17 @@ exports.guild = {
         if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
         }
-        if (!interaction.channel.permissionsFor(interaction.member)
-            .has(discord_js_1.PermissionsBitField.Flags.ManageGuild)) {
+        if (!interaction.channel.permissionsFor(interaction.member).has(discord_js_1.PermissionsBitField.Flags.ManageGuild)) {
             return interaction.editReply({
                 content: 'You do not have permission to edit guild settings.\n' +
                     'You need the `Manage Guild` permission.',
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         // Check to make sure that dialog does not currently exist for the guild
         // Only allow one user to access the dialog at a time
-        let guild = await this.cache.get(interaction.guildId);
+        let guildCache = await this.cache.get(interaction.guildId);
         // If it does exist, then we need to exit other dialog:
-        if (guild) {
+        if (guildCache) {
             const deleted = await this.cache.delete(interaction.guildId);
             if (deleted.length !== 1) {
                 console.log(`/guild: Warning! Deleted ${deleted.length} entries for guild ${interaction.guildId}.`);
@@ -621,14 +586,21 @@ exports.guild = {
         }
         else {
             // If none in cache, fetch current settings as cache
-            guild = { ...await DB.getGuild(interaction.guildId), mid: '' };
-            guild.gid = interaction.guildId;
+            guildCache = {
+                ...await DB.getGuild(interaction.guildId),
+                mid: '',
+            };
+            guildCache.gid = interaction.guildId;
         }
-        guild.mid = message.id;
-        await this.cache.set(interaction.guildId, guild);
-        const embeds = this.buildEmbeds(guild, 'main_menu');
-        const components = this.buildComponents(interaction.user.id, guild, 'main_menu');
-        await interaction.editReply({ content: null, embeds, components });
+        guildCache.mid = message.id;
+        await this.cache.set(interaction.guildId, guildCache);
+        const embeds = guild_privates.buildEmbeds(guildCache, 'main_menu');
+        const components = guild_privates.buildComponents(interaction.user.id, guildCache, 'main_menu');
+        await interaction.editReply({
+            content: null,
+            embeds,
+            components,
+        });
     },
-};
+});
 //# sourceMappingURL=mod_commands.js.map

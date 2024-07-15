@@ -33,6 +33,7 @@ const Hoyo = __importStar(require("../modules/hoyolab"));
 const Utils = __importStar(require("../modules/utils"));
 const chrono_node_1 = require("chrono-node");
 const discord_js_1 = require("discord.js");
+const commands_1 = require("../classes/commands");
 exports.name = 'Fun';
 exports.desc = 'This category contains all the commands for fun, or are informational.';
 // A purely random collection of images
@@ -52,28 +53,27 @@ const images = [
     'https://i.imgur.com/Ldr5DBI.jpg',
     'https://i.imgur.com/q0jk1HQ.jpg',
 ];
-exports.count = {
+exports.count = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('count')
         .setDescription('Count me, because why not?'),
-    desc: 'Count how many times you wasted on this command!\n\n' +
+    long_description: 'Count how many times you wasted on this command!\n\n' +
         'Usage: `/count`',
-    counter: new Map(),
     async execute(interaction) {
         const id = interaction.user.id;
         await interaction.deferReply({ ephemeral: true });
-        if (!this.counter.has(id)) {
-            this.counter.set(id, 1);
-        }
-        const amt = this.counter.get(id);
-        this.counter.set(id, amt + 1);
+        let cache = await this.cache.get(id);
+        if (!cache)
+            cache = { amt: 0 };
+        cache.amt++;
+        await this.cache.set(id, cache);
         const image = images[Math.floor(Math.random() * images.length)];
         await interaction.editReply({
-            content: `Hey there, its been ${amt} times already...\nTake this....`,
+            content: `Hey there, its been ${cache.amt} times already...\nTake this....`,
             embeds: [new discord_js_1.EmbedBuilder().setImage(image).setColor('Random')],
         });
     },
-};
+});
 const invite_docs = `Get the invite link for the bot. 
 __Permissions required:__
 > **Manage Roles** *(Mute command)*
@@ -96,11 +96,11 @@ __Permissions required:__
 > **Priority Speaker** *(music commands)*
 
 Usage: \`/invite\``;
-exports.invite = {
+exports.invite = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('invite')
         .setDescription('Get the invite link for me! (See /help command: invite)'),
-    desc: invite_docs,
+    long_description: invite_docs,
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         // Generated via discord's helper with the above permissions.
@@ -114,12 +114,12 @@ exports.invite = {
                 'Please do not forget to use `/help command: invite` to verify permissions required!',
         });
     },
-};
-exports.support = {
+});
+exports.support = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('support')
         .setDescription('Join the support server!'),
-    desc: 'Join a server to hang out and bond with others over your favourite waifus!' +
+    long_description: 'Join a server to hang out and bond with others over your favourite waifus!' +
         '~~And get bot support if needed.~~\n' +
         'Usage: `/support`',
     async execute(interaction) {
@@ -136,8 +136,8 @@ exports.support = {
             content: `Hey there, here's the [invite link](${link}) for the support server!\n`,
         });
     },
-};
-exports.getid = {
+});
+exports.getid = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('getid')
         .addStringOption(option => option
@@ -145,7 +145,7 @@ exports.getid = {
         .setDescription("The user's name to get the ID of")
         .setRequired(true))
         .setDescription('Get the discord ID of a user'),
-    desc: 'Get the discord ID of a user, so you can use it for all the anime commands!\n' +
+    long_description: 'Get the discord ID of a user, so you can use it for all the anime commands!\n' +
         'You can search for partial matches too!\n\n' +
         'Usage: `/getid user: <username>`\n\n' +
         '__**Options**__\n' +
@@ -176,7 +176,7 @@ exports.getid = {
             await interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
         }
     },
-};
+});
 const all_collector_docs = `Edit your entries in the auto-collect system.
 Essentially, the bot will automatically collect hoyolab dailies for you!
 Visit https://tinyurl.com/ayakacookiegist for help extracting your cookie.
@@ -220,27 +220,25 @@ function get_collector_buttons(cmd_name, hoyo, idx) {
     }
     return rows;
 }
-exports.hoyolab = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('hoyolab')
-        .setDescription('Change hoyolab auto collector settings.'),
-    desc: all_collector_docs + 'Usage: `/hoyolab`',
+const hoyolab_privates = {
     input: new discord_js_1.ModalBuilder({
         title: 'Add to auto-collector',
         customId: 'hoyolab',
         components: [
             new discord_js_1.ActionRowBuilder({
-                components: [new discord_js_1.TextInputBuilder({
+                components: [
+                    new discord_js_1.TextInputBuilder({
                         label: 'Cookie',
                         customId: 'cookie',
                         placeholder: 'Enter your hoyolab cookie here.',
                         style: discord_js_1.TextInputStyle.Short,
                         required: true,
-                    })],
+                    }),
+                ],
             }),
         ],
     }),
-    async delete(interaction, id) {
+    async delete(interaction, id, name) {
         const buttons = [
             new discord_js_1.ButtonBuilder({
                 label: 'Yes!',
@@ -256,9 +254,11 @@ exports.hoyolab = {
         ];
         const message = await interaction.followUp({
             content: '# Are you sure you want to delete this account?',
-            components: [new discord_js_1.ActionRowBuilder({
+            components: [
+                new discord_js_1.ActionRowBuilder({
                     components: buttons,
-                })],
+                }),
+            ],
             ephemeral: true,
         });
         const confirmed = await message.awaitMessageComponent({
@@ -278,18 +278,16 @@ exports.hoyolab = {
                 content: 'Failed to delete cookie, the embed is out of date!\n' +
                     'Please make sure to only use this command once!',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
-        const retval = await this.getAccount(interaction, 1);
+        const retval = await hoyolab_privates.getAccount(interaction, 1, name);
         await interaction.editReply(retval);
         return interaction.followUp({
             content: 'Successfully deleted cookie!',
             ephemeral: true,
-        }).then(() => {
-        });
+        }).then(Utils.VOID);
     },
-    async getAccount(interaction, pageOrIdx) {
+    async getAccount(interaction, pageOrIdx, name) {
         const max_pages = await DB.fetchAutocollectLength(interaction.user.id);
         let account;
         // If there exists an account, and we're getting a page #
@@ -367,7 +365,7 @@ exports.hoyolab = {
         });
         desc += retval;
         embed.setDescription(desc);
-        components.push(...get_collector_buttons(this.data.name, Object.keys(games), account.idx));
+        components.push(...get_collector_buttons(name, Object.keys(games), account.idx));
         return { embeds: [embed], components };
     },
     async toggleNotify(interaction, type, g, idx) {
@@ -401,6 +399,12 @@ exports.hoyolab = {
         }
         return DB.toggleAutocollect(interaction.user.id, game, toggle, idx);
     },
+};
+exports.hoyolab = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('hoyolab')
+        .setDescription('Change hoyolab auto collector settings.'),
+    long_description: all_collector_docs + 'Usage: `/hoyolab`',
     async textInput(interaction) {
         const cookie = interaction.fields.getTextInputValue('cookie').trim().replaceAll(/^'+|'+$/g, '');
         await interaction.deferUpdate();
@@ -409,8 +413,7 @@ exports.hoyolab = {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
         if (!res) {
@@ -418,11 +421,10 @@ exports.hoyolab = {
                 content: 'Failed to add account to autocollector.\nEither you reached the max of 5 accounts, ' +
                     'or you are entering a duplicate cookie.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         // Adding new account always brings user to first page to properly reload everything.
-        const retval = await this.getAccount(interaction, 1);
+        const retval = await hoyolab_privates.getAccount(interaction, 1, this.data.name);
         await interaction.editReply(retval);
         await interaction.followUp({
             content: 'Successfully added account to autocollector!',
@@ -432,40 +434,31 @@ exports.hoyolab = {
     async buttonReact(interaction) {
         const [action, id] = interaction.customId.split('/').slice(2);
         if (action === 'add') {
-            return interaction.showModal(this.input);
+            return interaction.showModal(hoyolab_privates.input);
         }
         const page = parseInt(action);
         await interaction.deferUpdate();
         if (!isNaN(page)) {
-            const retval = await this.getAccount(interaction, page);
-            return interaction.editReply(retval).then(() => {
-            });
+            const retval = await hoyolab_privates.getAccount(interaction, page, this.data.name);
+            return interaction.editReply(retval).then(Utils.VOID);
         }
         else if (action === 'delete') {
-            return this.delete(interaction, id);
+            return hoyolab_privates.delete(interaction, id, this.data.name);
         }
         // Reached here means it is some sort of toggle.
-        await this.toggleNotify(interaction, action[0], action[1], id);
-        const retval = await this.getAccount(interaction, id);
+        await hoyolab_privates.toggleNotify(interaction, action[0], action[1], id);
+        const retval = await hoyolab_privates.getAccount(interaction, id, this.data.name);
         await interaction.editReply(retval);
     },
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
-        const retval = await this.getAccount(interaction, 1);
+        const retval = await hoyolab_privates.getAccount(interaction, 1, this.data.name);
         await interaction.editReply(retval);
     },
-};
-exports.poll = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('poll')
-        .setDescription('Start a poll for users to vote on.')
-        .setDMPermission(false),
-    desc: 'Start a poll that allows users to vote for a choice!\n' +
-        'The maximum number of options is 25.\n\n' +
-        'Usage: `/poll`',
-    cache: new DB.Cache('poll'),
+});
+const poll_privates = {
     async getPollEditor(id) {
-        const pollInfo = await this.cache.get(id);
+        const pollInfo = await exports.poll.cache.get(id);
         let desc = '';
         desc += `**Poll Title:**\n${pollInfo.title || '*(empty)*'}\n\n`;
         desc += `**Destination Channel:**\n<#${pollInfo.cid}>\n\n`;
@@ -522,7 +515,7 @@ exports.poll = {
         return { embeds: [embed], components };
     },
     async getPoll(client, id) {
-        const pollInfo = await this.cache.get(id);
+        const pollInfo = await exports.poll.cache.get(id);
         const user = await Utils.fetch_user_fast(client, pollInfo.uid, u => {
             return u ? { name: u.displayName, avatar: u.displayAvatarURL() } : undefined;
         });
@@ -531,7 +524,7 @@ exports.poll = {
             if (new Date >= new Date(pollInfo.expires)) {
                 pollInfo.title = `(ENDED) ${pollInfo.title}`;
                 desc += `**This poll has ended on ${Utils.timestamp(new Date())}**\n\n`;
-                await this.cache.delete(id); // Remove from cache
+                await exports.poll.cache.delete(id); // Remove from cache
             }
             else {
                 desc += `**This poll expires on ${Utils.timestamp(new Date(pollInfo.expires))}**\n\n`;
@@ -570,16 +563,31 @@ exports.poll = {
         }).setAuthor({ name: `${user.name} started a poll`, iconURL: user.avatar });
         return { embeds: [embed], components };
     },
+    deserialize(pollInfoSerialized) {
+        return {
+            ...pollInfoSerialized,
+            expires: pollInfoSerialized.expires ? new Date(pollInfoSerialized.expires) : undefined,
+        };
+    },
+};
+exports.poll = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('poll')
+        .setDescription('Start a poll for users to vote on.')
+        .setDMPermission(false),
+    long_description: 'Start a poll that allows users to vote for a choice!\n' +
+        'The maximum number of options is 25.\n\n' +
+        'Usage: `/poll`',
     async textInput(interaction) {
         await interaction.deferUpdate();
         const action = interaction.customId.split('/')[1];
-        let pollInfo = await this.cache.get(interaction.message.id);
+        let pollInfo = await this.cache.get(interaction.message.id, poll_privates.deserialize);
+        // Somehow lost cache, delete poll
         if (!pollInfo)
-            return interaction.message?.delete().then(() => {
-            }, () => {
-            }); // Somehow lost cache
+            return interaction.message?.delete().then(Utils.VOID, Utils.VOID);
+        // Not sure why this is needed, maybe to get the most up to date?
         if (pollInfo.mid) {
-            pollInfo = await this.cache.get(pollInfo.mid) ?? pollInfo;
+            pollInfo = await this.cache.get(pollInfo.mid, poll_privates.deserialize) ?? pollInfo;
         }
         if (action === 'title') {
             pollInfo.title = interaction.fields.getTextInputValue('title');
@@ -590,20 +598,17 @@ exports.poll = {
             if (!choices.length) {
                 return interaction.followUp({
                     content: 'You must provide at least one choice.', ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             else if (choices.length > 25) {
                 return interaction.followUp({
                     content: 'You cannot provide more than 25 choices.', ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             else if (new Set(choices).size !== choices.length) {
                 return interaction.followUp({
                     content: 'All choices must be unique.', ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             pollInfo.choices = choices.map(c => {
                 const prevChoice = pollInfo.choices.find(x => x.name === c);
@@ -618,15 +623,13 @@ exports.poll = {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
                         ephemeral: true,
-                    }).then(() => {
-                    });
+                    }).then(Utils.VOID);
                 }
                 else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
                         ephemeral: true,
-                    }).then(() => {
-                    });
+                    }).then(Utils.VOID);
                 }
                 pollInfo.expires = date;
             }
@@ -638,22 +641,20 @@ exports.poll = {
             throw new Error(`Invalid action ${action}!`);
         }
         await this.cache.set(interaction.message.id, pollInfo);
-        const retval = await this.getPollEditor(interaction.message.id);
+        const retval = await poll_privates.getPollEditor(interaction.message.id);
         await interaction.editReply(retval);
     },
     async buttonReact(interaction) {
         const action = interaction.customId.split('/')[2];
-        const pollInfo = await this.cache.get(interaction.message.id);
+        const pollInfo = await this.cache.get(interaction.message.id, poll_privates.deserialize);
         if (!pollInfo)
-            return interaction.message.delete().then(() => {
-            }, () => {
-            }); // Somehow lost cache
+            return interaction.message.delete().then(Utils.VOID, Utils.VOID); // Somehow lost cache
         const idx = parseInt(action);
         if (isNaN(idx)) {
             const send = async () => {
                 await interaction.deferUpdate();
                 const channel = await interaction.client.channels.fetch(pollInfo.cid);
-                const { embeds, components } = await this.getPoll(interaction.client, interaction.message.id);
+                const { embeds, components } = await poll_privates.getPoll(interaction.client, interaction.message.id);
                 let message;
                 if (pollInfo.mid) {
                     // This means that we are editing the poll.
@@ -669,9 +670,7 @@ exports.poll = {
                     await interaction.deleteReply().catch(() => {
                         // If we can't delete the reply, we can't delete the original message either.
                         // So we just edit it to remove the buttons.
-                        return interaction.message.edit({ embeds, components: [] }).then(() => {
-                        }, () => {
-                        });
+                        return interaction.message.edit({ embeds, components: [] }).then(Utils.VOID, Utils.VOID);
                     });
                 }
                 else {
@@ -691,34 +690,39 @@ exports.poll = {
                     input.setTitle('Edit Poll Title')
                         .setCustomId('poll/title')
                         .addComponents(new discord_js_1.ActionRowBuilder({
-                        components: [new discord_js_1.TextInputBuilder({
+                        components: [
+                            new discord_js_1.TextInputBuilder({
                                 label: 'Set New Title',
                                 customId: 'title',
                                 placeholder: 'Enter the new title here.',
                                 style: discord_js_1.TextInputStyle.Short,
                                 required: true,
-                            })],
+                            }),
+                        ],
                     }));
                     return interaction.showModal(input);
                 case 'add':
                     input.setTitle('Edit Poll Choices')
                         .setCustomId('poll/add')
                         .addComponents(new discord_js_1.ActionRowBuilder({
-                        components: [new discord_js_1.TextInputBuilder({
+                        components: [
+                            new discord_js_1.TextInputBuilder({
                                 label: 'Add New Choices',
                                 customId: 'choice',
                                 value: pollInfo.choices.map(c => c.name).join('\n'),
                                 placeholder: 'Enter choices here, separated by newlines.',
                                 style: discord_js_1.TextInputStyle.Paragraph,
                                 required: true,
-                            })],
+                            }),
+                        ],
                     }));
                     return interaction.showModal(input);
                 case 'expiry':
                     input.setTitle('Edit Poll Expiry')
                         .setCustomId('poll/expiry')
                         .addComponents(new discord_js_1.ActionRowBuilder({
-                        components: [new discord_js_1.TextInputBuilder({
+                        components: [
+                            new discord_js_1.TextInputBuilder({
                                 label: 'Set New Expiry (Leave blank to remove)',
                                 customId: 'expiry',
                                 value: pollInfo.expires ?
@@ -727,7 +731,8 @@ exports.poll = {
                                 placeholder: 'Enter the date/relative time in UTC/GMT.',
                                 style: discord_js_1.TextInputStyle.Short,
                                 required: false,
-                            })],
+                            }),
+                        ],
                     }));
                     return interaction.showModal(input);
                 case 'send':
@@ -752,38 +757,36 @@ exports.poll = {
         }
         // Only add if they want to vote for a different option.
         // We also have to make sure that the poll hasn't expired yet.
-        if (i !== idx && (!pollInfo.expires || new Date() < new Date(pollInfo.expires))) {
+        if (i !==
+            idx &&
+            (!pollInfo.expires || new Date() < new Date(pollInfo.expires))) {
             pollInfo.choices[idx].users.push(uid);
         }
         await this.cache.set(interaction.message.id, pollInfo);
-        const retval = await this.getPoll(interaction.client, interaction.message.id);
+        const retval = await poll_privates.getPoll(interaction.client, interaction.message.id);
         await interaction.editReply(retval);
     },
     async menuReact(interaction) {
         await interaction.deferUpdate();
-        const pollInfo = await this.cache.get(interaction.message.id);
+        const pollInfo = await this.cache.get(interaction.message.id, poll_privates.deserialize);
         if (!pollInfo)
-            return interaction.message.delete().then(() => {
-            }, () => {
-            }); // Somehow lost cache
+            return interaction.message.delete().then(Utils.VOID, Utils.VOID); // Somehow lost cache
         const channel = interaction.channels.first();
         if (!channel.permissionsFor(interaction.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         else if (!channel.permissionsFor(interaction.client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         pollInfo.cid = channel.id;
         await this.cache.set(interaction.message.id, pollInfo);
-        const retval = await this.getPollEditor(interaction.message.id);
+        const retval = await poll_privates.getPollEditor(interaction.message.id);
         await interaction.editReply(retval);
     },
     async execute(interaction) {
@@ -795,21 +798,22 @@ exports.poll = {
             title: '',
             choices: [],
         }, Utils.date_after_hours(24)); // Expires in 24 hours.
-        const retval = await this.getPollEditor(id);
+        const retval = await poll_privates.getPollEditor(id);
         await interaction.editReply(retval);
     },
-};
-exports.poll_edit = {
+});
+exports.poll_edit = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Edit Poll')
         .setType(discord_js_1.ApplicationCommandType.Message),
+    long_description: 'Edit a poll that you have created, as a message context command.',
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand())
             return;
         await interaction.deferReply({ ephemeral: true });
         const thisId = await interaction.fetchReply().then(m => m.id);
         const id = interaction.targetId;
-        const pollInfo = await exports.poll.cache.get(id);
+        const pollInfo = await exports.poll.cache.get(id, poll_privates.deserialize);
         // Cache outdated, ignore
         if (!pollInfo) {
             return interaction.deleteReply();
@@ -817,34 +821,34 @@ exports.poll_edit = {
         else if (pollInfo.uid !== interaction.user.id) {
             return interaction.editReply({
                 content: 'You are not the owner of this poll!',
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         // Create a new edit dialog, and make it expire in 24 hours.
         await exports.poll.cache.set(thisId, pollInfo, Utils.date_after_hours(24));
-        const retval = await exports.poll.getPollEditor(thisId);
+        const retval = await poll_privates.getPollEditor(thisId);
         await interaction.editReply(retval);
     },
-};
-exports.poll_end = {
+});
+exports.poll_end = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('End Poll')
         .setType(discord_js_1.ApplicationCommandType.Message),
+    long_description: 'End a poll that you have created, as a message context command.',
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand())
             return;
         await interaction.deferReply({ ephemeral: true });
         const id = interaction.targetId;
-        const pollInfo = await exports.poll.cache.get(id);
+        const pollInfo = await exports.poll.cache.get(id, poll_privates.deserialize);
         // Cache outdated, ignore
         if (!pollInfo) {
             return interaction.deleteReply();
         }
         pollInfo.expires = new Date();
         await exports.poll.cache.set(id, pollInfo);
-        const { embeds } = await exports.poll.getPoll(interaction.client, id);
+        const { embeds } = await poll_privates.getPoll(interaction.client, id);
         await interaction.targetMessage.edit({ embeds, components: [] });
         return interaction.deleteReply();
     },
-};
+});
 //# sourceMappingURL=fun_commands.js.map

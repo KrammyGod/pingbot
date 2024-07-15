@@ -27,13 +27,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 /* This file deals with all the slash command setup */
-const glob_1 = __importDefault(require("glob"));
-const path_1 = __importDefault(require("path"));
+const commands = __importStar(require("../commands"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const rest_1 = require("@discordjs/rest");
 const v10_1 = require("discord-api-types/v10");
 const discord_js_1 = require("discord.js");
-const utils_1 = require("../modules/utils");
 const token = _config_1.default.token ?? '';
 const clientId = _config_1.default.client ?? '';
 function reverse_command(cmd) {
@@ -48,31 +46,34 @@ function reverse_command(cmd) {
         }
     });
 }
+function isString(isThisString) {
+    return typeof isThisString === 'string';
+}
 (async function () {
     // Read all commands from the commands directory
-    const commands = [];
-    const commandFiles = glob_1.default.sync(path_1.default.resolve(__dirname, '../commands/*.js'));
+    const commandsToDeploy = [];
     const rest = new rest_1.REST({ version: '10' }).setToken(token);
-    for (const file of commandFiles) {
-        const commandFile = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
-        // Do not deploy message commands.
+    for (const commandFile of Object.values(commands)) {
         Object.values(commandFile).forEach(command => {
-            if ((0, utils_1.isInteractionCommand)(command)) {
+            // Ignore name and desc exported properties.
+            if (isString(command))
+                return;
+            // Do not deploy message commands.
+            if (command.isInteractionCommand()) {
                 const commandData = command.data.toJSON();
                 if (_config_1.default.events) {
                     // April Fools reverse command
                     commandData.name = commandData.name.split('').reverse().join('');
-                    if ((0, utils_1.isSlashCommand)(command)) {
-                        // @ts-expect-error We know it's not a context command, but typescript doesn't know that.
-                        (commandData).description = commandData.description.split('').reverse().join('');
+                    if (command.isSlashCommand()) {
+                        commandData.description = commandData.description.split('').reverse().join('');
                         reverse_command(commandData);
                     }
                 }
-                commands.push(commandData);
+                commandsToDeploy.push(commandData);
             }
         });
     }
-    const res = await rest.put(v10_1.Routes.applicationCommands(clientId), { body: commands })
+    const res = await rest.put(v10_1.Routes.applicationCommands(clientId), { body: commandsToDeploy })
         .catch(err => console.error(err));
     const user = await rest.get(v10_1.Routes.user()).catch(err => console.error(err));
     if (user) {
