@@ -90,7 +90,7 @@ export class Song {
     }
 }
 
-export default class GuildVoice {
+export class GuildVoice {
     textChannel: TextBasedChannel;
     voiceChannel: VoiceBasedChannel;
     host: GuildMember;

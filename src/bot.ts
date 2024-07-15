@@ -4,7 +4,7 @@ import load from '@modules/load_commands';
 import config from '@config';
 import * as DB from '@modules/database';
 import { inspect } from 'util';
-import { GuildVoices } from '@classes/GuildVoice';
+import { GuildVoices } from '@classes/voice';
 import { convert_emoji, VOID } from '@modules/utils';
 import { DatabaseMaintenanceError, IgnoredException } from '@classes/exceptions';
 import {

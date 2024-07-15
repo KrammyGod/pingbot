@@ -28,7 +28,7 @@ import {
     TextInputStyle,
     User,
 } from 'discord.js';
-import type { NodePgJsonSerialized } from '@typings/node_pg_json';
+import type { NodePgJsonSerialized } from '@typings/serialize';
 import { ContextCommand, SlashCommandNoSubcommand } from '@classes/commands';
 
 export const name = 'Animes/Gacha';
