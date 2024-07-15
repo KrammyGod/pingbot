@@ -930,7 +930,7 @@ const remove = new commands_1.SlashSubcommandGroup({
     subcommands: [remove_song],
 });
 // const skip_privates = {
-//     setEmbed(embed: EmbedBuilder, guildVoice: Voice, requiredVotes: number) {
+//     setEmbed(embed: EmbedBuilder, guildVoice: GuildVoice, requiredVotes: number) {
 //         let desc = '';
 //         desc += `**Song: ${guildVoice.getCurrentSong()!.linkedTitle}**\n`;
 //         embed.setDescription(`${desc}\n\nVotes required to skip: \`${guildVoice.voted.length}/${requiredVotes}\``);
