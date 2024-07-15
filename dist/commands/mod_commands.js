@@ -36,7 +36,17 @@ const purge_privates = {
     buttons: new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('purge/confirm').setLabel('Yes!').setEmoji('🚮').setStyle(discord_js_1.ButtonStyle.Danger), new discord_js_1.ButtonBuilder().setCustomId('purge/cancel').setLabel('No').setStyle(discord_js_1.ButtonStyle.Secondary)),
 };
 exports.purge = new commands_1.SlashCommandNoSubcommand({
-    data: new discord_js_1.SlashCommandBuilder().setName('purge').addStringOption(options => options.setName('amount').setDescription('Amount of messages to delete.').setRequired(true)).addUserOption(options => options.setName('user').setDescription('User to filter messages (only delete from this user).')).setDescription('Purge messages from a channel.').setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageMessages),
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('purge')
+        .addStringOption(options => options
+        .setName('amount')
+        .setDescription('Amount of messages to delete.')
+        .setRequired(true))
+        .addUserOption(options => options
+        .setName('user')
+        .setDescription('User to filter messages (only delete from this user).'))
+        .setDescription('Purge messages from a channel.')
+        .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageMessages),
     long_description: 'Want an easy way to purge any amount of message? You came to the right command!\n\n' +
         'Usage: `/purge amount: <amount> user: [user]`\n\n' +
         '__**Options**__\n' +
@@ -52,9 +62,7 @@ exports.purge = new commands_1.SlashCommandNoSubcommand({
         // amount being NaN means all is true.
         const amt = interaction.options.getString('amount', true);
         const amount = parseInt(amt);
-        if (amt.toLowerCase() !==
-            'all' &&
-            (isNaN(amount) || amount <= 0)) {
+        if (amt.toLowerCase() !== 'all' && (isNaN(amount) || amount <= 0)) {
             return interaction.editReply({ content: 'Enter a positive number.' }).then(Utils.VOID);
         }
         const user = interaction.options.getUser('user');
@@ -453,7 +461,8 @@ const guild_privates = {
     },
 };
 exports.guild = new commands_1.SlashCommandNoSubcommand({
-    data: new discord_js_1.SlashCommandBuilder().setName('guild')
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('guild')
         .setDescription('Edits bot specific guild settings.')
         .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageGuild)
         .setDMPermission(false),

@@ -264,7 +264,7 @@ const hoyolab_privates = {
         const confirmed = await message.awaitMessageComponent({
             componentType: discord_js_1.ComponentType.Button,
             time: 10 * 60 * 1000, // 10 mins before interaction expires
-        }).then(async (i) => {
+        }).then(i => {
             if (i.customId === 'hcancel')
                 return;
             return true;
@@ -757,9 +757,7 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
         }
         // Only add if they want to vote for a different option.
         // We also have to make sure that the poll hasn't expired yet.
-        if (i !==
-            idx &&
-            (!pollInfo.expires || new Date() < new Date(pollInfo.expires))) {
+        if (i !== idx && (!pollInfo.expires || new Date() < new Date(pollInfo.expires))) {
             pollInfo.choices[idx].users.push(uid);
         }
         await this.cache.set(interaction.message.id, pollInfo);

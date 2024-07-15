@@ -75,7 +75,7 @@ async function copy() {
     while (chars <= 100_000_000) {
         let res = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
             .then(res => res.json())
-            .catch(() => void 0);
+            .catch(() => { });
         // Rate limits/maintenance.
         if (!res)
             continue;
@@ -115,7 +115,7 @@ async function copy() {
     }
     finally {
         client.release();
-        await fs_1.default.promises.unlink(dumpFile).catch(() => void 0);
+        await fs_1.default.promises.unlink(dumpFile).catch(() => { });
     }
     return chars;
 }

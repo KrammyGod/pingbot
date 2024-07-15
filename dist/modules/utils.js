@@ -4,8 +4,7 @@ exports.fetch_history = exports.get_results = exports.wait_for_button = exports.
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 // This is used to make the code a little more readable when we need to return void in promises
-const VOID = () => {
-};
+const VOID = () => { };
 exports.VOID = VOID;
 function strip(text, char) {
     return text.replaceAll(new RegExp(`^${char}+|${char}+$`, 'g'), '');

@@ -155,8 +155,9 @@ async function handle_command(message) {
     // or if it's an admin command and the user isn't the admin, then ignore message handling.
     if (!command ||
         (!client.is_listening && !command.admin) ||
-        (command.admin && message.author.id !== client.admin.id))
+        (command.admin && message.author.id !== client.admin.id)) {
         return handle_reply(message);
+    }
     // Parse arguments and send to command execute
     const args = [];
     // Remove actual command invocation

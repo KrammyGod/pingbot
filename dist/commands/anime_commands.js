@@ -1359,7 +1359,7 @@ const listHelpers = {
                 return interaction.showModal(input);
             }
             else if (page === 'help') {
-                await interaction.reply({
+                return interaction.reply({
                     content: GLOBAL_HELP +
                         '🔍: Search and jump to a specific waifu by name or index\n' +
                         '⬆️: Selects the first waifu on the current page\n' +
@@ -1367,8 +1367,7 @@ const listHelpers = {
                             'Swap to normal list' :
                             'Swap to list sorted by highest upgradable waifus'}`,
                     ephemeral: true,
-                });
-                return;
+                }).then(Utils.VOID);
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);

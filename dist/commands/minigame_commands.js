@@ -74,8 +74,7 @@ class Cooldown {
         return `${left}/${this.rate} attempt${left === 1 ? '' : 's'} left.`;
     }
     next_ready() {
-        const next_ready = this.last +
-            (this.per * 1000);
+        const next_ready = this.last + this.per * 1000;
         if (next_ready < Date.now()) {
             // Already ready.
             return '';
@@ -287,7 +286,8 @@ const flip_privates = {
 exports.flip = new commands_1.SlashCommandWithSubcommand({
     data: new discord_js_1.SlashCommandBuilder().setName('flip').setDescription('Flip base command'),
     long_description: 'Flip general command.',
-}).addSubcommand(flip_heads).addSubcommand(flip_tails).register({
+    subcommands: [flip_heads, flip_tails],
+}).register({
     async execute(interaction) {
         await interaction.deferReply();
         const bet = interaction.options.getInteger('bet');
@@ -311,7 +311,7 @@ exports.flip = new commands_1.SlashCommandWithSubcommand({
             return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         embed.setDescription(cd.tries_left());
-        await interaction.editReply({ embeds: [embed], files });
+        return interaction.editReply({ embeds: [embed], files }).then(Utils.VOID);
     },
 });
 //# sourceMappingURL=minigame_commands.js.map

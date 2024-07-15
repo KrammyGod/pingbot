@@ -90,7 +90,11 @@ async function get_results_category(interaction, choices) {
 }
 async function get_results_cmd(interaction, search) {
     let choices = [];
-    for (const cmd of [...interaction.client.interaction_commands.values(), ...interaction.client.message_commands.values()]) {
+    const allCommands = [
+        ...interaction.client.interaction_commands.values(),
+        ...interaction.client.message_commands.values(),
+    ];
+    for (const cmd of allCommands) {
         if (cmd.isMessageCommand()) {
             choices.push({
                 name: cmd.name,
