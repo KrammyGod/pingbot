@@ -3,8 +3,8 @@ name: Publish to development
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches: ["main"]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+    branches: [ "main" ]
 
   workflow_dispatch:
     inputs:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Lint
         run: npm run lint
 
@@ -55,8 +55,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # We essentially move all required files to the hidden folder
-      # that contains the dev-dist branch (checked out simultaneously).
+      # We essentially clear everything from the dev-dist branch
+      # and move all required files to the folder to be pushed.
       # npm run deploy automatically builds and registers slash commands
       - name: Build & Deploy
         env:
@@ -64,8 +64,13 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
         run: |
           npm run deploy
-          rsync -a * .dist
-          mv .env-cmdrc .dist
+          rm -rf .dist/*
+          mv dist/ .dist/
+          mv files/ .dist/
+          mv ecosystem.config.js .dist/
+          mv package.json .dist/
+          mv package-lock.json .dist/
+          mv .env-cmdrc .dist/
 
       # We also include the commit message to be the same as original commit
       - name: Checkout and push to dev-dist
