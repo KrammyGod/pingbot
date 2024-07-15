@@ -188,14 +188,13 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
         }).then(utils_1.VOID);
     }
     // Process interaction.
-    const commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
+    let commandName = interaction.isCommand() ? interaction.commandName : interaction.customId?.split('/').at(0);
     // Unknown interaction
     if (!commandName)
         return;
-    let command;
     if (interaction.isCommand() && _config_1.default.events) {
         // Special event reversed command; typescript doesn't like the hacky solutions
-        command = client.interaction_commands.get(commandName.split('').reverse().join(''));
+        commandName = commandName.split('').reverse().join('');
         // Reverse subcommand names back to original.
         if (interaction.options) {
             // @ts-expect-error We forcefully reassign to rename the subcommand
@@ -206,9 +205,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
             interaction.options._hoistedOptions.map(o => o.name = o.name.split('').reverse().join(''));
         }
     }
-    else {
-        command = client.interaction_commands.get(commandName);
-    }
+    const command = client.interaction_commands.get(commandName);
     if (!command)
         return;
     if (interaction.isContextMenuCommand() || interaction.isChatInputCommand()) {
