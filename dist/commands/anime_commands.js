@@ -108,8 +108,7 @@ async function search_character(interaction, userID, number_or_name, high) {
         return undefined;
     return Utils.get_results(interaction, res, {
         title_fmt: (idx) => `Found ${idx} characters in ` +
-            `${interaction.user.id ===
-                (userID) ? 'your' : 'their'} ` +
+            `${interaction.user.id === (userID) ? 'your' : 'their'} ` +
             'list. Please select one:',
         desc_fmt: choice => `${choice.getWFC(interaction.channel)} ` +
             `**${choice.name}** from *${choice.origin}*`,
@@ -118,12 +117,10 @@ async function search_character(interaction, userID, number_or_name, high) {
 }
 // Simple function to calculate how many pages there are if there are 10 items per page.
 function totalPages(pages) {
-    return Math.floor(pages / 10) +
-        (pages % 10 ? 1 : 0);
+    return Math.floor(pages / 10) + (pages % 10 ? 1 : 0);
 }
 function getPage(idx) {
-    return Math.floor(idx / 10) +
-        (idx % 10 ? 1 : 0);
+    return Math.floor(idx / 10) + (idx % 10 ? 1 : 0);
 }
 function getStart(page) {
     return (page - 1) * 10 + 1;
@@ -131,8 +128,7 @@ function getStart(page) {
 async function collect_anime(userID, anime) {
     const completed = await DB.getCompleted(userID, anime);
     const cnt = await DB.fetchUserAnimeCount(userID, anime);
-    const gain = (cnt -
-        (completed ?? 0)) * 100;
+    const gain = (cnt - (completed ?? 0)) * 100;
     if (!gain)
         return 0;
     await DB.setCompleted(userID, anime, cnt);
@@ -549,8 +545,7 @@ const lb_privates = {
         }
         const place = await DB.getUserLBStats(authorID).then(p => p?.idx);
         let place_suffix = 'th';
-        if (place &&
-            !(10 < place && place < 13)) {
+        if (place && !(10 < place && place < 13)) {
             switch (place % 10) {
                 case 1:
                     place_suffix = 'st';
@@ -776,21 +771,14 @@ exports.profile = new commands_1.SlashCommandNoSubcommand({
             '✅ Available now!';
         // This is here because it makes the embed look pretty, used to have a use case.
         const cus_str = '✅ Registered!';
-        const a_str = user.id === me ?
-            '∞' :
-            `${completed.size}`;
+        const a_str = user.id === me ? '∞' : `${completed.size}`;
         const wai_str = user.id === me ? '∞' : ccount;
         const scount_str = user.id === me ? '∞ 🌟' :
             // I'm too lazy to fix this typescript weirdness
             `${star_lb.stars}` +
-                `${stars ===
-                    star_lb.stars ? '🌟' : '⭐'}`;
-        const pos = user.id === me ?
-            0 :
-            lbs.idx;
-        const spos = user.id === me ?
-            0 :
-            star_lb.idx;
+                `${stars === star_lb.stars ? '🌟' : '⭐'}`;
+        const pos = user.id === me ? 0 : lbs.idx;
+        const spos = user.id === me ? 0 : star_lb.idx;
         /* End fields for embed */
         const embed = new discord_js_1.EmbedBuilder({
             title: `${user.displayName}'s Profile`,
@@ -1990,7 +1978,7 @@ exports.top = new commands_1.SlashCommandNoSubcommand({
                 ephemeral: true,
             }).then(Utils.VOID);
         }
-        const { embeds, components, followUp, } = await top_privates.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await top_privates.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
