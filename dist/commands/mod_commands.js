@@ -97,9 +97,7 @@ exports.purge = new commands_1.SlashCommandNoSubcommand({
         if (isNaN(amount) || amount >= 100) {
             const buttonMessage = await interaction.editReply({
                 content: "## Woah! That's a lot of messages!\n# Are you sure " +
-                    `you want to delete ${isNaN(amount) ?
-                        'all' :
-                        amount} messages?`,
+                    `you want to delete ${isNaN(amount) ? 'all' : amount} messages?`,
                 components: [purge_privates.buttons],
             });
             const confirmed = await buttonMessage.awaitMessageComponent({
@@ -247,7 +245,9 @@ const welcome_menu = {
     },
     buildComponents(userID, guild) {
         return [
-            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setEmoji('📝').setCustomId(`guild/${userID}/welcome_menu/editmsg`).setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder().setEmoji('🔙')
+            new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setEmoji('📝')
+                .setCustomId(`guild/${userID}/welcome_menu/editmsg`)
+                .setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder().setEmoji('🔙')
                 .setCustomId(`guild/${userID}/welcome_menu/back`)
                 .setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder().setEmoji('❓')
                 .setCustomId(`guild/${userID}/welcome_menu/help`)
@@ -595,21 +595,14 @@ exports.guild = new commands_1.SlashCommandNoSubcommand({
         }
         else {
             // If none in cache, fetch current settings as cache
-            guildCache = {
-                ...await DB.getGuild(interaction.guildId),
-                mid: '',
-            };
+            guildCache = { ...await DB.getGuild(interaction.guildId), mid: '' };
             guildCache.gid = interaction.guildId;
         }
         guildCache.mid = message.id;
         await this.cache.set(interaction.guildId, guildCache);
         const embeds = guild_privates.buildEmbeds(guildCache, 'main_menu');
         const components = guild_privates.buildComponents(interaction.user.id, guildCache, 'main_menu');
-        await interaction.editReply({
-            content: null,
-            embeds,
-            components,
-        });
+        await interaction.editReply({ content: null, embeds, components });
     },
 });
 //# sourceMappingURL=mod_commands.js.map

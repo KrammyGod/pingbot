@@ -284,7 +284,9 @@ const flip_privates = {
     cds: new CooldownMapping(5, 3 * 60 * 60),
 };
 exports.flip = new commands_1.SlashCommandWithSubcommand({
-    data: new discord_js_1.SlashCommandBuilder().setName('flip').setDescription('Flip base command'),
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('flip')
+        .setDescription('Flip base command'),
     long_description: 'Flip general command.',
     subcommands: [flip_heads, flip_tails],
 }).register({

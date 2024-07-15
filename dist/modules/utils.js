@@ -114,8 +114,7 @@ async function get_rich_cmd(textOrInteraction, client) {
 }
 exports.get_rich_cmd = get_rich_cmd;
 function channel_is_nsfw_safe(channel) {
-    return !channel.isThread() &&
-        (channel.isDMBased() || channel.nsfw);
+    return !channel.isThread() && (channel.isDMBased() || channel.nsfw);
 }
 exports.channel_is_nsfw_safe = channel_is_nsfw_safe;
 // Useful helpers used in all modules
@@ -213,9 +212,7 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     menu.addOptions({ label: 'Cancel.', value: '-1' });
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [
-            new discord_js_1.ActionRowBuilder().addComponents(menu),
-        ],
+        components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
         ephemeral: true,
     });
     const res = await message.awaitMessageComponent({

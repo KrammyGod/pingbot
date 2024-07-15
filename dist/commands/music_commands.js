@@ -165,7 +165,9 @@ async function playNext(client, guildId) {
     }
 }
 const join = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('join').setDescription('Joins the voice channel you are in.'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('join')
+        .setDescription('Joins the voice channel you are in.'),
     long_description: 'Joins the voice channel. Use this command to move me if I am already in a channel!\n' +
         'Note: You can only move me if you have the `MOVE_MEMBERS` permission!\n\n' +
         'Usage: `/music join`\n\n' +
@@ -248,7 +250,9 @@ const leave = new commands_1.SlashSubcommand({
     },
 });
 const np = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('np').setDescription('Shows the currently playing song.'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('np')
+        .setDescription('Shows the currently playing song.'),
     long_description: 'Shows the currently playing song in a pretty embed.\n\n' +
         'Usage: `/music np`\n\n' +
         'Examples: `/music np`',
@@ -301,7 +305,8 @@ const play_privates = {
     },
 };
 const play = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('play')
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('play')
         .setDescription('Plays a song in the voice channel.')
         .addStringOption(option => option
         .setName('query')
@@ -470,7 +475,9 @@ const play = new commands_1.SlashSubcommand({
     },
 });
 const host = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('host').setDescription('Views the current host of the music channel.'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('host')
+        .setDescription('Views the current host of the music channel.'),
     long_description: 'Views the current host of the music channel.\n\n' +
         'Usage: `/music host`\n\n' +
         'Examples: `/music host`',
@@ -491,7 +498,9 @@ const host = new commands_1.SlashSubcommand({
     },
 });
 const clear = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('clear').setDescription('Clears the playlist. MUST BE HOST'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('clear')
+        .setDescription('Clears the playlist. MUST BE HOST'),
     long_description: 'Clears the playlist. Only hosts may use this command.\n\n' +
         'Usage: `/music clear`\n\n' +
         'Examples: `/music clear`',
@@ -513,7 +522,8 @@ const clear = new commands_1.SlashSubcommand({
     },
 });
 const loop = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('loop')
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('loop')
         .setDescription('Sets the loop mode. MUST BE HOST')
         .addStringOption(option => option
         .setName('type')
@@ -543,7 +553,9 @@ const loop = new commands_1.SlashSubcommand({
     },
 });
 const pause = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('pause').setDescription('Pauses the current song. MUST BE HOST'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('pause')
+        .setDescription('Pauses the current song. MUST BE HOST'),
     long_description: 'Pauses the current song. Only hosts may use this command.\n\n' +
         'Usage: `/music pause`\n\n' +
         'Examples: `/music pause`',
@@ -573,7 +585,9 @@ const pause = new commands_1.SlashSubcommand({
     },
 });
 const resume = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('resume').setDescription('Resumes the current song. MUST BE HOST'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('resume')
+        .setDescription('Resumes the current song. MUST BE HOST'),
     long_description: 'Resumes the current song. Only hosts may use this command.\n\n' +
         'Usage: `/music resume`\n\n' +
         'Examples: `/music resume`',
@@ -764,7 +778,9 @@ const queue = new commands_1.SlashSubcommand({
     },
 });
 const shuffle = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('shuffle').setDescription('Shuffles the current queue. MUST BE HOST'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('shuffle')
+        .setDescription('Shuffles the current queue. MUST BE HOST'),
     long_description: 'Shuffles the entire queue. Only hosts may use this command.\n\n' +
         'Usage: `/music shuffle`\n\n' +
         'Example: `/music shuffle`',
@@ -803,7 +819,8 @@ const shuffle = new commands_1.SlashSubcommand({
     },
 });
 const prev = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('prev')
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('prev')
         .setDescription('Plays the previous song. MUST BE HOST'),
     long_description: 'Plays the previous song. Only hosts may use this command.\n\n' +
         'Usage: `/music prev`\n\n' +
@@ -834,7 +851,8 @@ const prev = new commands_1.SlashSubcommand({
     },
 });
 const skip = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('skip')
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('skip')
         .setDescription('Skips the current song. MUST BE HOST'),
     long_description: 'Skips the current song. Only hosts may use this command.\n\n' +
         'Usage: `/music skip`\n\n' +
@@ -905,7 +923,9 @@ const remove_song = new commands_1.SlashSubcommand({
     },
 });
 const remove = new commands_1.SlashSubcommandGroup({
-    data: new discord_js_1.SlashCommandSubcommandGroupBuilder().setName('remove').setDescription('Remove base description'),
+    data: new discord_js_1.SlashCommandSubcommandGroupBuilder()
+        .setName('remove')
+        .setDescription('Remove base description'),
     long_description: 'Remove base command',
     subcommands: [remove_song],
 });
@@ -944,12 +964,16 @@ const vote_skip = new commands_1.SlashSubcommand({
     },
 });
 const vote = new commands_1.SlashSubcommandGroup({
-    data: new discord_js_1.SlashCommandSubcommandGroupBuilder().setName('vote').setDescription('Vote Base Command.'),
+    data: new discord_js_1.SlashCommandSubcommandGroupBuilder()
+        .setName('vote')
+        .setDescription('Vote Base Command.'),
     long_description: 'Vote Base Command',
     subcommands: [vote_skip],
 });
 const restart = new commands_1.SlashSubcommand({
-    data: new discord_js_1.SlashCommandSubcommandBuilder().setName('restart').setDescription('Restarts the queue. MUST BE HOST'),
+    data: new discord_js_1.SlashCommandSubcommandBuilder()
+        .setName('restart')
+        .setDescription('Restarts the queue. MUST BE HOST'),
     long_description: 'Restarts the queue (start from the beginning). Only hosts may use this command.\n\n' +
         'Usage: `/music restart`' +
         'Examples: `/music restart`',
@@ -1001,7 +1025,10 @@ const restart = new commands_1.SlashSubcommand({
 });
 // All commands are under this main command
 exports.music = new commands_1.SlashCommandWithSubcommand({
-    data: new discord_js_1.SlashCommandBuilder().setName('music').setDescription('Music base command.').setDMPermission(false),
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('music')
+        .setDescription('Music base command.')
+        .setDMPermission(false),
     long_description: 'Music base command',
     async textInputGetter(interaction) {
         return interaction.customId.split('/')[1];

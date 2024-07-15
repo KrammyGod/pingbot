@@ -428,13 +428,11 @@ function getLeaderboards(start) {
 }
 exports.getLeaderboards = getLeaderboards;
 function getUserStarLBStats(userID) {
-    return query('SELECT brons, stars, idx FROM starLeaderboard WHERE uid = $1', [userID]).then(res => res.at(0)
-        ? ({
-            brons: res[0].brons,
-            stars: parseInt(res[0].stars),
-            idx: parseInt(res[0].idx),
-        })
-        : undefined);
+    return query('SELECT brons, stars, idx FROM starLeaderboard WHERE uid = $1', [userID]).then(res => res.at(0) ? ({
+        brons: res[0].brons,
+        stars: parseInt(res[0].stars),
+        idx: parseInt(res[0].idx),
+    }) : undefined);
 }
 exports.getUserStarLBStats = getUserStarLBStats;
 function getStarLeaderboards(start) {
