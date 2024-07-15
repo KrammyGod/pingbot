@@ -83,4 +83,4 @@ function isString(isThisString) {
         console.log('Unknown user, might be error?');
     }
 })();
-//# sourceMappingURL=deploy-commands.js.map
+//# sourceMappingURL=deploy_commands.js.map

@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GuildVoices = exports.Song = void 0;
+exports.GuildVoices = exports.GuildVoice = exports.Song = void 0;
 const play_dl_1 = __importStar(require("play-dl"));
 const discord_js_1 = require("discord.js");
 const voice_1 = require("@discordjs/voice");
@@ -278,6 +278,6 @@ class GuildVoice {
         });
     }
 }
-exports.default = GuildVoice;
+exports.GuildVoice = GuildVoice;
 exports.GuildVoices = new Map();
-//# sourceMappingURL=GuildVoice.js.map
+//# sourceMappingURL=voice.js.map
