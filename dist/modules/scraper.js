@@ -38,11 +38,7 @@ async function getRawImageLink(source) {
             --imageNumber; // Positive indexes start at 0
         const res = await pixiv.illust.get(source).catch(() => {
             // We try to refresh token to hopefully fix the error.
-            return pixiv.refreshToken().then(() => {
-                return pixiv.illust.get(source);
-            }, () => {
-                console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!');
-            });
+            return pixiv.refreshToken().then(() => pixiv.illust.get(source), () => console.error('\x1b[31m%s\x1b[0m', 'Warning! Pixiv refresh token expired!'));
         });
         if (res) {
             source = res.url;

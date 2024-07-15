@@ -234,8 +234,7 @@ async function collect() {
         add('I encountered a really bad error... save me...\n```\n' + (0, util_1.inspect)(e) + '```');
     }
     finally {
-        await client.end().catch(() => {
-        });
+        await client.end().catch(() => { });
         LOGGER.end();
     }
 })();

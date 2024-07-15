@@ -333,8 +333,7 @@ function start() {
 }
 exports.start = start;
 function end() {
-    return pool.end().catch(() => {
-    });
+    return pool.end().catch(Utils.VOID);
 }
 exports.end = end;
 function getUidsList(shardId, totalShards) {
@@ -353,7 +352,7 @@ exports.getUidsList = getUidsList;
 /* END DATABASE SETUP */
 /* GETTERS/SETTERS FOR DATABASE */
 function getUserCount() {
-    return query('SELECT COUNT(*) FROM user_info').then(ret => parseInt(ret[0].count));
+    return query('SELECT COUNT(*)::int FROM user_info').then(ret => ret[0].count);
 }
 exports.getUserCount = getUserCount;
 function getBrons(userID) {
@@ -414,7 +413,9 @@ function setCompleted(userID, origin, count) {
 }
 exports.setCompleted = setCompleted;
 function getUserLBStats(userID) {
-    return query('SELECT brons, idx FROM leaderboard WHERE uid = $1', [userID]).then(res => res.at(0) ? ({ brons: res[0].brons, idx: parseInt(res[0].idx) }) : undefined);
+    return query('SELECT brons, idx FROM leaderboard WHERE uid = $1', [userID]).then(res => res.at(0)
+        ? ({ brons: res[0].brons, idx: parseInt(res[0].idx) })
+        : undefined);
 }
 exports.getUserLBStats = getUserLBStats;
 function getLeaderboards(start) {
@@ -477,7 +478,7 @@ function fetchWaifu(wid) {
 }
 exports.fetchWaifu = fetchWaifu;
 function fetchWaifuCount() {
-    return query('SELECT COUNT(*) FROM waifus').then(ret => parseInt(ret[0].count));
+    return query('SELECT COUNT(*)::int FROM waifus').then(ret => ret[0].count);
 }
 exports.fetchWaifuCount = fetchWaifuCount;
 function searchWaifuByName(name) {
@@ -509,11 +510,11 @@ function fetchCompleteOrigin(origin) {
 }
 exports.fetchCompleteOrigin = fetchCompleteOrigin;
 function getAnimesCount() {
-    return query('SELECT COUNT(DISTINCT origin) FROM waifus').then(ret => parseInt(ret[0].count));
+    return query('SELECT COUNT(DISTINCT origin)::int FROM waifus').then(ret => ret[0].count);
 }
 exports.getAnimesCount = getAnimesCount;
 function getAnimes(start) {
-    return query(`SELECT origin, COUNT(*)
+    return query(`SELECT origin, COUNT(*)::int
          FROM waifus
          GROUP BY origin
          ORDER BY origin
@@ -532,33 +533,33 @@ function fetchRandomWaifu(amt, level) {
     switch (level) {
         case "easy" /* Levels.EASY */:
             return query(`SELECT name, gender, origin, img, nimg
-                 FROM waifus
-                 ORDER BY RANDOM()
-                 LIMIT $1`, [amt]).then(Waifu.fromRows);
+             FROM waifus
+             ORDER BY RANDOM()
+             LIMIT $1`, [amt]).then(Waifu.fromRows);
         case "medium" /* Levels.MEDIUM */:
             return query(`SELECT A.*
-                 FROM (SELECT name,
-                              gender,
-                              origin,
-                              img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
-                       FROM waifus
-                       UNION ALL
-                       SELECT B.*
-                       FROM (SELECT name, gender, origin, img
-                             FROM commons
-                             ORDER BY RANDOM()
-                             LIMIT (SELECT COUNT(*)
-                                    FROM waifus)) B) A
-                 ORDER BY RANDOM()
-                 LIMIT $1`, [amt]).then(Waifu.fromRows);
+             FROM (SELECT name,
+                          gender,
+                          origin,
+                          img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
+                   FROM waifus
+                   UNION ALL
+                   SELECT B.*
+                   FROM (SELECT name, gender, origin, img
+                         FROM commons
+                         ORDER BY RANDOM()
+                         LIMIT (SELECT COUNT(*)
+                                FROM waifus)) B) A
+             ORDER BY RANDOM()
+             LIMIT $1`, [amt]).then(Waifu.fromRows);
         case "hard" /* Levels.HARD */:
             return query(`SELECT name,
-                        gender,
-                        origin,
-                        img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
-                 FROM chars
-                 ORDER BY RANDOM()
-                 LIMIT $1`, [amt]).then(Waifu.fromRows);
+                    gender,
+                    origin,
+                    img[FLOOR(RANDOM() * array_length(img, 1)) + 1]
+             FROM chars
+             ORDER BY RANDOM()
+             LIMIT $1`, [amt]).then(Waifu.fromRows);
     }
     // Says unreachable, however if an invalid level is provided,
     // will be reached.
@@ -586,17 +587,16 @@ function fetchAutocollectByPage(userID, page) {
 }
 exports.fetchAutocollectByPage = fetchAutocollectByPage;
 function fetchAutocollectLength(userID) {
-    return query(`SELECT COUNT(*)
+    return query(`SELECT COUNT(*)::int
          FROM hoyolab_cookies_list
-         WHERE id = $1`, [userID]).then(res => parseInt(res[0].count));
+         WHERE id = $1`, [userID]).then(res => res[0].count);
 }
 exports.fetchAutocollectLength = fetchAutocollectLength;
 function toggleAutocollect(userID, game, type, idx) {
     return query(`UPDATE hoyolab_cookies_list
          SET ${game} = $2
          WHERE id = $1
-           AND idx = $3`, [userID, type, idx]).then(() => {
-    });
+           AND idx = $3`, [userID, type, idx]).then(Utils.VOID);
 }
 exports.toggleAutocollect = toggleAutocollect;
 async function addCookie(userID, cookie) {
@@ -653,7 +653,7 @@ function fetchUserCharacterCount(userID) {
 }
 exports.fetchUserCharacterCount = fetchUserCharacterCount;
 function fetchUserCommonCount(userID, { start, end } = {}) {
-    let q = 'SELECT COUNT(*) FROM all_user_chars WHERE uid = $1 AND fc = FALSE';
+    let q = 'SELECT COUNT(*)::int FROM all_user_chars WHERE uid = $1 AND fc = FALSE';
     const params = [userID];
     if (start) {
         params.push(start);
@@ -663,14 +663,14 @@ function fetchUserCommonCount(userID, { start, end } = {}) {
         params.push(end);
         q += ` AND idx <= $${params.length}::bigint`;
     }
-    return query(q, params).then(ret => parseInt(ret[0].count));
+    return query(q, params).then(ret => ret[0].count);
 }
 exports.fetchUserCommonCount = fetchUserCommonCount;
 function fetchUserStarredCount(userID) {
-    return query(`SELECT COUNT(*)
+    return query(`SELECT COUNT(*)::int
          FROM all_user_chars
          WHERE uid = $1
-           AND fc = TRUE`, [userID]).then(ret => parseInt(ret[0].count));
+           AND fc = TRUE`, [userID]).then(ret => ret[0].count);
 }
 exports.fetchUserStarredCount = fetchUserStarredCount;
 function fetchRandomStarred(userID) {
@@ -739,11 +739,11 @@ function queryUserHighCharacter(userID, name) {
 }
 exports.queryUserHighCharacter = queryUserHighCharacter;
 function fetchUserAnimeCount(userID, origin) {
-    return query(`SELECT COUNT(*)
+    return query(`SELECT COUNT(*)::int
          FROM all_user_chars
          WHERE uid = $1
            AND origin = $2
-           AND fc = TRUE`, [userID, origin]).then(ret => parseInt(ret[0].count));
+           AND fc = TRUE`, [userID, origin]).then(ret => ret[0].count);
 }
 exports.fetchUserAnimeCount = fetchUserAnimeCount;
 function getCommonQuery() {
@@ -968,8 +968,7 @@ function swapUserCharacters(char1, char2) {
         [],
         [char1.uid, char1.wid, char1.idx, char2.idx],
         [char2.uid, char2.wid, char2.idx, char1.idx],
-    ]).then(() => {
-    });
+    ]).then(Utils.VOID);
 }
 exports.swapUserCharacters = swapUserCharacters;
 const EMPTY_GUILD_SETTINGS = {
@@ -1015,8 +1014,7 @@ function setGuild(settings) {
     return query(`INSERT INTO guild_settings(${cols})
          VALUES (${values})
          ON CONFLICT (gid)
-             DO UPDATE SET ${colUpdates}`, params).then(() => {
-    });
+             DO UPDATE SET ${colUpdates}`, params).then(Utils.VOID);
 }
 exports.setGuild = setGuild;
 function getGuessStreaks(userID) {
@@ -1041,28 +1039,35 @@ exports.addOneToGuessStreak = addOneToGuessStreak;
 function resetGuessStreak(userID, level) {
     return query(`UPDATE guess_info
          SET ${level}_streak = 0
-         WHERE uid = $1`, [userID]).then(() => {
-    });
+         WHERE uid = $1`, [userID]).then(Utils.VOID);
 }
 exports.resetGuessStreak = resetGuessStreak;
-/* Special functions for storing local data */
+/*
+ * Special functions for storing local data.
+ * Can store any object that can be serialized.
+ */
 class Cache {
     constructor(cmd) {
         this.cmd = cmd;
     }
-    get(id) {
+    get(id, deserializer) {
         return query(`SELECT data
              FROM local_data
              WHERE cmd = $1
                AND id = $2
-               AND (CURRENT_DATE < expiry OR expiry IS NULL)`, [this.cmd, id]).then(res => res.at(0)?.data);
+               AND (CURRENT_DATE < expiry OR expiry IS NULL)`, [this.cmd, id]).then(res => {
+            const data = res.at(0)?.data;
+            // Deserializer is only called if data was found.
+            if (deserializer && data)
+                return deserializer(data);
+            return data;
+        });
     }
     set(id, data, expiry = null) {
         return query(`INSERT INTO local_data(cmd, id, data, expiry)
              VALUES ($1, $2, $3, $4)
              ON CONFLICT (cmd, id) DO UPDATE SET data   = EXCLUDED.data,
-                                                 expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`, [this.cmd, id, data, expiry]).then(() => {
-        });
+                                                 expiry = COALESCE(local_data.expiry, EXCLUDED.expiry)`, [this.cmd, id, data, expiry]).then(Utils.VOID);
     }
     delete(id = null) {
         return query('DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *', [this.cmd, id]);
@@ -1071,9 +1076,7 @@ class Cache {
 exports.Cache = Cache;
 // We use this function to delete when any subscribed object is deleted
 function deleteLocalData(id) {
-    return query('DELETE FROM local_data WHERE id = $1', [id]).then(() => {
-    }, () => {
-    });
+    return query('DELETE FROM local_data WHERE id = $1', [id]).then(Utils.VOID, Utils.VOID);
 }
 exports.deleteLocalData = deleteLocalData;
 //# sourceMappingURL=database.js.map

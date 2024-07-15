@@ -22,63 +22,68 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const glob_1 = __importDefault(require("glob"));
-const path_1 = __importDefault(require("path"));
 const discord_js_1 = require("discord.js");
-const utils_1 = require("./utils");
-async function load(client) {
+const commands = __importStar(require("../commands"));
+function isString(isThisString) {
+    return typeof isThisString === 'string';
+}
+function load(client) {
+    // Reset to prevent duplicate loads
     client.cogs = [];
-    client.commands = new Map();
-    client.admin_commands = new Map();
+    client.interaction_commands = new Map();
     client.message_commands = new Map();
-    const commandFiles = glob_1.default.sync(path_1.default.resolve(__dirname, '../commands/*.js'));
-    for (const file of commandFiles) {
-        const commandFile = await Promise.resolve(`${file}`).then(s => __importStar(require(s)));
-        commandFile.commands = [];
-        commandFile.amt = 0;
+    for (const commandFile of Object.values(commands)) {
+        // Initialize a cog object
+        const cog = {
+            name: commandFile.name,
+            desc: commandFile.desc,
+            displayed_commands: [],
+            real_command_count: 0,
+        };
+        // We assert that commandFile is a CommandFile object. If we don't follow it, it's the developer's fault.
         Object.values(commandFile).forEach(command => {
-            if ((0, utils_1.isSlashCommand)(command) || ((0, utils_1.isMessageCommand)(command) && !command.admin)) {
-                commandFile.commands.push(command);
+            // Ignore name and desc exported properties.
+            if (isString(command))
+                return;
+            if (command.isSlashCommand() || (command.isMessageCommand() && !command.admin)) {
+                cog.displayed_commands.push(command);
             }
-            if ((0, utils_1.isInteractionCommand)(command)) {
-                client.commands.set(command.data.name, command);
+            // This should encapsulate all non-message commands exported due to the rules set in @classes/command
+            if (command.isContextCommand() ||
+                command.isSlashCommandWithSubcommand() ||
+                command.isSlashCommandNoSubcommand()) {
+                client.interaction_commands.set(command.data.name, command);
                 let has_subcommands = false;
                 command.data.toJSON().options?.forEach(option => {
                     if (option.type === discord_js_1.ApplicationCommandOptionType.SubcommandGroup) {
                         // Subcommand groups must only have subcommands as options
-                        commandFile.amt += option.options.length;
+                        cog.real_command_count += option.options.length;
                         has_subcommands = true;
                     }
                     else if (option.type === discord_js_1.ApplicationCommandOptionType.Subcommand) {
-                        ++commandFile.amt;
+                        ++cog.real_command_count;
                         has_subcommands = true;
                     }
                 });
                 if (!has_subcommands)
-                    ++commandFile.amt;
+                    ++cog.real_command_count;
             }
-            else if ((0, utils_1.isMessageCommand)(command)) {
-                if (command.admin) {
-                    client.admin_commands.set(`${client.prefix}${command.name}`, command);
-                }
-                else {
-                    client.message_commands.set(`${client.prefix}${command.name}`, command);
-                }
-                ++commandFile.amt;
+            else if (command.isMessageCommand()) {
+                client.message_commands.set(`${client.prefix}${command.name}`, command);
+                if (!command.admin)
+                    ++cog.real_command_count;
             }
         });
-        if (commandFile.commands.length)
-            client.cogs.push(commandFile);
+        // Only push the cog if it has commands to display
+        if (cog.displayed_commands.length)
+            client.cogs.push(cog);
     }
     client.cogs.sort((a, b) => {
-        if (a.amt === b.amt) {
+        if (a.real_command_count === b.real_command_count) {
             return a.name.localeCompare(b.name);
         }
-        return b.amt - a.amt;
+        return b.real_command_count - a.real_command_count;
     });
 }
 exports.default = load;

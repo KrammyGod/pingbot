@@ -27,6 +27,7 @@ exports.GuildVoices = exports.Song = void 0;
 const play_dl_1 = __importStar(require("play-dl"));
 const discord_js_1 = require("discord.js");
 const voice_1 = require("@discordjs/voice");
+const utils_1 = require("../modules/utils");
 class Song {
     constructor(infoData, uniqueId, isNsfw, playlist_url) {
         this.invalid = true;
@@ -154,8 +155,7 @@ class GuildVoice {
                 return this.playNextSong();
             }
         }
-        const source = await play_dl_1.default.stream(song.playUrl).catch(() => {
-        });
+        const source = await play_dl_1.default.stream(song.playUrl).catch(utils_1.VOID);
         if (!source) {
             // Forcefully skip song on error
             if (this.loop === "ONE" /* LoopType.one */) {
@@ -194,7 +194,8 @@ class GuildVoice {
     }
     _shuffleFullQueue() {
         for (let i = this.fullQueue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(Math.random() *
+                (i + 1));
             [this.fullQueue[i], this.fullQueue[j]] = [this.fullQueue[j], this.fullQueue[i]];
         }
     }

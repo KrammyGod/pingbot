@@ -1,8 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isMessageCommand = exports.isInteractionCommand = exports.isContextCommand = exports.isSlashCommand = exports.isSlashSubcommandGroup = exports.isSlashSubcommand = exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = void 0;
+exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = exports.VOID = void 0;
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
+// This is used to make the code a little more readable when we need to return void in promises
+const VOID = () => { };
+exports.VOID = VOID;
 function strip(text, char) {
     return text.replaceAll(new RegExp(`^${char}+|${char}+$`, 'g'), '');
 }
@@ -12,7 +15,7 @@ async function fetch_user_fast(client, uid, userCb, ctx) {
     const retval = await client.shard?.broadcastEval((client, { uid, userCb, ctx }) => {
         return eval(userCb)(client.users.cache.get(uid), ctx);
     }, { context: { uid, userCb: userCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
-    if (!retval && client.user_cache_ready) {
+    if (!retval && client.is_user_cache_ready) {
         // Mimic serialization
         return userCb(await client.users.fetch(uid).catch(() => undefined), JSON.parse(JSON.stringify(ctx ?? {})));
     }
@@ -124,8 +127,7 @@ async function send_embeds_by_wave(interaction, embeds) {
     });
     while (embeds.length > 0) {
         wave = embeds.splice(0, 10);
-        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(() => {
-        });
+        await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(exports.VOID);
     }
 }
 exports.send_embeds_by_wave = send_embeds_by_wave;
@@ -156,8 +158,7 @@ exports.timestamp = timestamp;
  * However, Discord has a route to support this, and that's what this function does.
  */
 function delete_ephemeral_message(i, msg) {
-    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(() => {
-    });
+    return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(exports.VOID);
 }
 exports.delete_ephemeral_message = delete_ephemeral_message;
 /**
@@ -258,42 +259,4 @@ async function* fetch_history(channel, amount, filter = () => true) {
     }
 }
 exports.fetch_history = fetch_history;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isSlashSubcommand(obj) {
-    return obj && obj.data instanceof discord_js_1.SlashCommandSubcommandBuilder &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length <= 2;
-}
-exports.isSlashSubcommand = isSlashSubcommand;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isSlashSubcommandGroup(obj) {
-    return obj && obj.data instanceof discord_js_1.SlashCommandSubcommandGroupBuilder &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.subcommands && obj.execute.length <= 2;
-}
-exports.isSlashSubcommandGroup = isSlashSubcommandGroup;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isSlashCommand(obj) {
-    return obj && obj.data instanceof discord_js_1.SlashCommandBuilder &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' &&
-        obj.execute.length <= 2;
-}
-exports.isSlashCommand = isSlashCommand;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isContextCommand(obj) {
-    return obj && obj.data instanceof discord_js_1.ContextMenuCommandBuilder &&
-        typeof obj.execute === 'function' && obj.execute.length <= 2;
-}
-exports.isContextCommand = isContextCommand;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isInteractionCommand(obj) {
-    return isSlashCommand(obj) || isContextCommand(obj);
-}
-exports.isInteractionCommand = isInteractionCommand;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isMessageCommand(obj) {
-    return obj && typeof obj.name === 'string' && typeof obj.admin === 'boolean' &&
-        typeof obj.desc === 'string' && typeof obj.execute === 'function' && obj.execute.length <= 3;
-}
-exports.isMessageCommand = isMessageCommand;
 //# sourceMappingURL=utils.js.map

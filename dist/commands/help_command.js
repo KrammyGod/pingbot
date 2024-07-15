@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.help = exports.desc = exports.name = void 0;
 const Utils = __importStar(require("../modules/utils"));
 const discord_js_1 = require("discord.js");
+const commands_1 = require("../classes/commands");
 exports.name = 'Help';
 exports.desc = 'This is a special category dedicated for you!';
 // Helper to replace all `/command` with new shiny command mention.
@@ -72,7 +73,9 @@ async function get_results_category(interaction, choices) {
     menu.addOptions({ label: 'Cancel.', value: '-1' });
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
+        components: [
+            new discord_js_1.ActionRowBuilder().addComponents(menu),
+        ],
         ephemeral: true,
     });
     // Return promise to let caller await it.
@@ -87,22 +90,26 @@ async function get_results_category(interaction, choices) {
 }
 async function get_results_cmd(interaction, search) {
     let choices = [];
-    for (const cmd of [...interaction.client.commands.values(), ...interaction.client.message_commands.values()]) {
-        if (Utils.isMessageCommand(cmd)) {
+    const allCommands = [
+        ...interaction.client.interaction_commands.values(),
+        ...interaction.client.message_commands.values(),
+    ];
+    for (const cmd of allCommands) {
+        if (cmd.isMessageCommand()) {
             choices.push({
                 name: cmd.name,
-                desc: cmd.desc,
+                desc: cmd.long_description,
                 is_slash: false,
             });
         }
-        else if (Utils.isSlashCommand(cmd)) {
-            if (cmd.subcommands) {
+        else if (cmd.isSlashCommand()) {
+            if (cmd.isSlashCommandWithSubcommand()) {
                 for (const subcmd of cmd.subcommands.values()) {
-                    if (Utils.isSlashSubcommandGroup(subcmd)) {
+                    if (subcmd.isSlashSubcommandGroup()) {
                         for (const subsubcmd of subcmd.subcommands.values()) {
                             choices.push({
                                 name: `${cmd.data.name} ${subcmd.data.name} ${subsubcmd.data.name}`,
-                                desc: subsubcmd.desc,
+                                desc: subsubcmd.long_description,
                                 is_slash: true,
                             });
                         }
@@ -110,7 +117,7 @@ async function get_results_cmd(interaction, search) {
                     else {
                         choices.push({
                             name: `${cmd.data.name} ${subcmd.data.name}`,
-                            desc: subcmd.desc,
+                            desc: subcmd.long_description,
                             is_slash: true,
                         });
                     }
@@ -119,7 +126,7 @@ async function get_results_cmd(interaction, search) {
             else {
                 choices.push({
                     name: cmd.data.name,
-                    desc: cmd.desc,
+                    desc: cmd.long_description,
                     is_slash: true,
                 });
             }
@@ -146,14 +153,9 @@ async function get_results_cmd(interaction, search) {
     }).setFooter({ text: 'Select a choice or click cancel.' });
     let desc = '';
     for (const [idx, choice] of choices.entries()) {
-        if (Utils.isSlashCommand(choice)) {
-            desc += `${idx + 1}. **${choice.data.name}**\n`;
-        }
-        else {
-            desc += `${idx + 1}. **${choice.name}**\n`;
-        }
+        desc += `${idx + 1}. **${choice.name}**\n`;
         menu.addOptions({
-            label: `${idx + 1}. ${Utils.isSlashCommand(choice) ? choice.data.name : choice.name}`,
+            label: `${idx + 1}. ${choice.name}`,
             value: `${idx}`,
         });
     }
@@ -161,7 +163,9 @@ async function get_results_cmd(interaction, search) {
     menu.addOptions({ label: 'Cancel.', value: '-1' });
     const message = await interaction.followUp({
         embeds: [embed],
-        components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
+        components: [
+            new discord_js_1.ActionRowBuilder().addComponents(menu),
+        ],
         ephemeral: true,
     });
     // Return promise to let caller await it.
@@ -213,35 +217,38 @@ async function get_cog_page(client, authorID, page) {
     embed.setDescription(`Page ${page}/${max_pages}`);
     let field = '';
     const cog = client.cogs[page - 1];
-    for (const command of cog.commands) {
-        if (Utils.isSlashCommand(command)) {
+    for (const command of cog.displayed_commands) {
+        if (command.isSlashCommand()) {
             const commands = [];
-            // Try to add all subcommands to list
-            for (const subcommand of command.subcommands?.values() ?? []) {
-                if (Utils.isSlashSubcommandGroup(subcommand)) {
-                    for (const subsubcommand of subcommand.subcommands.values()) {
+            if (command.isSlashCommandWithSubcommand()) {
+                // Try to add all subcommands to list
+                for (const subcommand of command.subcommands.values() ?? []) {
+                    if (subcommand.isSlashSubcommandGroup()) {
+                        for (const subsubcommand of subcommand.subcommands.values()) {
+                            commands.push({
+                                name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
+                                description: subsubcommand.data.description,
+                            });
+                        }
+                    }
+                    else {
                         commands.push({
-                            name: `${command.data.name} ${subcommand.data.name} ${subsubcommand.data.name}`,
-                            description: subsubcommand.data.description,
+                            name: `${command.data.name} ${subcommand.data.name}`,
+                            description: subcommand.data.description,
                         });
                     }
                 }
-                else {
-                    commands.push({
-                        name: `${command.data.name} ${subcommand.data.name}`,
-                        description: subcommand.data.description,
-                    });
-                }
             }
-            // No subcommands, then only main command left.
-            if (!commands.length)
+            else {
+                // No subcommands, then only main command left.
                 commands.push(command.data);
+            }
             for (const cmd of commands) {
                 const app_cmd = await Utils.get_rich_cmd(cmd.name, client);
                 field += `> ${app_cmd} - ${cmd.description}\n`;
             }
         }
-        else if (Utils.isMessageCommand(command)) {
+        else if (command.isMessageCommand()) {
             // Replace all `/command` with new shiny command mention.
             const replace_fn = (match) => {
                 const full_name = match.slice(2, -1);
@@ -249,7 +256,7 @@ async function get_cog_page(client, authorID, page) {
             };
             // Don't ask me about the regex, it was way too long ago...
             // Shouldn't be that hard to figure out though...
-            const desc = await asyncReplace(command.desc, /{\/\S+(?: \S+)?}/g, replace_fn);
+            const desc = await asyncReplace(command.long_description, /{\/\S+(?: \S+)?}/g, replace_fn);
             field += `> \`${client.prefix}${command.name}\` - ${desc}\n`;
         }
     }
@@ -332,7 +339,7 @@ async function get_cmd_page(client, authorID, command) {
         .setCustomId(`help/${authorID}/help/cmd`));
     return { embeds: [embed], components: [row] };
 }
-exports.help = {
+exports.help = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('help')
         .addStringOption(option => option
@@ -342,7 +349,7 @@ exports.help = {
         .setName('category')
         .setDescription('The category to jump to.'))
         .setDescription('Use me for help!'),
-    desc: 'What does {/help} do? Well, it shows you description messages.\n' +
+    long_description: 'What does {/help} do? Well, it shows you description messages.\n' +
         '...\n...\n...\n...\n...\n...\n...\n...\n... ' +
         '...   ...  ...like this one...',
     async buttonReact(interaction) {
@@ -396,8 +403,7 @@ exports.help = {
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
                         ephemeral: true,
-                    }).then(() => {
-                    });
+                    }).then(Utils.VOID);
                 }
                 else if (cmdName === 'cog') {
                     return interaction.reply({
@@ -409,8 +415,7 @@ exports.help = {
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
                         ephemeral: true,
-                    }).then(() => {
-                    });
+                    }).then(Utils.VOID);
                 }
                 else {
                     throw new Error(`Command type: ${cmdName} not found.`);
@@ -438,8 +443,7 @@ exports.help = {
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
                         color: discord_js_1.Colors.Red,
                     });
-                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
-                    });
+                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
                 }
                 const { embeds, components, followUp } = await get_cog_page(interaction.client, interaction.user.id, interaction.client.cogs.indexOf(category) + 1);
                 await interaction.editReply({ embeds, components });
@@ -461,8 +465,7 @@ exports.help = {
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red,
                 });
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
-                });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
             }
             const res = await get_cmd_page(interaction.client, interaction.user.id, command);
             await interaction.editReply(res);
@@ -494,8 +497,7 @@ exports.help = {
                     title: `No command with name \`${commandName.replaceAll('`', '\\`')}\` found.`,
                     color: discord_js_1.Colors.Red,
                 });
-                return interaction.editReply({ embeds: [error_embed] }).then(() => {
-                });
+                return interaction.editReply({ embeds: [error_embed] }).then(Utils.VOID);
             }
             res = await get_cmd_page(interaction.client, interaction.user.id, command);
         }
@@ -522,5 +524,5 @@ exports.help = {
         const { embeds, components } = res;
         await interaction.editReply({ embeds, components });
     },
-};
+});
 //# sourceMappingURL=help_command.js.map

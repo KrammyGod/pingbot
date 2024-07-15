@@ -34,6 +34,7 @@ const Utils = __importStar(require("../modules/utils"));
 const scraper_1 = require("../modules/scraper");
 const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
+const commands_1 = require("../classes/commands");
 exports.name = 'Animes/Gacha';
 exports.desc = 'This category is for commands that deal with the character gacha.';
 const NO_NUM = -1;
@@ -134,23 +135,7 @@ async function collect_anime(userID, anime) {
     await DB.addBrons(userID, gain);
     return gain;
 }
-exports.animes = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('animes')
-        .addIntegerOption(option => option
-        .setName('page')
-        .setDescription('The page number to jump to. (Default: 1)')
-        .setMinValue(1))
-        .addUserOption(option => option
-        .setName('user')
-        .setDescription('The user to view. (Default: You)'))
-        .setDescription('Find all available anime series.'),
-    desc: 'Show all anime available in the custom database.\n\n' +
-        'Usage: `/animes page: [page] user: [user]`\n\n' +
-        '__**Options:**__\n' +
-        '*page:* The page number to jump to. (Default: 1)\n' +
-        "*user:* Check a different user's list. (Default: You)\n\n" +
-        'Examples: `/animes page: 2` `/animes page: 5 user: @krammygod`',
+const animes_privates = {
     async getPage(authorID, target, page) {
         const max_pages = totalPages(await DB.getAnimesCount());
         const embed = new discord_js_1.EmbedBuilder({
@@ -199,15 +184,14 @@ exports.animes = {
         const allAnimes = await DB.getAnimes(start);
         for (const [i, anime] of allAnimes.entries()) {
             const user_count = await DB.fetchUserAnimeCount(target.id, anime.origin);
-            const cnt = parseInt(anime.count);
-            if (user_count === cnt) {
-                if (completed.get(anime.origin) === cnt) {
+            if (user_count === anime.count) {
+                if (completed.get(anime.origin) === anime.count) {
                     field += '✅ ';
                 }
                 else {
                     field += '✳️ ';
                     if (authorID === target.id) {
-                        const total_gain = (cnt - (completed.get(anime.origin) ?? 0)) * 100;
+                        const total_gain = (anime.count - (completed.get(anime.origin) ?? 0)) * 100;
                         // Add if there exists an uncollected series.
                         menu.setPlaceholder('Click me to claim bonuses!')
                             .addOptions({
@@ -223,7 +207,7 @@ exports.animes = {
             else {
                 field += '🟩 ';
             }
-            field += `${start + i + 1}. **${anime.origin}** *(${user_count}/${cnt})*\n`;
+            field += `${start + i + 1}. **${anime.origin}** *(${user_count}/${anime.count})*\n`;
         }
         // Add as field if possible
         if (field.length <= 1024) {
@@ -274,23 +258,39 @@ exports.animes = {
         }
         return retval;
     },
+};
+exports.animes = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('animes')
+        .addIntegerOption(option => option
+        .setName('page')
+        .setDescription('The page number to jump to. (Default: 1)')
+        .setMinValue(1))
+        .addUserOption(option => option
+        .setName('user')
+        .setDescription('The user to view. (Default: You)'))
+        .setDescription('Find all available anime series.'),
+    long_description: 'Show all anime available in the custom database.\n\n' +
+        'Usage: `/animes page: [page] user: [user]`\n\n' +
+        '__**Options:**__\n' +
+        '*page:* The page number to jump to. (Default: 1)\n' +
+        "*user:* Check a different user's list. (Default: You)\n\n" +
+        'Examples: `/animes page: 2` `/animes page: 5 user: @krammygod`',
     async textInput(interaction) {
         const [userID] = interaction.customId.split('/').splice(1);
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
         const user = await interaction.client.users.fetch(userID).catch(() => null);
         if (!user)
-            return interaction.deleteReply().then(() => {
-            });
+            return interaction.deleteReply().then(Utils.VOID);
         const page = parseInt(value);
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.user.id, user, page);
+        const { embeds, components, followUp } = await animes_privates.getPage(interaction.user.id, user, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
@@ -321,8 +321,7 @@ exports.animes = {
                 return interaction.showModal(input);
             }
             else if (page === 'help') {
-                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true }).then(() => {
-                });
+                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true }).then(Utils.VOID);
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -331,9 +330,8 @@ exports.animes = {
         await interaction.deferUpdate();
         const user = await interaction.client.users.fetch(userID).catch(() => null);
         if (!user)
-            return interaction.deleteReply().then(() => {
-            });
-        const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
+            return interaction.deleteReply().then(Utils.VOID);
+        const { embeds, components } = await animes_privates.getPage(interaction.user.id, user, parseInt(page));
         await interaction.editReply({ embeds, components });
     },
     async menuReact(interaction) {
@@ -346,28 +344,27 @@ exports.animes = {
         const user = await interaction.client.users.fetch(userID).catch(() => null);
         if (!user)
             return interaction.deleteReply();
-        const { embeds, components } = await this.getPage(interaction.user.id, user, parseInt(page));
+        const { embeds, components } = await animes_privates.getPage(interaction.user.id, user, parseInt(page));
         await interaction.editReply({ embeds, components });
         if (gain) {
             await interaction.followUp({
                 content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
                     `and gained +${gain} ${interaction.client.bot_emojis.brons}!`,
                 ephemeral: true,
-            }).catch(() => {
-            });
+            }).catch(Utils.VOID);
         }
     },
     async execute(interaction) {
         const page = interaction.options.getInteger('page') ?? 1;
         const user = interaction.options.getUser('user') ?? interaction.user;
         await interaction.deferReply();
-        const { embeds, components, followUp } = await this.getPage(interaction.user.id, user, page);
+        const { embeds, components, followUp } = await animes_privates.getPage(interaction.user.id, user, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
     },
-};
-exports.anime = {
+});
+exports.anime = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('anime')
         .addStringOption(option => option
@@ -378,7 +375,7 @@ exports.anime = {
         .setName('user')
         .setDescription('The user to stalk.'))
         .setDescription('Show all characters available to obtain from an anime.'),
-    desc: 'Show all characters collected from an anime.\n' +
+    long_description: 'Show all characters collected from an anime.\n' +
         'If there are multiple results, selection times out in 60 seconds.\n' +
         'This command is case-insensitive.\n\n' +
         'Usage: `/anime anime: <anime_name> user: [user]`\n\n' +
@@ -398,8 +395,7 @@ exports.anime = {
         }
         else if (!series) {
             embed.setTitle(`No anime found with name \`${name}\`.`).setColor(discord_js_1.Colors.Red);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         embed.setTitle('Search results:');
         const anime_chars = await DB.getAnime(series);
@@ -409,8 +405,7 @@ exports.anime = {
             let obtained = '🟩';
             let uStatus = '';
             let wFC = char.fc ? '⭐ ' : '';
-            const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(() => {
-            });
+            const user_char = await DB.fetchUserCharacter(user.id, char.wid).catch(Utils.VOID);
             if (user_char) {
                 obtained = '✅';
                 await user_char.loadWaifu();
@@ -441,15 +436,15 @@ exports.anime = {
             }
         }
     },
-};
-exports.bal = {
+});
+exports.bal = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('bal')
         .addUserOption(option => option
         .setName('user')
         .setDescription('The user to stalk.'))
         .setDescription('Show your current balance.'),
-    desc: "Check anyone's current balance of brons!\n\n" +
+    long_description: "Check anyone's current balance of brons!\n\n" +
         'Usage: `/bal user: [user]`\n\n' +
         '__**Options**__\n' +
         '*user:* The user to stalk. (Default: You)\n\n' +
@@ -463,46 +458,30 @@ exports.bal = {
             if (user.id === interaction.user.id) {
                 return interaction.editReply({
                     content: `You don't have an account. Create one by using ${dailyCmd}`,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             return interaction.editReply({
                 content: `${user} does not have an account. Tell them to join by using ${dailyCmd}`,
                 allowedMentions: { users: [] },
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         if (user.id === interaction.user.id) {
             return interaction.editReply({
                 content: `You currently have ${brons} ${interaction.client.bot_emojis.brons}.`,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
         else if (user.id === interaction.client.user.id) {
             return interaction.editReply({
                 content: `I have ∞ ${interaction.client.bot_emojis.brons}.`,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
-        await interaction.editReply({
+        return interaction.editReply({
             content: `${user} has ${brons} ${interaction.client.bot_emojis.brons}.`,
             allowedMentions: { users: [] },
-        });
+        }).then(Utils.VOID);
     },
-};
-exports.lb = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('lb')
-        .addIntegerOption(option => option
-        .setName('page')
-        .setDescription('Page to jump to. (Default: 1)')
-        .setMinValue(1))
-        .setDescription('Show leaderboards for brons.'),
-    desc: 'Shows the top x users with the highest brons!\n\n' +
-        'Usage: `/lb page: [page]`\n\n' +
-        '__**Options**__\n' +
-        '*page:* The page number to jump to. (Default: 1)\n\n' +
-        'Examples: `/lb`, `/lb page: 2`',
+});
+const lb_privates = {
     async getPage(client, authorID, page) {
         const max_pages = totalPages(await DB.getUserCount());
         const embed = new discord_js_1.EmbedBuilder({
@@ -617,6 +596,20 @@ exports.lb = {
         }
         return retval;
     },
+};
+exports.lb = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('lb')
+        .addIntegerOption(option => option
+        .setName('page')
+        .setDescription('Page to jump to. (Default: 1)')
+        .setMinValue(1))
+        .setDescription('Show leaderboards for brons.'),
+    long_description: 'Shows the top x users with the highest brons!\n\n' +
+        'Usage: `/lb page: [page]`\n\n' +
+        '__**Options**__\n' +
+        '*page:* The page number to jump to. (Default: 1)\n\n' +
+        'Examples: `/lb`, `/lb page: 2`',
     async textInput(interaction) {
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
@@ -625,10 +618,9 @@ exports.lb = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await lb_privates.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
@@ -662,31 +654,30 @@ exports.lb = {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by stars',
                     ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, val);
+        const { embeds, components } = await lb_privates.getPage(interaction.client, interaction.user.id, val);
         await interaction.editReply({ embeds, components });
     },
     async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await lb_privates.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
     },
-};
-exports.daily = {
+});
+exports.daily = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('daily')
         .setDescription('Get your daily brons.'),
-    desc: 'What is {/daily} you ask?  Well, here you will learn\n' +
+    long_description: 'What is {/daily} you ask?  Well, here you will learn\n' +
         'That once in a day, 200 bron you may earn.\n\n' +
         'And if a waifu is at level 5 or more,\n' +
         "Then there's a chance extra bron is in store!\n\n" +
@@ -705,8 +696,7 @@ exports.daily = {
             if (amt === 1000) {
                 // First sign up
                 embed.setColor(discord_js_1.Colors.Gold).setTitle(`You have collected your first daily! +1000 ${interaction.client.bot_emojis.brons}!`);
-                return interaction.editReply({ embeds: [embed] }).then(() => {
-                });
+                return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
             }
             embed.setTitle(`You have collected your daily! +200 ${interaction.client.bot_emojis.brons}!`);
             const chosen = await DB.fetchRandomStarred(interaction.user.id);
@@ -721,8 +711,7 @@ exports.daily = {
                     `${bonus_brons} ${interaction.client.bot_emojis.brons}! ${level_str}`);
                 DB.addBrons(interaction.user.id, bonus_brons);
             }
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         // Otherwise already collected
         // Hack I figured out a long time ago. Something about 5am UTC.
@@ -730,15 +719,15 @@ exports.daily = {
         embed.setColor(discord_js_1.Colors.Red).setTitle(`You have already collected your dailies.\nNext daily reset ${Utils.timestamp(time_left, 'R')}.`);
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.profile = {
+});
+exports.profile = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('profile')
         .addUserOption(options => options
         .setName('user')
         .setDescription('The user to view. (Default: You)'))
         .setDescription('View statistics of a user.'),
-    desc: 'All stats combined into one simple and clean display!\n\n' +
+    long_description: 'All stats combined into one simple and clean display!\n\n' +
         'Usage: `/profile user: [user]`\n\n' +
         '__**Options**__\n' +
         "*user:* The user's profile to see. (Default: You)\n\n" +
@@ -756,7 +745,7 @@ exports.profile = {
             DB.getUserStarLBStats(user.id),
             DB.fetchWaifuCount(),
         ];
-        const [collected, whales, ccount, completed, lbs, star_lb, stars] = await Promise.all(promises);
+        const [collected, whales, ccount, completed, lbs, star_lb, stars,] = await Promise.all(promises);
         // Bots or no account
         if ((user.bot || collected === undefined) && user.id !== me) {
             const embed = new discord_js_1.EmbedBuilder({
@@ -766,8 +755,7 @@ exports.profile = {
                     'No info :('}**`,
                 color: discord_js_1.Colors.Gold,
             }).setThumbnail(user.displayAvatarURL());
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         const brons = lbs?.brons ?? -1;
         /* Setup fields for embed */
@@ -882,15 +870,16 @@ exports.profile = {
         embed.setFooter({ text: 'Note: The favourite waifu is the waifu at position #1.' });
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.profile_menu = {
+});
+exports.profile_menu = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Profile')
         .setType(discord_js_1.ApplicationCommandType.User),
+    long_description: 'Show /profile command on the user',
     execute(interaction) {
         return exports.profile.execute(interaction);
     },
-};
+});
 // Helper that gets a list as an embed
 async function get_list_as_embed(channel, authorID, target, page, high) {
     const max_pages = totalPages(high ?
@@ -1237,8 +1226,7 @@ async function switch_char_image(interaction, char) {
             return;
         return parseInt(val);
     }).catch(() => undefined);
-    Utils.delete_ephemeral_message(interaction, message).catch(() => {
-    });
+    Utils.delete_ephemeral_message(interaction, message).catch(Utils.VOID);
     let success = true;
     if (selected === undefined) {
         return;
@@ -1358,7 +1346,7 @@ const listHelpers = {
                 return interaction.showModal(input);
             }
             else if (page === 'help') {
-                await interaction.reply({
+                return interaction.reply({
                     content: GLOBAL_HELP +
                         '🔍: Search and jump to a specific waifu by name or index\n' +
                         '⬆️: Selects the first waifu on the current page\n' +
@@ -1366,8 +1354,7 @@ const listHelpers = {
                             'Swap to normal list' :
                             'Swap to list sorted by highest upgradable waifus'}`,
                     ephemeral: true,
-                });
-                return;
+                }).then(Utils.VOID);
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -1434,8 +1421,7 @@ const listHelpers = {
                 return interaction.followUp({
                     content: 'Invalid page number.',
                     ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             const { embeds, components, followUp } = await get_list_as_embed(interaction.channel, interaction.user.id, user, page, high);
             await interaction.editReply({ embeds, components });
@@ -1452,13 +1438,11 @@ const listHelpers = {
             }
             else if (!char) {
                 error_embed.setTitle(`No character found with name \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
-                });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
             }
             else if (char === NO_NUM) {
                 error_embed.setTitle(`No character found with index \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(() => {
-                });
+                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
             }
             const { embeds, components, followUp } = await get_char_as_embed(interaction.channel, interaction.user.id, user, char.wid, high);
             await interaction.editReply({ embeds, components });
@@ -1479,7 +1463,7 @@ const listHelpers = {
             await interaction.followUp(followUp);
     },
 };
-exports.list = {
+exports.list = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('list')
         .addUserOption(option => option
@@ -1490,7 +1474,7 @@ exports.list = {
         .setDescription('The page to jump to. (Default: 1)')
         .setMinValue(1))
         .setDescription("View a user's waifu list."),
-    desc: 'Reveal the waifus a user collected in a beautiful embed.\n\n' +
+    long_description: 'Reveal the waifus a user collected in a beautiful embed.\n\n' +
         'Usage: `/list user: [user] page: [page]`\n\n' +
         '__**Options**__\n' +
         '*user:* The user you want to stalk. (Default: You)\n' +
@@ -1508,16 +1492,17 @@ exports.list = {
     async execute(interaction) {
         return listHelpers.execute(interaction, false);
     },
-};
-exports.list_menu = {
+});
+exports.list_menu = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Character List')
         .setType(discord_js_1.ApplicationCommandType.User),
+    long_description: 'Show character list from a user',
     execute(interaction) {
         return exports.list.execute(interaction);
     },
-};
-exports.high = {
+});
+exports.high = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('high')
         .addUserOption(option => option
@@ -1528,7 +1513,7 @@ exports.high = {
         .setDescription('The page to jump to. (Default: 1)')
         .setMinValue(1))
         .setDescription("View a user's waifu list sorted by level."),
-    desc: 'Get your highest characters now! ~~Limited time offer.~~\n' +
+    long_description: 'Get your highest characters now! ~~Limited time offer.~~\n' +
         'Only shows characters that are upgradable (see {/uplist})!\n' +
         'Suggested by: @ryu_minoru\n\n' +
         'Usage: `/high user: [user] page: [page]`\n\n' +
@@ -1548,7 +1533,7 @@ exports.high = {
     async execute(interaction) {
         return listHelpers.execute(interaction, true);
     },
-};
+});
 // NOTE: Update docs if/when level threshold for images change
 const gacha_docs = `1% Chance to roll from custom database.
 Custom database courtesy of: @snypintyme
@@ -1631,14 +1616,14 @@ async function generateCharacterDisplay(client, character, channel, user) {
     }).setImage(img);
     return { embed, refund };
 }
-exports.roll = {
+exports.roll = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('roll')
         .addBooleanOption(option => option
         .setName('ephemeral')
         .setDescription('Toggle sending as ephemeral message. (Default: false)'))
         .setDescription('Roll a random waifu.'),
-    desc: 'Randomly gives you an anime character. Each roll costs 2 brons.\n' +
+    long_description: 'Randomly gives you an anime character. Each roll costs 2 brons.\n' +
         `${gacha_docs}\n\n` +
         'Usage: `/roll ephemeral: [ephemeral]`\n\n' +
         '__**Options**__\n' +
@@ -1646,15 +1631,13 @@ exports.roll = {
         'Examples: `/roll`, `/roll ephemeral: True`',
     async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
-        await interaction.deferReply({ ephemeral: eph }).catch(() => {
-        });
+        await interaction.deferReply({ ephemeral: eph }).catch(Utils.VOID);
         const amtTaken = { amt: 0 };
         const res = await DB.generateAndAddCharacter(interaction.user.id, amtTaken);
         const error_embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Red });
         if (typeof res === 'string') {
             error_embed.setTitle(`Roll failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [error_embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [error_embed] }).then(Utils.VOID);
         }
         let total_refund = 0;
         const { embed, refund } = await generateCharacterDisplay(interaction.client, res, interaction.channel, interaction.user);
@@ -1667,15 +1650,15 @@ exports.roll = {
         error_embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         return Utils.send_embeds_by_wave(interaction, [embed, error_embed]);
     },
-};
-exports.multi = {
+});
+exports.multi = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('multi')
         .addBooleanOption(option => option
         .setName('ephemeral')
         .setDescription('Toggle sending as ephemeral message. (Default: false)'))
         .setDescription('Roll 11 characters.'),
-    desc: 'Randomly gives you 11 anime characters. Special deal of 11x for the price of 10x (20 brons).\n' +
+    long_description: 'Randomly gives you 11 anime characters. Special deal of 11x for the price of 10x (20 brons).\n' +
         `${gacha_docs}\n\n` +
         'Usage: `/multi ephemeral: [ephemeral]`\n\n' +
         '__**Options**__\n' +
@@ -1683,15 +1666,13 @@ exports.multi = {
         'Examples: `/multi`, `/multi ephemeral: True`',
     async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
-        await interaction.deferReply({ ephemeral: eph }).catch(() => {
-        });
+        await interaction.deferReply({ ephemeral: eph }).catch(Utils.VOID);
         const amtTaken = { amt: 0 };
         const res = await DB.generateAndAddCharacters(interaction.user.id, false, amtTaken);
         const embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Red });
         if (typeof res === 'string') {
             embed.setTitle(`Multi failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         let total_refund = 0;
         const embeds = [];
@@ -1708,15 +1689,15 @@ exports.multi = {
         embeds.push(embed);
         return Utils.send_embeds_by_wave(interaction, embeds);
     },
-};
-exports.whale = {
+});
+exports.whale = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('whale')
         .addBooleanOption(option => option
         .setName('ephemeral')
         .setDescription('Toggle sending as ephemeral message. (Default: false)'))
         .setDescription('Roll 11 special anime characters.'),
-    desc: 'Randomly gives you 11 starred waifus. Each whale costs 100 brons. Can only be done once a day.\n' +
+    long_description: 'Randomly gives you 11 starred waifus. Each whale costs 100 brons. Can only be done once a day.\n' +
         'Guaranteed to roll from custom database.\n' +
         'The last character is guaranteed to be a character that has multiple images (lewd or normal).\n' +
         `${gacha_docs}\n\n` +
@@ -1728,15 +1709,13 @@ exports.whale = {
         'Examples: `/whale`, `/whale ephemeral: True`',
     async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
-        await interaction.deferReply({ ephemeral: eph }).catch(() => {
-        });
+        await interaction.deferReply({ ephemeral: eph }).catch(Utils.VOID);
         const amtTaken = { amt: 0 };
         const res = await DB.generateAndAddCharacters(interaction.user.id, true, amtTaken);
         const embed = new discord_js_1.EmbedBuilder({ color: discord_js_1.Colors.Red });
         if (typeof res === 'string') {
             embed.setTitle(`Whale failed. Reason: \`${res}\``);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         let total_refund = 0;
         const embeds = [];
@@ -1753,8 +1732,8 @@ exports.whale = {
         embeds.push(embed);
         return Utils.send_embeds_by_wave(interaction, embeds);
     },
-};
-exports.dall = {
+});
+exports.dall = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('dall')
         .addStringOption(option => option
@@ -1764,7 +1743,7 @@ exports.dall = {
         .setName('end')
         .setDescription('The name or index of the character to stop deleting.'))
         .setDescription('Deletes all common characters.'),
-    desc: 'WARNING! DANGEROUS COMMAND! This command will delete ALL of the characters that are ' +
+    long_description: 'WARNING! DANGEROUS COMMAND! This command will delete ALL of the characters that are ' +
         'not starred from your list.\n' +
         'Provide ranges to start/end with that character. (Suggestion by BluThunder1406#4598)\n\n' +
         'Usage: `/trade start: [start_waifu] end: [end_waifu]`\n\n' +
@@ -1810,8 +1789,7 @@ exports.dall = {
         const commons = await DB.fetchUserCommonCount(interaction.user.id, { start, end });
         if (commons === 0) {
             embed.setTitle('No common characters found.').setColor(discord_js_1.Colors.Red);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         embed.setTitle('Confirm delete?').setDescription(`## Found ${commons} common(s).\n` +
             `## Total refund: +${commons} ` +
@@ -1840,15 +1818,15 @@ exports.dall = {
             `+${deleted} ${interaction.client.bot_emojis.brons}`);
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.stars = {
+});
+exports.stars = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('stars')
         .addUserOption(option => option
         .setName('user')
         .setDescription('The user to show the stars of. (Default: you)'))
         .setDescription('Shows the number of stars someone has.'),
-    desc: 'Check how many starred characters you or a user has!\n\n' +
+    long_description: 'Check how many starred characters you or a user has!\n\n' +
         'Usage: `/stars user: [user]`\n\n' +
         '__**Options**__\n' +
         '*user:* The user you want to find the number of stars for. (Default: You)\n\n' +
@@ -1879,20 +1857,8 @@ exports.stars = {
         });
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.top = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('top')
-        .addIntegerOption(option => option
-        .setName('page')
-        .setDescription('Page to jump to. (Default: 1)')
-        .setMinValue(1))
-        .setDescription('Show top users with most starred waifus.'),
-    desc: 'Shows the top users with the most amount of stars!\n\n' +
-        'Usage: `/top page: [page]`\n\n' +
-        '__**Options**__\n' +
-        '*page:* The page number to jump to. (Default: 1)\n\n' +
-        'Examples: `/top`, `/top page: 2`',
+});
+const top_privates = {
     async getPage(client, authorID, page) {
         const max_pages = totalPages(await DB.getUserCount());
         const embed = new discord_js_1.EmbedBuilder({
@@ -1987,6 +1953,20 @@ exports.top = {
         }
         return retval;
     },
+};
+exports.top = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('top')
+        .addIntegerOption(option => option
+        .setName('page')
+        .setDescription('Page to jump to. (Default: 1)')
+        .setMinValue(1))
+        .setDescription('Show top users with most starred waifus.'),
+    long_description: 'Shows the top users with the most amount of stars!\n\n' +
+        'Usage: `/top page: [page]`\n\n' +
+        '__**Options**__\n' +
+        '*page:* The page number to jump to. (Default: 1)\n\n' +
+        'Examples: `/top`, `/top page: 2`',
     async textInput(interaction) {
         const value = interaction.fields.getTextInputValue('value');
         await interaction.deferUpdate();
@@ -1995,10 +1975,9 @@ exports.top = {
             return interaction.followUp({
                 content: 'Invalid page number.',
                 ephemeral: true,
-            }).then(() => {
-            });
+            }).then(Utils.VOID);
         }
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await top_privates.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
@@ -2032,27 +2011,26 @@ exports.top = {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by brons',
                     ephemeral: true,
-                }).then(() => {
-                });
+                }).then(Utils.VOID);
             }
             else {
                 throw new Error(`Button type: ${page} not found.`);
             }
         }
         await interaction.deferUpdate();
-        const { embeds, components } = await this.getPage(interaction.client, interaction.user.id, parseInt(page));
+        const { embeds, components } = await top_privates.getPage(interaction.client, interaction.user.id, parseInt(page));
         await interaction.editReply({ embeds, components });
     },
     async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const { embeds, components, followUp } = await this.getPage(interaction.client, interaction.user.id, page);
+        const { embeds, components, followUp } = await top_privates.getPage(interaction.client, interaction.user.id, page);
         await interaction.editReply({ embeds, components });
         if (followUp)
             await interaction.followUp(followUp);
     },
-};
-exports.users = {
+});
+exports.users = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('users')
         .addStringOption(option => option
@@ -2060,7 +2038,7 @@ exports.users = {
         .setDescription('The name of the character to search for.')
         .setRequired(true))
         .setDescription('Get a list of all users that have a certain character.'),
-    desc: 'Find all the users that own that character. This will give the waifu number too so\n' +
+    long_description: 'Find all the users that own that character. This will give the waifu number too so\n' +
         'you can trade with them. The waifu name is case-insensitive, and will prioritize\n' +
         'names equal to the given name.\n\n' +
         'This command also shows all the details about the waifu!\n\n' +
@@ -2081,13 +2059,11 @@ exports.users = {
         const waifu = await search_waifu(interaction, waifu_name);
         if (waifu === null) {
             error_embed.setTitle('No character selected.');
-            return interaction.editReply({ embeds: [error_embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [error_embed] }).then(Utils.VOID);
         }
         else if (waifu === undefined) {
             error_embed.setTitle(`No character found with name \`${waifu_name}\`.`);
-            return interaction.editReply({ embeds: [error_embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [error_embed] }).then(Utils.VOID);
         }
         const users = await DB.fetchAllUsers(waifu.wid);
         let desc = `__Name:__ **${waifu.name}**\n` +
@@ -2116,8 +2092,8 @@ exports.users = {
         embed.setDescription(desc);
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.swap = {
+});
+exports.swap = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('swap')
         .addStringOption(option => option
@@ -2129,7 +2105,7 @@ exports.swap = {
         .setDescription('The name or index number of the second character.')
         .setRequired(true))
         .setDescription('Swap two characters in your list.'),
-    desc: 'Changes a characters position with another for simple sorting.\n\n' +
+    long_description: 'Changes a characters position with another for simple sorting.\n\n' +
         'Usage: `/swap char1: <char1> char2: <char2>`\n\n' +
         '__**Options**__\n' +
         '*char1:* One character you want to change positions. (Required)\n' +
@@ -2150,13 +2126,11 @@ exports.swap = {
         }
         else if (!char1) {
             embed.setTitle(`First character not found with name \`${c1}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         else if (char1 === NO_NUM) {
             embed.setTitle(`First character not found with index \`${c1}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         const char2 = await search_character(interaction, interaction.user.id, c2, false);
         if (char2 === null) {
@@ -2164,18 +2138,15 @@ exports.swap = {
         }
         else if (!char2) {
             embed.setTitle(`Second character not found with name \`${c2}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         else if (char2 === NO_NUM) {
             embed.setTitle(`Second character not found with index \`${c2}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         if (char1.idx === char2.idx) {
             embed.setTitle('Why are you swapping the same character?');
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         await DB.swapUserCharacters(char1, char2);
         embed.setTitle(`${char1.getWFC(interaction.channel)} ${char1.name}` +
@@ -2184,8 +2155,8 @@ exports.swap = {
             `${char2.getGender()} (position ${char2.idx}) is now at position ${char1.idx}`).setColor(discord_js_1.Colors.Gold);
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.move = {
+});
+exports.move = new commands_1.SlashCommandNoSubcommand({
     data: new discord_js_1.SlashCommandBuilder()
         .setName('move')
         .addStringOption(option => option
@@ -2198,7 +2169,7 @@ exports.move = {
         .setMinValue(1)
         .setRequired(true))
         .setDescription('Moves a character from one position to another in your list.'),
-    desc: 'Moves a character from one position to another in your list.\n\n' +
+    long_description: 'Moves a character from one position to another in your list.\n\n' +
         '**Usage:** `/move char: <char> position: <position>`\n\n' +
         '__**Options:**__\n' +
         '*char:* The character to move. Can be an index or position. (Required)\n' +
@@ -2219,48 +2190,28 @@ exports.move = {
         }
         else if (!char) {
             embed.setTitle(`Character not found with name \`${c}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         else if (char === NO_NUM) {
             embed.setTitle(`Character not found with index \`${c}\`.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         else if (char.idx === pos) {
             embed.setTitle(`${char.name} is already at that position.`);
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         const success = await DB.moveUserCharacter(char, pos);
         if (!success) {
             embed.setTitle('Position is out of range.');
-            return interaction.editReply({ embeds: [embed] }).then(() => {
-            });
+            return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
         embed.setTitle(`${char.getWFC(interaction.channel)} ${char.name} ` +
             `${char.getGender()} is now at position ${pos}`)
             .setColor(discord_js_1.Colors.Gold);
         await interaction.editReply({ embeds: [embed] });
     },
-};
-exports.submit = {
-    data: new discord_js_1.SlashCommandBuilder()
-        .setName('submit')
-        .setDescription('Create a submission request to add a character.'),
-    desc: 'Want to add a character that is not currently in the starred database?\n' +
-        'You came to the right command!\n' +
-        'Simply just follow these rules:\n\n' +
-        '__**Character Submission Rules:**__\n' +
-        '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
-        '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
-        "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
-        '4. If its a new character, the character must have at least **one normal image**.\n' +
-        'When using submit character or anime, values will be prepopulated in the modal. ' +
-        '**DO NOT CHANGE THESE.**\n\n' +
-        'Usage: `/submit`',
-    // We can't use this.data.name
-    cache: new DB.Cache('submit'),
+});
+const submit_privates = {
     // Helper to generate a random, unique filename
     uniqueFileName(ext) {
         let id = 0;
@@ -2300,54 +2251,64 @@ exports.submit = {
         customId: 'submit',
         components: [
             new discord_js_1.ActionRowBuilder({
-                components: [new discord_js_1.TextInputBuilder({
+                components: [
+                    new discord_js_1.TextInputBuilder({
                         label: "Character's name",
                         customId: 'name',
                         placeholder: "Enter the character's name",
                         style: discord_js_1.TextInputStyle.Short,
                         maxLength: 100,
                         required: true,
-                    })],
+                    }),
+                ],
             }),
             new discord_js_1.ActionRowBuilder({
-                components: [new discord_js_1.TextInputBuilder({
+                components: [
+                    new discord_js_1.TextInputBuilder({
                         label: "Character's gender",
                         customId: 'gender',
                         placeholder: 'Female, Male, or Unknown',
                         style: discord_js_1.TextInputStyle.Short,
                         maxLength: 7, // Length of "Unknown"
                         required: true,
-                    })],
+                    }),
+                ],
             }),
             new discord_js_1.ActionRowBuilder({
-                components: [new discord_js_1.TextInputBuilder({
+                components: [
+                    new discord_js_1.TextInputBuilder({
                         label: 'Anime name',
                         customId: 'origin',
                         placeholder: "Enter the anime's name",
                         style: discord_js_1.TextInputStyle.Short,
                         maxLength: 100,
                         required: true,
-                    })],
+                    }),
+                ],
             }),
             new discord_js_1.ActionRowBuilder({
-                components: [new discord_js_1.TextInputBuilder({
+                components: [
+                    new discord_js_1.TextInputBuilder({
                         label: 'Normal image',
                         customId: 'img',
                         placeholder: 'Separate images by lines.',
                         style: discord_js_1.TextInputStyle.Paragraph,
                         maxLength: 2000,
                         required: false,
-                    })],
+                    }),
+                ],
             }),
             new discord_js_1.ActionRowBuilder({
-                components: [new discord_js_1.TextInputBuilder({
+                components: [
+                    new discord_js_1.TextInputBuilder({
                         label: 'Lewd image',
                         customId: 'nimg',
                         placeholder: 'Separate images by lines.',
                         style: discord_js_1.TextInputStyle.Paragraph,
                         maxLength: 2000,
                         required: false,
-                    })],
+                    }),
+                ],
             }),
         ],
     }),
@@ -2371,203 +2332,6 @@ exports.submit = {
             `**\\# of nimg:** ${waifu ? `${waifu.nimg.length + submission.data.nimg.length} ` +
                 `(+${submission.data.nimg.length})` : submission.data.nimg.length}\n\n` +
             `${submission.data.nimg.join('\n\n')}`);
-    },
-    async buttonReact(interaction) {
-        // This handles the button presses from me, the owner that will approve/reject submissions
-        const msg = interaction.message;
-        if (!msg)
-            return interaction.update({ content: 'Removed.' }).then(m => m.delete());
-        const submission = await this.cache.get(msg.id);
-        if (!submission)
-            return interaction.update({ content: 'Cache lost.' }).then(m => m.delete());
-        const user = await interaction.client.users.fetch(submission.uid).catch(() => {
-        });
-        if (!user)
-            return msg.delete().then(() => {
-            });
-        const action = interaction.customId.split('/')[2];
-        const { name, gender, origin, img, nimg } = submission.data;
-        const characterInfo = '```' + `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
-            `Normal Images: ${img.length}\nLewd Images: ${nimg.length}` + '```';
-        if (action === 'reject') {
-            const input = new discord_js_1.ModalBuilder({
-                title: 'Add new character',
-                customId: 'submitRejectReason',
-                components: [
-                    new discord_js_1.ActionRowBuilder({
-                        components: [new discord_js_1.TextInputBuilder({
-                                label: 'Reason',
-                                customId: 'reason',
-                                placeholder: 'Enter the reason for rejection:',
-                                style: discord_js_1.TextInputStyle.Paragraph,
-                                value: 'Invalid character provided.',
-                                maxLength: 2000,
-                                required: true,
-                            })],
-                    }),
-                ],
-            });
-            await interaction.showModal(input);
-            return interaction.awaitModalSubmit({
-                filter: s => s.customId === input.data.custom_id,
-                time: 5 * 60 * 1000, // 5 minutes to allow for a reason
-            }).then(async (i) => {
-                await i.deferUpdate();
-                const reason = i.fields.getTextInputValue('reason');
-                await user.send({
-                    content: `__Your submission for:__ ${characterInfo}` +
-                        `Has been **rejected**!\n**Reason**: ${reason}`,
-                }).catch(() => {
-                });
-                return i.deleteReply();
-            }).catch(() => {
-            });
-        }
-        else if (action === 'approve') {
-            await interaction.update({ components: [] });
-            if (img.some(i => !i.startsWith(_config_1.default.cdn)) ||
-                nimg.some(i => !i.startsWith(_config_1.default.cdn))) {
-                await interaction.followUp({
-                    content: 'Submission has invalid images! Please fix!',
-                    ephemeral: true,
-                });
-                await interaction.editReply({ components: [this.secretButtons] });
-                return;
-            }
-            // Use IDs for images instead of full link
-            submission.data.img.forEach((i, idx, arr) => {
-                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
-            });
-            submission.data.nimg.forEach((i, idx, arr) => {
-                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
-            });
-            const waifu = await DB.fetchWaifuByDetails(submission.data);
-            const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
-                interaction.editReply({ components: [this.secretButtons] });
-                throw err;
-            });
-            const newCharacterInfo = '```' +
-                `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
-                `Normal Images: ${new_waifu.img.length}${waifu ? ` (+${img.length})` : ''}\n` +
-                `Lewd Images: ${new_waifu.nimg.length}${waifu ? ` (+${nimg.length})` : ''}` +
-                '```';
-            await user.send({
-                content: `__Your submission for:__ ${newCharacterInfo}Has been **accepted**!`,
-            }).catch(() => {
-            });
-            const new_characters_log = await interaction.client.channels.fetch(new_characters_log_id);
-            if (waifu) {
-                await new_characters_log.send({
-                    content: `Images added to character by ${user} ` +
-                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
-                });
-            }
-            else {
-                await new_characters_log.send({
-                    content: `New character added by ${user} ` +
-                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
-                });
-            }
-            await msg.delete();
-        }
-        else if (action === 'upload') {
-            await interaction.update({ components: [] });
-            // Upload images asynchronously
-            const imgs = await Promise.all([...img, ...nimg].map(async (url) => {
-                // Do not re-upload CDN images.
-                if (url.startsWith(_config_1.default.cdn)) {
-                    return url;
-                }
-                // Use our helper to get the image data.
-                const { images, source } = await (0, scraper_1.getRawImageLink)(url).catch(() => ({ images: [url], source: url }));
-                const { ext, blob } = await (0, cdn_1.getImage)(images[0]);
-                const formdata = new FormData();
-                formdata.append('images', blob, `tmp.${ext}`);
-                // Won't automatically add url as source
-                // if the url is to a raw image; must be manually updated.
-                if (images[0] !== source) {
-                    formdata.append('sources', url);
-                }
-                // Upload to our CDN and get url back.
-                const [uploaded_url] = await (0, cdn_1.uploadToCDN)(formdata);
-                if (uploaded_url) {
-                    return uploaded_url;
-                }
-                else {
-                    return url;
-                }
-            }));
-            submission.data.img = imgs.splice(0, img.length);
-            submission.data.nimg = imgs.splice(0, nimg.length);
-            await this.cache.set(msg.id, submission);
-            const embed = await this.getWaifuInfoEmbed(interaction.client, submission);
-            await interaction.editReply({ embeds: [embed], components: [this.secretButtons] });
-        }
-        else if (action === 'edit') {
-            return this.startSubmit(interaction, { name, gender, origin, img, nimg }, submission.uid);
-        }
-        else {
-            throw new Error(`No action found for button with custom id: ${interaction.customId}`);
-        }
-    },
-    async textInput(interaction) {
-        // This handles the actual submission from the user
-        await interaction.deferUpdate();
-        const submission = await this.cache.get(interaction.message?.id);
-        const uid = interaction.customId.split('/')[1];
-        const name = interaction.fields.getTextInputValue('name').trim();
-        let gender = interaction.fields.getTextInputValue('gender').trim();
-        let origin = interaction.fields.getTextInputValue('origin').trim();
-        // This cleans up all trailing and leading whitespace
-        const img = interaction.fields.getTextInputValue('img').trim()
-            .split('\n').map(x => x.trim()).filter(x => x !== '');
-        const nimg = interaction.fields.getTextInputValue('nimg').trim()
-            .split('\n').map(x => x.trim()).filter(x => x !== '');
-        gender = gender.charAt(0).toUpperCase() + gender.toLowerCase().slice(1);
-        if (gender !== 'Female' && gender !== 'Male' && gender !== 'Unknown') {
-            return interaction.followUp({
-                content: 'Gender must be one of `Female`, `Male` or `Unknown`!',
-                ephemeral: true,
-            }).then(() => {
-            });
-        }
-        // Ensure that they meant to add to the anime, rather than creating a new one.
-        const complete_origin = await DB.fetchCompleteOrigin(origin);
-        if (complete_origin && complete_origin !== origin)
-            origin = complete_origin;
-        const data = { name, gender, origin, img, nimg };
-        const waifu = await DB.fetchWaifuByDetails(data);
-        if (img.length === 0 && nimg.length === 0) {
-            return interaction.followUp({
-                content: 'You must submit at least 1 image!',
-                ephemeral: true,
-            }).then(() => {
-            });
-        }
-        else if (!waifu && img.length === 0) {
-            return interaction.followUp({
-                content: 'New waifus must have at least 1 normal image!',
-                ephemeral: true,
-            }).then(() => {
-            });
-        }
-        const submission_log = await interaction.client.channels.fetch(submission_log_id);
-        const new_submission = { mid: '', uid, data };
-        const embed = await this.getWaifuInfoEmbed(interaction.client, new_submission);
-        if (submission)
-            interaction.deleteReply();
-        else
-            interaction.followUp({ content: 'Received!', ephemeral: true });
-        const content = waifu ?
-            'A wild **character update** has appeared!' :
-            'A wild **new submission** has appeared!';
-        const msg = await submission_log.send({
-            content: content,
-            embeds: [embed],
-            components: [this.secretButtons],
-        });
-        new_submission.mid = msg.id;
-        return this.cache.set(msg.id, new_submission);
     },
     async searchWaifu(interaction, embed) {
         await interaction.deferUpdate();
@@ -2647,6 +2411,218 @@ exports.submit = {
         modalInput.components[4].components[0].setValue(data.nimg.join('\n'));
         return interaction.showModal(modalInput);
     },
+    deserialize(data) {
+        return {
+            ...data,
+        };
+    },
+};
+exports.submit = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('submit')
+        .setDescription('Create a submission request to add a character.'),
+    long_description: 'Want to add a character that is not currently in the starred database?\n' +
+        'You came to the right command!\n' +
+        'Simply just follow these rules:\n\n' +
+        '__**Character Submission Rules:**__\n' +
+        '1. The character must have an **anime name**. If it has no anime, it goes under "Originals"\n' +
+        '2. If the character is from an **anime** that already exists, use the anime searcher.\n' +
+        "3. The character's **gender** must be one of: `Male`, `Female`, `Unknown`.\n" +
+        '4. If its a new character, the character must have at least **one normal image**.\n' +
+        'When using submit character or anime, values will be prepopulated in the modal. ' +
+        '**DO NOT CHANGE THESE.**\n\n' +
+        'Usage: `/submit`',
+    async buttonReact(interaction) {
+        // This handles the button presses from me, the owner that will approve/reject submissions
+        const msg = interaction.message;
+        if (!msg)
+            return interaction.update({ content: 'Removed.' }).then(m => m.delete());
+        const submission = await this.cache.get(msg.id);
+        if (!submission)
+            return interaction.update({ content: 'Cache lost.' }).then(m => m.delete());
+        const user = await interaction.client.users.fetch(submission.uid).catch(Utils.VOID);
+        if (!user)
+            return msg.delete().then(Utils.VOID);
+        const action = interaction.customId.split('/')[2];
+        const { name, gender, origin, img, nimg } = submission.data;
+        const characterInfo = '```' + `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
+            `Normal Images: ${img.length}\nLewd Images: ${nimg.length}` + '```';
+        if (action === 'reject') {
+            const input = new discord_js_1.ModalBuilder({
+                title: 'Add new character',
+                customId: 'submitRejectReason',
+                components: [
+                    new discord_js_1.ActionRowBuilder({
+                        components: [
+                            new discord_js_1.TextInputBuilder({
+                                label: 'Reason',
+                                customId: 'reason',
+                                placeholder: 'Enter the reason for rejection:',
+                                style: discord_js_1.TextInputStyle.Paragraph,
+                                value: 'Invalid character provided.',
+                                maxLength: 2000,
+                                required: true,
+                            }),
+                        ],
+                    }),
+                ],
+            });
+            await interaction.showModal(input);
+            return interaction.awaitModalSubmit({
+                filter: s => s.customId === input.data.custom_id,
+                time: 5 * 60 * 1000, // 5 minutes to allow for a reason
+            }).then(async (i) => {
+                await i.deferUpdate();
+                const reason = i.fields.getTextInputValue('reason');
+                await user.send({
+                    content: `__Your submission for:__ ${characterInfo}` +
+                        `Has been **rejected**!\n**Reason**: ${reason}`,
+                }).catch(Utils.VOID);
+                return i.deleteReply();
+            }).catch(Utils.VOID);
+        }
+        else if (action === 'approve') {
+            await interaction.update({ components: [] });
+            if (img.some(i => !i.startsWith(_config_1.default.cdn)) ||
+                nimg.some(i => !i.startsWith(_config_1.default.cdn))) {
+                await interaction.followUp({
+                    content: 'Submission has invalid images! Please fix!',
+                    ephemeral: true,
+                });
+                await interaction.editReply({ components: [submit_privates.secretButtons] });
+                return;
+            }
+            // Use IDs for images instead of full link
+            submission.data.img.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
+            });
+            submission.data.nimg.forEach((i, idx, arr) => {
+                arr[idx] = i.replace(`${_config_1.default.cdn}/images/`, '');
+            });
+            const waifu = await DB.fetchWaifuByDetails(submission.data);
+            const new_waifu = await DB.insertWaifu(submission.data).catch(err => {
+                interaction.editReply({ components: [submit_privates.secretButtons] });
+                throw err;
+            });
+            const newCharacterInfo = '```' +
+                `Name: ${name}\nGender: ${gender}\nAnime: ${origin}\n` +
+                `Normal Images: ${new_waifu.img.length}${waifu ? ` (+${img.length})` : ''}\n` +
+                `Lewd Images: ${new_waifu.nimg.length}${waifu ? ` (+${nimg.length})` : ''}` +
+                '```';
+            await user.send({
+                content: `__Your submission for:__ ${newCharacterInfo}Has been **accepted**!`,
+            }).catch(Utils.VOID);
+            const new_characters_log = await interaction.client.channels.fetch(new_characters_log_id);
+            if (waifu) {
+                await new_characters_log.send({
+                    content: `Images added to character by ${user} ` +
+                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
+                });
+            }
+            else {
+                await new_characters_log.send({
+                    content: `New character added by ${user} ` +
+                        `(accepted by ${interaction.user}):\n${newCharacterInfo}`,
+                });
+            }
+            await msg.delete();
+        }
+        else if (action === 'upload') {
+            await interaction.update({ components: [] });
+            // Upload images asynchronously
+            const imgs = await Promise.all([...img, ...nimg].map(async (url) => {
+                // Do not re-upload CDN images.
+                if (url.startsWith(_config_1.default.cdn)) {
+                    return url;
+                }
+                // Use our helper to get the image data.
+                const { images, source } = await (0, scraper_1.getRawImageLink)(url).catch(() => ({ images: [url], source: url }));
+                const { ext, blob } = await (0, cdn_1.getImage)(images[0]);
+                const formdata = new FormData();
+                formdata.append('images', blob, `tmp.${ext}`);
+                // Won't automatically add url as source
+                // if the url is to a raw image; must be manually updated.
+                if (images[0] !== source) {
+                    formdata.append('sources', url);
+                }
+                // Upload to our CDN and get url back.
+                const [uploaded_url] = await (0, cdn_1.uploadToCDN)(formdata);
+                if (uploaded_url) {
+                    return uploaded_url;
+                }
+                else {
+                    return url;
+                }
+            }));
+            submission.data.img = imgs.splice(0, img.length);
+            submission.data.nimg = imgs.splice(0, nimg.length);
+            await this.cache.set(msg.id, submission);
+            const embed = await submit_privates.getWaifuInfoEmbed(interaction.client, submission);
+            await interaction.editReply({ embeds: [embed], components: [submit_privates.secretButtons] });
+        }
+        else if (action === 'edit') {
+            return submit_privates.startSubmit(interaction, { name, gender, origin, img, nimg }, submission.uid);
+        }
+        else {
+            throw new Error(`No action found for button with custom id: ${interaction.customId}`);
+        }
+    },
+    async textInput(interaction) {
+        // This handles the actual submission from the user
+        await interaction.deferUpdate();
+        const submission = await this.cache.get(interaction.message?.id ?? '');
+        const uid = interaction.customId.split('/')[1];
+        const name = interaction.fields.getTextInputValue('name').trim();
+        let gender = interaction.fields.getTextInputValue('gender').trim();
+        let origin = interaction.fields.getTextInputValue('origin').trim();
+        // This cleans up all trailing and leading whitespace
+        const img = interaction.fields.getTextInputValue('img').trim()
+            .split('\n').map(x => x.trim()).filter(x => x !== '');
+        const nimg = interaction.fields.getTextInputValue('nimg').trim()
+            .split('\n').map(x => x.trim()).filter(x => x !== '');
+        gender = gender.charAt(0).toUpperCase() + gender.toLowerCase().slice(1);
+        if (gender !== 'Female' && gender !== 'Male' && gender !== 'Unknown') {
+            return interaction.followUp({
+                content: 'Gender must be one of `Female`, `Male` or `Unknown`!',
+                ephemeral: true,
+            }).then(Utils.VOID);
+        }
+        // Ensure that they meant to add to the anime, rather than creating a new one.
+        const complete_origin = await DB.fetchCompleteOrigin(origin);
+        if (complete_origin && complete_origin !== origin)
+            origin = complete_origin;
+        const data = { name, gender, origin, img, nimg };
+        const waifu = await DB.fetchWaifuByDetails(data);
+        if (img.length === 0 && nimg.length === 0) {
+            return interaction.followUp({
+                content: 'You must submit at least 1 image!',
+                ephemeral: true,
+            }).then(Utils.VOID);
+        }
+        else if (!waifu && img.length === 0) {
+            return interaction.followUp({
+                content: 'New waifus must have at least 1 normal image!',
+                ephemeral: true,
+            }).then(Utils.VOID);
+        }
+        const submission_log = await interaction.client.channels.fetch(submission_log_id);
+        const new_submission = { mid: '', uid, data };
+        const embed = await submit_privates.getWaifuInfoEmbed(interaction.client, new_submission);
+        if (submission)
+            interaction.deleteReply();
+        else
+            interaction.followUp({ content: 'Received!', ephemeral: true });
+        const content = waifu ?
+            'A wild **character update** has appeared!' :
+            'A wild **new submission** has appeared!';
+        const msg = await submission_log.send({
+            content: content,
+            embeds: [embed],
+            components: [submit_privates.secretButtons],
+        });
+        new_submission.mid = msg.id;
+        return this.cache.set(msg.id, new_submission);
+    },
     async execute(interaction) {
         let uid = interaction.user.id;
         // Admins can submit on behalf of other users.
@@ -2656,14 +2632,16 @@ exports.submit = {
                 customId: 'submitAdmin',
                 components: [
                     new discord_js_1.ActionRowBuilder({
-                        components: [new discord_js_1.TextInputBuilder({
+                        components: [
+                            new discord_js_1.TextInputBuilder({
                                 label: 'User ID',
                                 customId: 'uid',
                                 value: uid,
                                 style: discord_js_1.TextInputStyle.Short,
                                 maxLength: 100,
                                 required: true,
-                            })],
+                            }),
+                        ],
                     }),
                 ],
             });
@@ -2671,8 +2649,7 @@ exports.submit = {
             const res = await interaction.awaitModalSubmit({
                 filter: s => s.customId === modal.data.custom_id,
                 time: 15 * 60 * 1_000, // Wait for 15 mins max
-            }).catch(() => {
-            });
+            }).catch(Utils.VOID);
             if (!res)
                 return;
             uid = res.fields.getTextInputValue('uid');
@@ -2730,35 +2707,38 @@ exports.submit = {
         }).on('collect', async (i) => {
             // Selected, we can submit.
             if (i.customId === 'selectWaifu') {
-                return this.startSubmit(i, waifu, uid);
+                return submit_privates.startSubmit(i, waifu, uid);
             }
             else if (i.customId === 'searchWaifu') {
                 // Search for waifu
                 const modal = new discord_js_1.ModalBuilder({
                     title: 'Waifu Search',
                     customId: `submitSearchWaifu${id++}`, // Fixes a very specific bug
-                    components: [new discord_js_1.ActionRowBuilder({
-                            components: [new discord_js_1.TextInputBuilder({
+                    components: [
+                        new discord_js_1.ActionRowBuilder({
+                            components: [
+                                new discord_js_1.TextInputBuilder({
                                     label: "Character's name",
                                     customId: 'name',
                                     placeholder: 'Enter the name of the character',
                                     style: discord_js_1.TextInputStyle.Short,
                                     maxLength: 100,
                                     required: true,
-                                })],
-                        })],
+                                }),
+                            ],
+                        }),
+                    ],
                 });
                 // Create modal to let user input.
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
                     time: 10 * 60 * 1_000, // Wait for 10 mins max to ensure interaction doesn't expire
-                }).catch(() => {
-                });
+                }).catch(Utils.VOID);
                 if (!res)
                     return i.deleteReply(); // Timed out, took too long
                 // Waifu submit search
-                waifu = await this.searchWaifu(res, embed).then(w => {
+                waifu = await submit_privates.searchWaifu(res, embed).then(w => {
                     if (!w)
                         return waifu;
                     buttons2.components[0].setLabel('Select this waifu');
@@ -2778,28 +2758,31 @@ exports.submit = {
                 const modal = new discord_js_1.ModalBuilder({
                     title: 'Anime Search',
                     customId: `submitSearchOrigin${id++}`, // Fixes a very specific bug
-                    components: [new discord_js_1.ActionRowBuilder({
-                            components: [new discord_js_1.TextInputBuilder({
+                    components: [
+                        new discord_js_1.ActionRowBuilder({
+                            components: [
+                                new discord_js_1.TextInputBuilder({
                                     label: 'Anime name',
                                     customId: 'name',
                                     placeholder: 'Enter the name of the anime',
                                     style: discord_js_1.TextInputStyle.Short,
                                     maxLength: 200,
                                     required: true,
-                                })],
-                        })],
+                                }),
+                            ],
+                        }),
+                    ],
                 });
                 // Create modal to let user input.
                 await i.showModal(modal);
                 const res = await i.awaitModalSubmit({
                     filter: s => s.customId === modal.data.custom_id,
                     time: 10 * 60 * 1_000, // Wait for 10 mins max
-                }).catch(() => {
-                });
+                }).catch(Utils.VOID);
                 if (!res)
                     return i.deleteReply(); // Timed out, took too long
                 // Anime submit search
-                waifu = await this.searchAnime(res, embed).then(w => {
+                waifu = await submit_privates.searchAnime(res, embed).then(w => {
                     if (!w)
                         return waifu;
                     buttons2.components[0].setLabel('Select this anime');
@@ -2828,5 +2811,5 @@ exports.submit = {
             }
         });
     },
-};
+});
 //# sourceMappingURL=anime_commands.js.map

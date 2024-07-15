@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCDNId = exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = exports.getCDNMetrics = void 0;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const path_1 = __importDefault(require("path"));
+const utils_1 = require("./utils");
 const headers = new Headers();
 headers.append('Authorization', `Bearer ${_config_1.default.secret}`);
 async function getCDNMetrics() {
@@ -25,8 +26,7 @@ async function uploadToCDN(body) {
         if (res.status === 200)
             return res.json();
         // Try to log error message
-        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), () => {
-        });
+        res.json().then(e => console.error(`POST JSON: ${JSON.stringify(e)}`), utils_1.VOID);
         return { urls: [] };
     }).catch(e => {
         console.error(`POST: ${e}`);
