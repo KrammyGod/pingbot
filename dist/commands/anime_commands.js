@@ -2584,7 +2584,7 @@ exports.submit = new commands_1.SlashCommandNoSubcommand({
     async textInput(interaction) {
         // This handles the actual submission from the user
         await interaction.deferUpdate();
-        const submission = await this.cache.get(interaction.message?.id);
+        const submission = await this.cache.get(interaction.message?.id ?? '');
         const uid = interaction.customId.split('/')[1];
         const name = interaction.fields.getTextInputValue('name').trim();
         let gender = interaction.fields.getTextInputValue('gender').trim();
