@@ -41,7 +41,7 @@
     "prebuild": "rimraf ./dist",
     "build": "tsc --build && tsc-alias",
     "predeploy": "npm run build",
-    "deploy": "node --enable-source-maps dist/deployment/deploy-commands.js",
+    "deploy": "node --enable-source-maps dist/deployment/deploy_commands.js",
     "prestart": "npm run build",
     "start": "node --env-file=.env --enable-source-maps ."
   },

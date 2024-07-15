@@ -33,8 +33,8 @@ const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
 const discord_js_1 = require("discord.js");
 const exceptions_1 = require("../classes/exceptions");
-function toGenderTypes(gend) {
-    switch (gend) {
+function toGenderTypes(gender) {
+    switch (gender) {
         case 'Female':
             return "\u2640\uFE0F" /* GenderTypes.Female */;
         case 'Male':
@@ -42,12 +42,12 @@ function toGenderTypes(gend) {
         case 'Unknown':
             return "\u2754" /* GenderTypes.Unknown */;
         default:
-            throw new Error(`Invalid gender string: ${gend}`);
+            throw new Error(`Invalid gender string: ${gender}`);
     }
 }
 exports.toGenderTypes = toGenderTypes;
-function fromGenderTypes(gend) {
-    switch (gend) {
+function fromGenderTypes(gender) {
+    switch (gender) {
         case "\u2640\uFE0F" /* GenderTypes.Female */:
             return 'Female';
         case "\u2642\uFE0F" /* GenderTypes.Male */:
@@ -55,7 +55,7 @@ function fromGenderTypes(gend) {
         case "\u2754" /* GenderTypes.Unknown */:
             return 'Unknown';
         default:
-            throw new Error(`Invalid gender type: ${gend}`);
+            throw new Error(`Invalid gender type: ${gender}`);
     }
 }
 exports.fromGenderTypes = fromGenderTypes;

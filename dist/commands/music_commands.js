@@ -29,9 +29,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.music = exports.desc = exports.name = void 0;
 const util_1 = __importDefault(require("util"));
 const play_dl_1 = __importDefault(require("play-dl"));
-const GuildVoice_1 = __importStar(require("../classes/GuildVoice"));
+const voice_1 = require("../classes/voice");
 const Utils = __importStar(require("../modules/utils"));
-const voice_1 = require("@discordjs/voice");
+const voice_2 = require("@discordjs/voice");
 const discord_js_1 = require("discord.js");
 const commands_1 = require("../classes/commands");
 exports.name = 'Music';
@@ -102,7 +102,7 @@ function check_move_permission(member, guildVoice, rich_cmd) {
 const barLength = 13;
 // This function will display the current playing stats in a pretty embed
 async function nowPlaying(client, guildId) {
-    const guildVoice = GuildVoice_1.GuildVoices.get(guildId);
+    const guildVoice = voice_1.GuildVoices.get(guildId);
     // This happens if the user immediately disconnects exactly when this is called.
     if (!guildVoice)
         return;
@@ -148,7 +148,7 @@ function releasePlayNextLock(guildId) {
 async function playNext(client, guildId) {
     if (!getPlayNextLock(guildId))
         return;
-    const guildVoice = GuildVoice_1.GuildVoices.get(guildId);
+    const guildVoice = voice_1.GuildVoices.get(guildId);
     if (!guildVoice)
         return;
     const success = await guildVoice.playNextSong();
@@ -184,7 +184,7 @@ const join = new commands_1.SlashSubcommand({
             return;
         const voiceChannel = member.voice.channel;
         const guildID = interaction.guildId;
-        let guildVoice = GuildVoice_1.GuildVoices.get(guildID);
+        let guildVoice = voice_1.GuildVoices.get(guildID);
         const permissions = voiceChannel.permissionsFor(me);
         if (!permissions.has(discord_js_1.PermissionsBitField.Flags.Connect) ||
             !permissions.has(discord_js_1.PermissionsBitField.Flags.Speak)) {
@@ -203,12 +203,12 @@ const join = new commands_1.SlashSubcommand({
                 .then(Utils.VOID);
         }
         else {
-            guildVoice = new GuildVoice_1.default(channel, voiceChannel, member);
-            GuildVoice_1.GuildVoices.set(guildID, guildVoice);
+            guildVoice = new voice_1.GuildVoice(channel, voiceChannel, member);
+            voice_1.GuildVoices.set(guildID, guildVoice);
             // Register listener for when song ends
-            guildVoice.player.on(voice_1.AudioPlayerStatus.Idle, () => {
+            guildVoice.player.on(voice_2.AudioPlayerStatus.Idle, () => {
                 // Allows us to release the guildVoice object.
-                const guildVoice = GuildVoice_1.GuildVoices.get(guildID);
+                const guildVoice = voice_1.GuildVoices.get(guildID);
                 if (!guildVoice)
                     return;
                 // Leave if host is self, which means nobody is listening.
@@ -237,7 +237,7 @@ const leave = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -258,7 +258,7 @@ const np = new commands_1.SlashSubcommand({
         'Examples: `/music np`',
     async execute(interaction) {
         await interaction.deferReply();
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -328,10 +328,10 @@ const play = new commands_1.SlashSubcommand({
         'Examples: `/music play query: Rick Astley loop: 🔁 All`, ' +
         '`/music play query: https://www.twitch.tv/videos/404860573 shuffle: True`',
     async execute(interaction) {
-        let guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        let guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             await join.execute(interaction);
-            guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+            guildVoice = voice_1.GuildVoices.get(interaction.guildId);
             if (!guildVoice)
                 return;
         }
@@ -371,7 +371,7 @@ const play = new commands_1.SlashSubcommand({
                 showLink = playlistInfo.url;
                 showThumbnail = playlistInfo.thumbnail?.url ?? null;
                 for (const video of await playlistInfo.all_videos()) {
-                    const song = new GuildVoice_1.Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
+                    const song = new voice_1.Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
                     if (!play_privates.validate_song(song, member))
                         continue;
                     songs.push(song);
@@ -382,7 +382,7 @@ const play = new commands_1.SlashSubcommand({
                 const infoData = await play_dl_1.default.video_basic_info(link)
                     .then(res => res.video_details)
                     .catch(() => undefined);
-                const song = new GuildVoice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
+                const song = new voice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
                 if (!play_privates.validate_song(song, member)) {
                     return play_privates.on_partial_error(interaction, song);
                 }
@@ -396,7 +396,7 @@ const play = new commands_1.SlashSubcommand({
             const infoData = await play_dl_1.default.video_basic_info(link)
                 .then(res => res.video_details)
                 .catch(() => undefined);
-            const song = new GuildVoice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
+            const song = new voice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!play_privates.validate_song(song, member)) {
                 return play_privates.on_partial_error(interaction, song);
             }
@@ -412,7 +412,7 @@ const play = new commands_1.SlashSubcommand({
             showLink = spotify.url;
             showThumbnail = spotify.thumbnail?.url ?? null;
             if (spotify.type === 'track') {
-                const song = new GuildVoice_1.Song(spotify, guildVoice.getUniqueId(), isNsfw);
+                const song = new voice_1.Song(spotify, guildVoice.getUniqueId(), isNsfw);
                 if (!play_privates.validate_song(song, member)) {
                     return play_privates.on_partial_error(interaction, song);
                 }
@@ -422,7 +422,7 @@ const play = new commands_1.SlashSubcommand({
                 // Else its multiple songs
                 const all_tracks = await spotify.all_tracks();
                 for (const track of all_tracks) {
-                    const song = new GuildVoice_1.Song(track, guildVoice.getUniqueId(), isNsfw, spotify.url);
+                    const song = new voice_1.Song(track, guildVoice.getUniqueId(), isNsfw, spotify.url);
                     if (!play_privates.validate_song(song, member)) {
                         return play_privates.on_partial_error(interaction, song);
                     }
@@ -436,7 +436,7 @@ const play = new commands_1.SlashSubcommand({
                 limit: 1,
                 unblurNSFWThumbnails: isNsfw,
             }).then(res => res.at(0)).catch(() => undefined);
-            const song = new GuildVoice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
+            const song = new voice_1.Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!play_privates.validate_song(song, member)) {
                 return play_privates.on_partial_error(interaction, song);
             }
@@ -483,7 +483,7 @@ const host = new commands_1.SlashSubcommand({
         'Examples: `/music host`',
     async execute(interaction) {
         await interaction.deferReply();
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -509,7 +509,7 @@ const clear = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -540,7 +540,7 @@ const loop = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -564,7 +564,7 @@ const pause = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -596,7 +596,7 @@ const resume = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -711,7 +711,7 @@ const queue = new commands_1.SlashSubcommand({
         'Usage: `/music queue`\n\n' +
         'Examples: `/music queue`',
     async textInput(interaction) {
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice)
             return; // No longer playing music
         await interaction.deferUpdate();
@@ -757,7 +757,7 @@ const queue = new commands_1.SlashSubcommand({
                 throw new Error(`Page ${page} is not a valid type.`);
             }
         }
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice)
             return; // No longer playing music
         await interaction.deferUpdate();
@@ -767,7 +767,7 @@ const queue = new commands_1.SlashSubcommand({
     async execute(interaction) {
         await interaction.deferReply();
         const page = interaction.options.getInteger('page') ?? 1;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -789,7 +789,7 @@ const shuffle = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice)
             return interaction.deleteReply();
         const reply = check_host(member, guildVoice, 'this button');
@@ -806,7 +806,7 @@ const shuffle = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -830,7 +830,7 @@ const prev = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -862,7 +862,7 @@ const skip = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -898,7 +898,7 @@ const remove_song = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -930,7 +930,7 @@ const remove = new commands_1.SlashSubcommandGroup({
     subcommands: [remove_song],
 });
 // const skip_privates = {
-//     setEmbed(embed: EmbedBuilder, guildVoice: GuildVoice, requiredVotes: number) {
+//     setEmbed(embed: EmbedBuilder, guildVoice: Voice, requiredVotes: number) {
 //         let desc = '';
 //         desc += `**Song: ${guildVoice.getCurrentSong()!.linkedTitle}**\n`;
 //         embed.setDescription(`${desc}\n\nVotes required to skip: \`${guildVoice.voted.length}/${requiredVotes}\``);
@@ -952,7 +952,7 @@ const vote_skip = new commands_1.SlashSubcommand({
     async execute(interaction) {
         await interaction.deferReply();
         // const vote = interaction.options.getBoolean('skip')!;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }
@@ -982,7 +982,7 @@ const restart = new commands_1.SlashSubcommand({
         const member = await get_member(interaction);
         if (!member)
             return;
-        const guildVoice = GuildVoice_1.GuildVoices.get(interaction.guildId);
+        const guildVoice = voice_1.GuildVoices.get(interaction.guildId);
         if (!guildVoice) {
             return interaction.editReply({ content: 'I am not in a voice channel.' }).then(Utils.VOID);
         }

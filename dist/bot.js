@@ -32,7 +32,7 @@ const load_commands_1 = __importDefault(require("./modules/load_commands"));
 const _config_1 = __importDefault(require("./classes/config.js"));
 const DB = __importStar(require("./modules/database"));
 const util_1 = require("util");
-const GuildVoice_1 = require("./classes/GuildVoice");
+const voice_1 = require("./classes/voice");
 const utils_1 = require("./modules/utils");
 const exceptions_1 = require("./classes/exceptions");
 const discord_js_1 = require("discord.js");
@@ -269,7 +269,7 @@ client.on(discord_js_1.Events.GuildMemberAdd, async (member) => {
 });
 // Following functions are for voice channel management
 async function update_voice(oldState, newState) {
-    const guildVoice = GuildVoice_1.GuildVoices.get(oldState.guild.id);
+    const guildVoice = voice_1.GuildVoices.get(oldState.guild.id);
     // Not connected, don't care.
     if (!guildVoice)
         return;
@@ -304,7 +304,7 @@ async function update_voice(oldState, newState) {
     }
 }
 async function set_new_host(oldState, newState) {
-    const guildVoice = GuildVoice_1.GuildVoices.get(newState.guild.id);
+    const guildVoice = voice_1.GuildVoices.get(newState.guild.id);
     // Not connected, don't care.
     if (!guildVoice)
         return;
@@ -499,7 +499,7 @@ function cleanup() {
         "Let me make some quick adjustments and I'll be ready to play " +
         'music for you again in a few moments.';
     const promises = [DB.end(), client.destroy()];
-    for (const guildVoice of GuildVoice_1.GuildVoices.values()) {
+    for (const guildVoice of voice_1.GuildVoices.values()) {
         promises.push(guildVoice.textChannel.send({ content }).then(utils_1.VOID, utils_1.VOID));
         guildVoice.destroy();
     }
