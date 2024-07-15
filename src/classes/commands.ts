@@ -15,7 +15,7 @@ import {
     SlashCommandSubcommandsOnlyBuilder,
 } from 'discord.js';
 import { Cache } from '@modules/database';
-import type { NodePgJsonValue } from '@typings/node_pg_json';
+import type { NodePgJsonValue } from '@typings/serialize';
 
 const DEFAULT_COMMAND_FUNCTION = () => {
     // We guarantee that the last argument is the command object based on usage

@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import type { TextBasedChannel } from 'discord.js';
 import { Colors, EmbedBuilder } from 'discord.js';
 import { DatabaseMaintenanceError } from '@classes/exceptions';
-import { NodePgJsonSerialized, NodePgJsonValue } from '@typings/node_pg_json';
+import { NodePgJsonSerialized, NodePgJsonValue } from '@typings/serialize';
 
 const enum GenderTypes {
     Female = '♀️',
@@ -13,8 +13,8 @@ const enum GenderTypes {
     Unknown = '❔',
 }
 
-export function toGenderTypes(gend: string) {
-    switch (gend) {
+export function toGenderTypes(gender: string) {
+    switch (gender) {
     case 'Female':
         return GenderTypes.Female;
     case 'Male':
@@ -22,12 +22,12 @@ export function toGenderTypes(gend: string) {
     case 'Unknown':
         return GenderTypes.Unknown;
     default:
-        throw new Error(`Invalid gender string: ${gend}`);
+        throw new Error(`Invalid gender string: ${gender}`);
     }
 }
 
-export function fromGenderTypes(gend: GenderTypes) {
-    switch (gend) {
+export function fromGenderTypes(gender: GenderTypes) {
+    switch (gender) {
     case GenderTypes.Female:
         return 'Female';
     case GenderTypes.Male:
@@ -35,7 +35,7 @@ export function fromGenderTypes(gend: GenderTypes) {
     case GenderTypes.Unknown:
         return 'Unknown';
     default:
-        throw new Error(`Invalid gender type: ${gend}`);
+        throw new Error(`Invalid gender type: ${gender}`);
     }
 }
 

@@ -11,5 +11,5 @@ not be an updated list of files, however effort will be made to keep it updated.
   run properly in production. It is easier to view and maintain the configuration rather than editing .env.template
 - [exceptions.ts](exceptions.ts): Very simple type definitions of a couple of custom exception types we use to
   differentiate between actual errors and expected errors.
-- [GuildVoice.ts](GuildVoice.ts): Type to support music commands. It contains multiple helpers to load songs, and play
+- [voice.ts](voice.ts): Type to support music commands. It contains multiple helpers to load songs, and play
   them. Also contains a global definition of all guilds that are currently playing music.

@@ -1,7 +1,7 @@
 import util from 'util';
 import type { SpotifyAlbum, SpotifyPlaylist, SpotifyTrack } from 'play-dl';
 import Play from 'play-dl';
-import GuildVoice, { GuildVoices, LoopType, Song } from '@classes/GuildVoice';
+import { GuildVoice, GuildVoices, LoopType, Song } from '@classes/voice';
 import * as Utils from '@modules/utils';
 import { AudioPlayerStatus } from '@discordjs/voice';
 import {
