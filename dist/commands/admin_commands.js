@@ -250,8 +250,8 @@ exports.sauce = new commands_1.MessageCommand({
     long_description: 'Uses saucenao to find the source of an image.',
     async execute(message, args) {
         if (args.length < 1) {
-            _config_1.default.lambda = !_config_1.default.lambda;
-            const content = _config_1.default.lambda ? 'Using lambda.' : 'Not using lambda.';
+            message.client.is_using_lambda = !message.client.is_using_lambda;
+            const content = message.client.is_using_lambda ? 'Using lambda.' : 'Not using lambda.';
             return message.channel.send({ content }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
                 setTimeout(() => msg.delete(), 2000);
@@ -262,7 +262,7 @@ exports.sauce = new commands_1.MessageCommand({
         await message.channel.sendTyping();
         let content = args.map((arg, i) => `${i + 1}. ${arg}`).join('\n') + '\n\n';
         for (const [i, arg] of args.entries()) {
-            const response = await (0, scraper_1.getSauce)(arg);
+            const response = await (0, scraper_1.getSauce)(arg, message.client.is_using_lambda);
             // pixiv sauces have different link, prefer en/artworks/ format.
             content += `${i + 1}. ${response.sauce.replace(/member_illust.php?mode=.*&illust_id=/g, 'en/artworks/')}\n`;
             if (response.error) {
