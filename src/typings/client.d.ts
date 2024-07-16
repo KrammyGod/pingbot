@@ -6,6 +6,7 @@ declare module 'discord.js' {
         is_ready: boolean;                                                  // Is fully loaded
         is_listening: boolean;                                              // Is currently listening for interactions
         is_user_cache_ready: boolean;                                       // Is current shard's user cache is ready
+        is_using_lambda: boolean;                                           // Is using AWS lambda for scraping
         prefix: string;                                                     // Message prefix
         admin: User;                                                        // Admin user object
         log_channel: TextBasedChannel;                                      // Error logs should go here

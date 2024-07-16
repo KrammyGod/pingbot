@@ -1,6 +1,7 @@
-# Source Folder
+# Typings Folder
 
-This folder contains all custom typings that are needed for TypeScript.
+This folder contains all custom typings that are needed for TypeScript. This folder should only contain declaration
+files (`.d.ts` files) and should not contain any implementation files.
 
 ## Files
 

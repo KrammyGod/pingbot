@@ -165,8 +165,7 @@ export type SendMessage = {
 };
 
 class Sign {
-    constructor(private readonly cookie: string, private readonly notify: boolean, private readonly uid: string) {
-    }
+    constructor(private readonly cookie: string, private readonly notify: boolean, private readonly uid: string) {}
 
     get header() {
         return {

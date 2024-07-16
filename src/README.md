@@ -12,6 +12,7 @@ effort will be made to keep it updated.
   or message commands.
 - [deployment/](deployment): Contains a helper script that deploys slash commands to Discord.
 - [modules/](modules): Contains a collection of all helpers that are used in multiple command files or commands.
+- [typings/](typings): Contains all custom typings that are needed for TypeScript to compile correctly.
 
 ## Files
 
