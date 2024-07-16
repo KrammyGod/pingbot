@@ -70,6 +70,7 @@ const client = new discord_js_1.Client({
 client.is_ready = false;
 client.is_listening = true;
 client.is_user_cache_ready = false;
+client.is_using_lambda = true;
 client.prefix = _config_1.default.prefix;
 client.bot_emojis = {};
 client.lines = [];

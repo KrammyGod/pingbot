@@ -53,13 +53,10 @@ async function purge_from_channel(channel, amount, filter = () => true) {
     // Inspired by discord.py's internal structure, delete messages one at a time
     // Useful for DMs/messages older than 14 days.
     const single_delete = async (messages) => {
-        let deleted = 0;
-        for (const msg of messages) {
-            // Ignore deleting errors
-            await msg.delete().catch(() => --deleted);
-            ++deleted;
-        }
-        return deleted;
+        return Promise.all(messages.map(msg => {
+            // Don't count as deleted if we errored.
+            return msg.delete().then(() => 1, () => 0);
+        })).then(deleted => deleted.reduce((acc, cur) => acc + cur));
     };
     let strategy = bulk_delete;
     // This is the minimum date when messages can be bulk deleted

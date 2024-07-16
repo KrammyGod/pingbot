@@ -97,9 +97,9 @@ const client = new client_lambda_1.LambdaClient();
 /**
  * Scrape saucenao.com API for best image source we can get.
  */
-async function getSauce(rawImageLink, retries = 2) {
+async function getSauce(rawImageLink, lambda, retries = 2) {
     // By default, use AWS lambda to scrape saucenao as they have rotating IPs, resulting in better rate limits.
-    if (_config_1.default.lambda) {
+    if (lambda) {
         const command = new client_lambda_1.InvokeCommand({
             FunctionName: 'SauceNao-Scraper',
             Payload: JSON.stringify({ url: rawImageLink }),
@@ -142,7 +142,7 @@ async function getSauce(rawImageLink, retries = 2) {
                 };
             }
             return new Promise(resolve => setTimeout(() => {
-                getSauce(rawImageLink, retries - 1).then(resolve);
+                getSauce(rawImageLink, lambda, retries - 1).then(resolve);
             }, 30000));
         }
         return {
