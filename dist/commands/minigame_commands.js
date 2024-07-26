@@ -156,6 +156,7 @@ const guess_number = new commands_1.SlashSubcommand({
         '*num:* The number you choose to guess. (Required)\n\n' +
         'Example: `/guess number num: 5`',
     async execute(interaction) {
+        await interaction.deferReply();
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = number_privates.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
@@ -213,7 +214,9 @@ const guess_number = new commands_1.SlashSubcommand({
 });
 // Guess Character here
 exports.guess = new commands_1.SlashCommandWithSubcommand({
-    data: new discord_js_1.SlashCommandBuilder().setName('guess').setDescription('Guess base command'),
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('guess')
+        .setDescription('Guess base command'),
     long_description: 'Guess base command',
     subcommands: [guess_number],
 });
