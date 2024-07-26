@@ -156,6 +156,7 @@ const guess_number = new SlashSubcommand({
         'Example: `/guess number num: 5`',
 
     async execute(interaction) {
+        await interaction.deferReply();
         const rich_cmd = await Utils.get_rich_cmd(interaction);
         const cd = number_privates.cds.get(interaction.user.id);
         const ret = on_cd(rich_cmd, cd);
@@ -213,7 +214,9 @@ const guess_number = new SlashSubcommand({
 // Guess Character here
 
 export const guess = new SlashCommandWithSubcommand({
-    data: new SlashCommandBuilder().setName('guess').setDescription('Guess base command'),
+    data: new SlashCommandBuilder()
+        .setName('guess')
+        .setDescription('Guess base command'),
 
     long_description: 'Guess base command',
 
