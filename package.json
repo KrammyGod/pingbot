@@ -46,10 +46,10 @@
     "start": "node --env-file=.env --enable-source-maps ."
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^2.6.0-beta.0",
+    "@stylistic/eslint-plugin": "^2.6.1",
     "@types/cookie": "^0.6.0",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.14.12",
+    "@types/node": "^22.0.2",
     "@types/pg": "^8.11.6",
     "@types/pg-copy-streams": "^1.2.5",
     "concurrently": "^8.2.2",
@@ -59,10 +59,10 @@
     "run-script-os": "^1.1.6",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.0.0-alpha.54"
+    "typescript-eslint": "^8.0.0"
   },
   "dependencies": {
-    "@aws-sdk/client-lambda": "^3.620.0",
+    "@aws-sdk/client-lambda": "^3.622.0",
     "@discordjs/voice": "^0.17.0",
     "cheerio": "^1.0.0-rc.12",
     "chrono-node": "^2.7.6",
