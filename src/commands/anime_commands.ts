@@ -17,6 +17,7 @@ import {
     ComponentType,
     ContextMenuCommandBuilder,
     EmbedBuilder,
+    GuildTextBasedChannel,
     InteractionReplyOptions,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -2810,7 +2811,7 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
             }).catch(Utils.VOID);
             const new_characters_log = await interaction.client.channels.fetch(
                 new_characters_log_id,
-            ) as TextBasedChannel;
+            ) as GuildTextBasedChannel;
             if (waifu) {
                 await new_characters_log.send({
                     content: `Images added to character by ${user} ` +
@@ -2899,7 +2900,7 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
                 ephemeral: true,
             }).then(Utils.VOID);
         }
-        const submission_log = await interaction.client.channels.fetch(submission_log_id) as TextBasedChannel;
+        const submission_log = await interaction.client.channels.fetch(submission_log_id) as GuildTextBasedChannel;
         const new_submission = { mid: '', uid, data };
         const embed = await submit_privates.getWaifuInfoEmbed(interaction.client, new_submission);
 

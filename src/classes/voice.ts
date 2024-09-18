@@ -1,5 +1,5 @@
 import Play, { SpotifyTrack, YouTubeVideo } from 'play-dl';
-import { ChannelType, GuildMember, Message, TextBasedChannel, User, VoiceBasedChannel } from 'discord.js';
+import { ChannelType, GuildMember, GuildTextBasedChannel, Message, User, VoiceBasedChannel } from 'discord.js';
 import {
     AudioPlayer,
     AudioResource,
@@ -91,7 +91,7 @@ export class Song {
 }
 
 export class GuildVoice {
-    textChannel: TextBasedChannel;
+    textChannel: GuildTextBasedChannel;
     voiceChannel: VoiceBasedChannel;
     host: GuildMember;
     player: AudioPlayer;
@@ -106,7 +106,7 @@ export class GuildVoice {
     IDCounter: number;
 
     constructor(
-        textChannel: TextBasedChannel,
+        textChannel: GuildTextBasedChannel,
         voiceChannel: VoiceBasedChannel,
         host: GuildMember,
     ) {

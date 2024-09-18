@@ -1,5 +1,12 @@
 import * as Utils from '@modules/utils';
-import { DMChannel, GuildTextBasedChannel, Message, PartialDMChannel, ThreadChannel } from 'discord.js';
+import {
+    DMChannel,
+    GuildTextBasedChannel,
+    Message,
+    PartialDMChannel,
+    PartialGroupDMChannel,
+    ThreadChannel,
+} from 'discord.js';
 
 /**
  * Assumes that you have `Manage Channels` permission.
@@ -73,7 +80,7 @@ export async function purge_from_channel(
 }
 
 export async function purge_from_dm(
-    channel: DMChannel | PartialDMChannel,
+    channel: DMChannel | PartialDMChannel | PartialGroupDMChannel,
     amount: number,
     filter: (message: Message) => boolean = m => m.author.id === channel.client.user.id,
 ) {

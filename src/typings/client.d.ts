@@ -9,7 +9,7 @@ declare module 'discord.js' {
         is_using_lambda: boolean;                                           // Is using AWS lambda for scraping
         prefix: string;                                                     // Message prefix
         admin: User;                                                        // Admin user object
-        log_channel: TextBasedChannel;                                      // Error logs should go here
+        log_channel: GuildTextBasedChannel;                                 // Error logs should go here
         bot_emojis: Record<string, string>;                                 // All available emojis in the private guild
         lines: string[][];                                                  // All message reply lines from lines.txt
         cogs: Cog[];                                                        // All cogs (groups of commands)

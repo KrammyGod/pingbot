@@ -51,6 +51,9 @@ export const purge = new MessageCommand({
             }
         }
         if (message.channel.isDMBased()) {
+            if (!message.channel.isSendable()) {
+                return message.reply({ content: "Can't delete messages here for now." }).then(Utils.VOID);
+            }
             // DMs
             const deleted = await Purge.purge_from_dm(message.channel, amount);
             return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
@@ -134,6 +137,9 @@ export const resetdb = new MessageCommand({
     long_description: 'Performs emergency reset on whales and daily.',
 
     async execute(message) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
         await message.channel.sendTyping();
         await reset();
@@ -149,6 +155,9 @@ export const add = new MessageCommand({
     long_description: 'Adds brons to a user.',
 
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (message.guild?.id !== config.guild) {
             setTimeout(() => message.delete().catch(Utils.VOID), 200);
         }
@@ -203,6 +212,9 @@ export const upload = new MessageCommand({
     long_description: 'Uses latest tech to upload images without {/submit}.',
 
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
@@ -237,6 +249,9 @@ export const sauce = new MessageCommand({
     long_description: 'Uses saucenao to find the source of an image.',
 
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             message.client.is_using_lambda = !message.client.is_using_lambda;
             const content = message.client.is_using_lambda ? 'Using lambda.' : 'Not using lambda.';
@@ -270,6 +285,9 @@ export const update = new MessageCommand({
     long_description: 'Updates the sources of images in the CDN.',
 
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
@@ -299,6 +317,9 @@ export const del = new MessageCommand({
     long_description: 'Deletes images from the CDN.',
 
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
@@ -339,6 +360,9 @@ export const stop = new MessageCommand({
     long_description: 'For when bot needs to be shut down immediately.',
 
     async execute(message) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
         if (!message.client.is_listening) {
             await message.channel.send({ content: 'I already stopped listening.' })
