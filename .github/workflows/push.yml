@@ -65,7 +65,7 @@ jobs:
           git config user.name "${{ github.event.pusher.name }}"
           git config user.email "${{ github.event.pusher.email }}"
           git add .
-          echo ${{ github.event.head_commit.message }} > COMMIT_MSG
+          echo "${{ github.event.head_commit.message }}" > COMMIT_MSG
           git commit -F COMMIT_MSG --allow-empty
           git push
 
