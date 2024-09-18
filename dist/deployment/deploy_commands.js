@@ -49,11 +49,16 @@ function reverse_command(cmd) {
 function isString(isThisString) {
     return typeof isThisString === 'string';
 }
+// This function helps us assert that the values of importing all the commands
+// is of type CommandFile. This is useful for type checking.
+function valuesOfCommandFiles(commands) {
+    return Object.values(commands);
+}
 (async function () {
     // Read all commands from the commands directory
     const commandsToDeploy = [];
     const rest = new rest_1.REST({ version: '10' }).setToken(token);
-    for (const commandFile of Object.values(commands)) {
+    for (const commandFile of valuesOfCommandFiles(commands)) {
         Object.values(commandFile).forEach(command => {
             // Ignore name and desc exported properties.
             if (isString(command))
