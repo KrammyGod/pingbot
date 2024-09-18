@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = reset;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const pg_copy_streams_1 = require("pg-copy-streams");
@@ -61,7 +62,6 @@ async function reset() {
     await query('UPDATE user_info SET whales = $1', [false]);
     LOGGER.log('Set collected and whales to false!');
 }
-exports.default = reset;
 async function copy() {
     const API_URL = 'https://www.animecharactersdatabase.com/api_series_characters.php';
     const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +

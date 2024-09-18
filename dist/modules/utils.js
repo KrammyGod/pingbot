@@ -1,6 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetch_history = exports.get_results = exports.wait_for_button = exports.delete_ephemeral_message = exports.timestamp = exports.date_after_hours = exports.send_embeds_by_wave = exports.channel_is_nsfw_safe = exports.get_rich_cmd = exports.convert_emoji = exports.convert_channel = exports.convert_user = exports.fetch_guild_cache = exports.fetch_user_fast = exports.VOID = void 0;
+exports.VOID = void 0;
+exports.fetch_user_fast = fetch_user_fast;
+exports.fetch_guild_cache = fetch_guild_cache;
+exports.convert_user = convert_user;
+exports.convert_channel = convert_channel;
+exports.convert_emoji = convert_emoji;
+exports.get_rich_cmd = get_rich_cmd;
+exports.channel_is_nsfw_safe = channel_is_nsfw_safe;
+exports.send_embeds_by_wave = send_embeds_by_wave;
+exports.date_after_hours = date_after_hours;
+exports.timestamp = timestamp;
+exports.delete_ephemeral_message = delete_ephemeral_message;
+exports.wait_for_button = wait_for_button;
+exports.get_results = get_results;
+exports.fetch_history = fetch_history;
 const exceptions_1 = require("../classes/exceptions");
 const discord_js_1 = require("discord.js");
 // This is used to make the code a little more readable when we need to return void in promises
@@ -21,13 +35,11 @@ async function fetch_user_fast(client, uid, userCb, ctx) {
     }
     return retval;
 }
-exports.fetch_user_fast = fetch_user_fast;
 function fetch_guild_cache(client, gid, guildCb, ctx) {
     return client.shard?.broadcastEval((client, { gid, guildCb, ctx }) => {
         return eval(guildCb)(client.guilds.cache.get(gid), ctx);
     }, { context: { gid, guildCb: guildCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
 }
-exports.fetch_guild_cache = fetch_guild_cache;
 async function convert_user(client, text, guild) {
     if (!text.startsWith('@'))
         return;
@@ -52,7 +64,6 @@ async function convert_user(client, text, guild) {
         .includes(text) || m.user.tag.toLowerCase()
         .includes(text)));
 }
-exports.convert_user = convert_user;
 async function convert_channel(client, text) {
     if (!text.startsWith('#'))
         return null;
@@ -65,7 +76,6 @@ async function convert_channel(client, text) {
     text = text.toLowerCase();
     return await client.shard?.broadcastEval((client, text) => client.channels.cache.find(c => c.isDMBased() ? false : c.name.toLowerCase().includes(text))?.id, { context: text }).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
 }
-exports.convert_channel = convert_channel;
 function convert_emoji(client, text, emojiCb, ctx) {
     if (!text.startsWith(':') || !text.endsWith(':'))
         return;
@@ -75,7 +85,6 @@ function convert_emoji(client, text, emojiCb, ctx) {
         return eval(emojiCb)(client.emojis.cache.find(e => e.name.toLowerCase() === text), ctx);
     }, { context: { text, emojiCb: emojiCb.toString(), ctx } }).then(results => results.find(r => r !== undefined));
 }
-exports.convert_emoji = convert_emoji;
 async function get_rich_cmd(textOrInteraction, client) {
     if (textOrInteraction instanceof discord_js_1.CommandInteraction) {
         let full_cmd_name = textOrInteraction.commandName;
@@ -112,11 +121,9 @@ async function get_rich_cmd(textOrInteraction, client) {
     }
     return `</${cmd.name}:${cmd.id}>`;
 }
-exports.get_rich_cmd = get_rich_cmd;
 function channel_is_nsfw_safe(channel) {
     return !channel.isThread() && (channel.isDMBased() || channel.nsfw);
 }
-exports.channel_is_nsfw_safe = channel_is_nsfw_safe;
 // Useful helpers used in all modules
 // Helper that sends all embeds by wave
 async function send_embeds_by_wave(interaction, embeds) {
@@ -130,12 +137,10 @@ async function send_embeds_by_wave(interaction, embeds) {
         await interaction.followUp({ embeds: wave, ephemeral: interaction.ephemeral ?? false }).catch(exports.VOID);
     }
 }
-exports.send_embeds_by_wave = send_embeds_by_wave;
 // Helper that gets the date object corresponding to some offset from now
 function date_after_hours(hours) {
     return new Date(new Date().getTime() + hours * 60 * 60 * 1000);
 }
-exports.date_after_hours = date_after_hours;
 /**
  * If is a number, pass as miliseconds since epoch.
  * @param date
@@ -151,7 +156,6 @@ exports.date_after_hours = date_after_hours;
 function timestamp(date, fmt = 'f') {
     return `<t:${Math.floor(new Date(date).getTime() / 1000)}:${fmt}>`;
 }
-exports.timestamp = timestamp;
 /**
  * Only interactions can make ephemeral messages. Unfortunately Discord.JS
  * doesn't currently support deleting ephemeral messages for ephemeral followups.
@@ -160,7 +164,6 @@ exports.timestamp = timestamp;
 function delete_ephemeral_message(i, msg) {
     return i.client.rest.delete(discord_js_1.Routes.webhookMessage(i.webhook.id, i.token, msg.id)).then(exports.VOID);
 }
-exports.delete_ephemeral_message = delete_ephemeral_message;
 /**
  * Waits for a specific confirm button to be pressed, on a given message.
  * The confirm_id is the customId of the confirm button.
@@ -171,7 +174,6 @@ function wait_for_button(message, confirm_id) {
         time: 10 * 60 * 1000, // 10 minutes before interaction expires
     }).then(i => i.customId === confirm_id, () => false);
 }
-exports.wait_for_button = wait_for_button;
 // Helper that takes a list of choices and wraps it in a pretty format
 /**
  * Warning: This will create a followup message and delete it
@@ -225,7 +227,6 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     }).catch(() => null);
     return delete_ephemeral_message(interaction, message).then(() => res);
 }
-exports.get_results = get_results;
 // Really only used for purge commands, but nicely defined if any other command requires
 /**
  * Similar but slightly different implementation of discord.py's fetch history.
@@ -258,5 +259,4 @@ async function* fetch_history(channel, amount, filter = () => true) {
         amount -= i;
     }
 }
-exports.fetch_history = fetch_history;
 //# sourceMappingURL=utils.js.map

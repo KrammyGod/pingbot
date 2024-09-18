@@ -68,6 +68,9 @@ exports.purge = new commands_1.MessageCommand({
             }
         }
         if (message.channel.isDMBased()) {
+            if (!message.channel.isSendable()) {
+                return message.reply({ content: "Can't delete messages here for now." }).then(Utils.VOID);
+            }
             // DMs
             const deleted = await Purge.purge_from_dm(message.channel, amount);
             return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
@@ -150,6 +153,9 @@ exports.resetdb = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Performs emergency reset on whales and daily.',
     async execute(message) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
         await message.channel.sendTyping();
         await (0, reset_db_1.default)();
@@ -163,6 +169,9 @@ exports.add = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Adds brons to a user.',
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (message.guild?.id !== _config_1.default.guild) {
             setTimeout(() => message.delete().catch(Utils.VOID), 200);
         }
@@ -219,6 +228,9 @@ exports.upload = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Uses latest tech to upload images without {/submit}.',
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
@@ -249,6 +261,9 @@ exports.sauce = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Uses saucenao to find the source of an image.',
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             message.client.is_using_lambda = !message.client.is_using_lambda;
             const content = message.client.is_using_lambda ? 'Using lambda.' : 'Not using lambda.';
@@ -277,6 +292,9 @@ exports.update = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Updates the sources of images in the CDN.',
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
@@ -302,6 +320,9 @@ exports.del = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Deletes images from the CDN.',
     async execute(message, args) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
@@ -339,6 +360,9 @@ exports.stop = new commands_1.MessageCommand({
     admin: true,
     long_description: 'For when bot needs to be shut down immediately.',
     async execute(message) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
         if (!message.client.is_listening) {
             await message.channel.send({ content: 'I already stopped listening.' })

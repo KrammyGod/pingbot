@@ -384,7 +384,7 @@ function handle_error(err, opts = {}) {
             error_str += `__Invoked by:__ *@${interaction.user.tag} (${interaction.user.id})*\n`;
             if (interaction.channel) {
                 if (interaction.channel.isDMBased()) {
-                    error_str += `__In:__ ${interaction.channel.recipient?.tag ?? 'DMs'} (${interaction.channel.id})\n`;
+                    error_str += `__In:__ DMs (${interaction.channel.id})\n`;
                 }
                 else {
                     error_str += `__In:__ ${interaction.channel.name} (${interaction.channel.id})\n`;
@@ -396,7 +396,7 @@ function handle_error(err, opts = {}) {
             // Should be mutually exclusive, so if message is provided, interaction should be null
             error_str += `__Invoked by:__ *@${message.author.tag} (${message.author.id})*\n`;
             if (message.channel.isDMBased()) {
-                error_str += `__In:__ ${message.channel.recipient?.tag ?? 'DMs'} (${message.channel.id})\n`;
+                error_str += `__In:__ DMs (${message.channel.id})\n`;
             }
             else {
                 error_str += `__In:__ ${message.channel.name} (${message.channel.id})\n`;

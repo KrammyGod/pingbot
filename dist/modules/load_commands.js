@@ -23,6 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = load;
 const discord_js_1 = require("discord.js");
 const commands = __importStar(require("../commands"));
 function isString(isThisString) {
@@ -86,5 +87,4 @@ function load(client) {
         return b.real_command_count - a.real_command_count;
     });
 }
-exports.default = load;
 //# sourceMappingURL=load_commands.js.map

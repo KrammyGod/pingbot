@@ -3,7 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCDNId = exports.getImage = exports.deleteFromCDN = exports.updateCDN = exports.uploadToCDN = exports.getCDNMetrics = void 0;
+exports.getCDNMetrics = getCDNMetrics;
+exports.uploadToCDN = uploadToCDN;
+exports.updateCDN = updateCDN;
+exports.deleteFromCDN = deleteFromCDN;
+exports.getImage = getImage;
+exports.getCDNId = getCDNId;
 const _config_1 = __importDefault(require("../classes/config.js"));
 const path_1 = __importDefault(require("path"));
 const utils_1 = require("./utils");
@@ -16,7 +21,6 @@ async function getCDNMetrics() {
     }).then(res => res.json()).catch(e => console.error(`GET: ${e}`));
     return res ?? { metrics: [] };
 }
-exports.getCDNMetrics = getCDNMetrics;
 async function uploadToCDN(body) {
     const { urls } = await fetch(`${_config_1.default.origin}/api/upload`, {
         method: 'POST',
@@ -34,7 +38,6 @@ async function uploadToCDN(body) {
     });
     return urls;
 }
-exports.uploadToCDN = uploadToCDN;
 async function updateCDN(filenames, newSources) {
     headers.append('Content-Type', 'application/json');
     // Update to actual null to tell server to remove source
@@ -47,7 +50,6 @@ async function updateCDN(filenames, newSources) {
     headers.delete('Content-Type');
     return res?.message ?? 'Error updating files';
 }
-exports.updateCDN = updateCDN;
 async function deleteFromCDN(filenames) {
     headers.append('Content-Type', 'application/json');
     const res = await fetch(`${_config_1.default.origin}/api/delete`, {
@@ -58,7 +60,6 @@ async function deleteFromCDN(filenames) {
     headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';
 }
-exports.deleteFromCDN = deleteFromCDN;
 async function getImage(url) {
     let opts = undefined;
     if (url.startsWith('https://i.pximg.net/')) {
@@ -73,7 +74,6 @@ async function getImage(url) {
         return res.blob().then(blob => ({ ext, blob }));
     }).catch(() => ({ ext: '', blob: new Blob([]) }));
 }
-exports.getImage = getImage;
 /**
  * Helper to get the ID from a CDN link.
  * Returns the same thing back if link is invalid
@@ -89,5 +89,4 @@ async function getCDNId(url) {
     // Confirmed valid image
     return url.replace(`${_config_1.default.cdn}/images/`, '');
 }
-exports.getCDNId = getCDNId;
 //# sourceMappingURL=cdn.js.map

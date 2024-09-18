@@ -26,8 +26,73 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchUserHighCharactersList = exports.fetchUserCharactersList = exports.fetchUserHighestCharacter = exports.fetchUserHighCharacter = exports.fetchUserCharacter = exports.fetchRandomStarred = exports.fetchUserStarredCount = exports.fetchUserCommonCount = exports.fetchUserCharacterCount = exports.fetchUserHighCount = exports.fetchAllUsers = exports.addEmoji = exports.getEmoji = exports.deleteCookie = exports.addCookie = exports.toggleAutocollect = exports.fetchAutocollectLength = exports.fetchAutocollectByPage = exports.fetchAutocollectByIdx = exports.fetchRandomWaifu = exports.getAnime = exports.getAnimes = exports.getAnimesCount = exports.fetchCompleteOrigin = exports.searchOriginByName = exports.searchWaifuByName = exports.fetchWaifuCount = exports.fetchWaifu = exports.fetchWaifuByDetails = exports.insertWaifu = exports.getStarLeaderboards = exports.getUserStarLBStats = exports.getLeaderboards = exports.getUserLBStats = exports.setCompleted = exports.getCompleted = exports.getAllCompleted = exports.getWhales = exports.getCollected = exports.getAndSetDaily = exports.addBrons = exports.getBrons = exports.getUserCount = exports.getUidsList = exports.end = exports.start = exports.getCostPerPull = exports.getSource = exports.fromGenderTypes = exports.toGenderTypes = void 0;
-exports.deleteLocalData = exports.Cache = exports.resetGuessStreak = exports.addOneToGuessStreak = exports.getGuessStreaks = exports.setGuild = exports.getGuild = exports.isGuildEmpty = exports.swapUserCharacters = exports.moveUserCharacter = exports.deleteUserCommonCharacters = exports.deleteUserCharacter = exports.generateAndAddCharacters = exports.generateAndAddCharacter = exports.fetchUserAnimeCount = exports.queryUserHighCharacter = exports.queryUserCharacter = void 0;
+exports.Cache = void 0;
+exports.toGenderTypes = toGenderTypes;
+exports.fromGenderTypes = fromGenderTypes;
+exports.getSource = getSource;
+exports.getCostPerPull = getCostPerPull;
+exports.start = start;
+exports.end = end;
+exports.getUidsList = getUidsList;
+exports.getUserCount = getUserCount;
+exports.getBrons = getBrons;
+exports.addBrons = addBrons;
+exports.getAndSetDaily = getAndSetDaily;
+exports.getCollected = getCollected;
+exports.getWhales = getWhales;
+exports.getAllCompleted = getAllCompleted;
+exports.getCompleted = getCompleted;
+exports.setCompleted = setCompleted;
+exports.getUserLBStats = getUserLBStats;
+exports.getLeaderboards = getLeaderboards;
+exports.getUserStarLBStats = getUserStarLBStats;
+exports.getStarLeaderboards = getStarLeaderboards;
+exports.insertWaifu = insertWaifu;
+exports.fetchWaifuByDetails = fetchWaifuByDetails;
+exports.fetchWaifu = fetchWaifu;
+exports.fetchWaifuCount = fetchWaifuCount;
+exports.searchWaifuByName = searchWaifuByName;
+exports.searchOriginByName = searchOriginByName;
+exports.fetchCompleteOrigin = fetchCompleteOrigin;
+exports.getAnimesCount = getAnimesCount;
+exports.getAnimes = getAnimes;
+exports.getAnime = getAnime;
+exports.fetchRandomWaifu = fetchRandomWaifu;
+exports.fetchAutocollectByIdx = fetchAutocollectByIdx;
+exports.fetchAutocollectByPage = fetchAutocollectByPage;
+exports.fetchAutocollectLength = fetchAutocollectLength;
+exports.toggleAutocollect = toggleAutocollect;
+exports.addCookie = addCookie;
+exports.deleteCookie = deleteCookie;
+exports.getEmoji = getEmoji;
+exports.addEmoji = addEmoji;
+exports.fetchAllUsers = fetchAllUsers;
+exports.fetchUserHighCount = fetchUserHighCount;
+exports.fetchUserCharacterCount = fetchUserCharacterCount;
+exports.fetchUserCommonCount = fetchUserCommonCount;
+exports.fetchUserStarredCount = fetchUserStarredCount;
+exports.fetchRandomStarred = fetchRandomStarred;
+exports.fetchUserCharacter = fetchUserCharacter;
+exports.fetchUserHighCharacter = fetchUserHighCharacter;
+exports.fetchUserHighestCharacter = fetchUserHighestCharacter;
+exports.fetchUserCharactersList = fetchUserCharactersList;
+exports.fetchUserHighCharactersList = fetchUserHighCharactersList;
+exports.queryUserCharacter = queryUserCharacter;
+exports.queryUserHighCharacter = queryUserHighCharacter;
+exports.fetchUserAnimeCount = fetchUserAnimeCount;
+exports.generateAndAddCharacter = generateAndAddCharacter;
+exports.generateAndAddCharacters = generateAndAddCharacters;
+exports.deleteUserCharacter = deleteUserCharacter;
+exports.deleteUserCommonCharacters = deleteUserCommonCharacters;
+exports.moveUserCharacter = moveUserCharacter;
+exports.swapUserCharacters = swapUserCharacters;
+exports.isGuildEmpty = isGuildEmpty;
+exports.getGuild = getGuild;
+exports.setGuild = setGuild;
+exports.getGuessStreaks = getGuessStreaks;
+exports.addOneToGuessStreak = addOneToGuessStreak;
+exports.resetGuessStreak = resetGuessStreak;
+exports.deleteLocalData = deleteLocalData;
 const config_1 = __importDefault(require("../classes/config"));
 const Utils = __importStar(require("./utils"));
 const pg_1 = require("pg");
@@ -45,7 +110,6 @@ function toGenderTypes(gender) {
             throw new Error(`Invalid gender string: ${gender}`);
     }
 }
-exports.toGenderTypes = toGenderTypes;
 function fromGenderTypes(gender) {
     switch (gender) {
         case "\u2640\uFE0F" /* GenderTypes.Female */:
@@ -58,7 +122,6 @@ function fromGenderTypes(gender) {
             throw new Error(`Invalid gender type: ${gender}`);
     }
 }
-exports.fromGenderTypes = fromGenderTypes;
 // Used to transform any image into a CDN link
 function transformImage(img) {
     // Better fix in the future; nimg can be undefined.
@@ -243,7 +306,6 @@ function getSource(img) {
     // Common characters source is the raw image itself.
     return img;
 }
-exports.getSource = getSource;
 /* DATABASE SETUP */
 const pool = new pg_1.Pool({
     connectionTimeoutMillis: 2000,
@@ -262,7 +324,6 @@ function getCostPerPull(special) {
     else
         return 2;
 }
-exports.getCostPerPull = getCostPerPull;
 // Still find this to be the most intuitive for the user
 // Generates a query string and params to use my shiny custom
 // search order
@@ -331,11 +392,9 @@ function start() {
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
     return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
 }
-exports.start = start;
 function end() {
     return pool.end().catch(Utils.VOID);
 }
-exports.end = end;
 function getUidsList(shardId, totalShards) {
     return query(`WITH uids AS (SELECT uid
                        FROM (SELECT uid
@@ -348,21 +407,17 @@ function getUidsList(shardId, totalShards) {
          FROM uids
          LIMIT (SELECT COUNT(*) FROM uids) / $1 OFFSET (SELECT COUNT(*) FROM uids) / $1 * $2`, [totalShards, shardId]).then(res => res.map(row => row.uid));
 }
-exports.getUidsList = getUidsList;
 /* END DATABASE SETUP */
 /* GETTERS/SETTERS FOR DATABASE */
 function getUserCount() {
     return query('SELECT COUNT(*)::int FROM user_info').then(ret => ret[0].count);
 }
-exports.getUserCount = getUserCount;
 function getBrons(userID) {
     return query('SELECT brons FROM user_info WHERE uid = $1', [userID]).then(ret => ret.at(0)?.brons);
 }
-exports.getBrons = getBrons;
 function addBrons(userID, amount) {
     return query('UPDATE user_info SET brons = brons + $2 WHERE uid = $1 RETURNING uid', [userID, amount]).then(res => res.at(0)?.uid);
 }
-exports.addBrons = addBrons;
 function getAndSetDaily(userID) {
     // We will use these constants here
     const dailyAmt = 200;
@@ -384,23 +439,18 @@ function getAndSetDaily(userID) {
         return { collect_success, amt: firstSignUp };
     });
 }
-exports.getAndSetDaily = getAndSetDaily;
 function getCollected(userID) {
     return query('SELECT collected FROM user_info WHERE uid = $1', [userID]).then(ret => ret.at(0)?.collected);
 }
-exports.getCollected = getCollected;
 function getWhales(userID) {
     return query('SELECT whales FROM user_info WHERE uid = $1', [userID]).then(ret => ret.at(0)?.whales);
 }
-exports.getWhales = getWhales;
 function getAllCompleted(userID) {
     return query('SELECT origin, count FROM completed_series WHERE uid = $1', [userID]).then(res => new Map(res.map(row => [row.origin, row.count])));
 }
-exports.getAllCompleted = getAllCompleted;
 function getCompleted(userID, origin) {
     return query('SELECT count FROM completed_series WHERE uid = $1 AND origin = $2', [userID, origin]).then(res => res.at(0)?.count);
 }
-exports.getCompleted = getCompleted;
 function setCompleted(userID, origin, count) {
     return query(`INSERT INTO completed_series(uid, origin, count)
          VALUES ($1, $2, $3)
@@ -411,13 +461,11 @@ function setCompleted(userID, origin, count) {
         return false;
     });
 }
-exports.setCompleted = setCompleted;
 function getUserLBStats(userID) {
     return query('SELECT brons, idx FROM leaderboard WHERE uid = $1', [userID]).then(res => res.at(0)
         ? ({ brons: res[0].brons, idx: parseInt(res[0].idx) })
         : undefined);
 }
-exports.getUserLBStats = getUserLBStats;
 function getLeaderboards(start) {
     return query('SELECT * FROM leaderboard LIMIT 10 OFFSET $1', [start]).then(res => res.map(row => ({
         uid: row.uid,
@@ -426,7 +474,6 @@ function getLeaderboards(start) {
         idx: parseInt(row.idx),
     })));
 }
-exports.getLeaderboards = getLeaderboards;
 function getUserStarLBStats(userID) {
     return query('SELECT brons, stars, idx FROM starLeaderboard WHERE uid = $1', [userID]).then(res => res.at(0) ? ({
         brons: res[0].brons,
@@ -434,7 +481,6 @@ function getUserStarLBStats(userID) {
         idx: parseInt(res[0].idx),
     }) : undefined);
 }
-exports.getUserStarLBStats = getUserStarLBStats;
 function getStarLeaderboards(start) {
     return query('SELECT * FROM starLeaderboard LIMIT 10 OFFSET $1', [start]).then(res => res.map(row => ({
         uid: row.uid,
@@ -443,7 +489,6 @@ function getStarLeaderboards(start) {
         idx: parseInt(row.idx),
     })));
 }
-exports.getStarLeaderboards = getStarLeaderboards;
 /**
  * Ensure the waifu provided does not contain old images, only new images that are to be added
  * @throws {Error} If waifu gets too many images
@@ -462,7 +507,6 @@ function insertWaifu(waifu) {
         'REFRESH MATERIALIZED VIEW chars',
     ], [[waifu.name, waifu.gender, waifu.origin, waifu.img, waifu.nimg]]).then(res => new Waifu(res[0][0]));
 }
-exports.insertWaifu = insertWaifu;
 function fetchWaifuByDetails(details) {
     return query(`SELECT *
          FROM chars
@@ -472,15 +516,12 @@ function fetchWaifuByDetails(details) {
            AND fc = TRUE
          LIMIT 1`, [details.name, details.gender, details.origin]).then(res => res.at(0) ? new Waifu(res[0]) : undefined);
 }
-exports.fetchWaifuByDetails = fetchWaifuByDetails;
 function fetchWaifu(wid) {
     return query('SELECT * FROM chars WHERE wid = $1', [wid]).then(res => new Waifu(res[0]));
 }
-exports.fetchWaifu = fetchWaifu;
 function fetchWaifuCount() {
     return query('SELECT COUNT(*)::int FROM waifus').then(ret => ret[0].count);
 }
-exports.fetchWaifuCount = fetchWaifuCount;
 function searchWaifuByName(name) {
     const params = [defaultLimit.toString()];
     return query(`SELECT *
@@ -490,7 +531,6 @@ function searchWaifuByName(name) {
              ${sortQueryAndParams('name', params, name)}
          LIMIT $1`, params).then(Waifu.fromRows);
 }
-exports.searchWaifuByName = searchWaifuByName;
 function searchOriginByName(name) {
     const params = [defaultLimit.toString()];
     return query(`SELECT origin
@@ -500,7 +540,6 @@ function searchOriginByName(name) {
              ${sortQueryAndParams('origin', params, name)}
          LIMIT $1`, params).then(res => res.map(row => row.origin));
 }
-exports.searchOriginByName = searchOriginByName;
 function fetchCompleteOrigin(origin) {
     // Escape percent signs and underscores.
     origin = origin.replaceAll(/(?<!\\)%/g, '\\%').replaceAll(/(?<!\\)_/g, '\\_');
@@ -508,11 +547,9 @@ function fetchCompleteOrigin(origin) {
     // a case-insensitive query.
     return query('SELECT origin FROM chars WHERE origin ILIKE $1', [origin]).then(res => res.at(0)?.origin);
 }
-exports.fetchCompleteOrigin = fetchCompleteOrigin;
 function getAnimesCount() {
     return query('SELECT COUNT(DISTINCT origin)::int FROM waifus').then(ret => ret[0].count);
 }
-exports.getAnimesCount = getAnimesCount;
 function getAnimes(start) {
     return query(`SELECT origin, COUNT(*)::int
          FROM waifus
@@ -520,7 +557,6 @@ function getAnimes(start) {
          ORDER BY origin
          LIMIT $1 OFFSET $2`, [defaultLimit, start]);
 }
-exports.getAnimes = getAnimes;
 function getAnime(anime) {
     return query(`SELECT *
          FROM chars
@@ -528,7 +564,6 @@ function getAnime(anime) {
            AND fc = TRUE
          ORDER BY name`, [anime]).then(Waifu.fromRows);
 }
-exports.getAnime = getAnime;
 function fetchRandomWaifu(amt, level) {
     switch (level) {
         case "easy" /* Levels.EASY */:
@@ -565,7 +600,6 @@ function fetchRandomWaifu(amt, level) {
     // will be reached.
     throw new Error('Invalid level');
 }
-exports.fetchRandomWaifu = fetchRandomWaifu;
 function fetchAutocollectByIdx(userID, idx) {
     return query(`SELECT *
          FROM (SELECT *,
@@ -577,7 +611,6 @@ function fetchAutocollectByIdx(userID, idx) {
          WHERE id = $1
            AND idx = $2`, [userID, idx]).then(res => res.at(0));
 }
-exports.fetchAutocollectByIdx = fetchAutocollectByIdx;
 function fetchAutocollectByPage(userID, page) {
     return query(`SELECT *, $2::int + 1 AS page
          FROM hoyolab_cookies_list
@@ -585,20 +618,17 @@ function fetchAutocollectByPage(userID, page) {
          ORDER BY idx
          LIMIT 1 OFFSET $2`, [userID, page]).then(res => res.at(0));
 }
-exports.fetchAutocollectByPage = fetchAutocollectByPage;
 function fetchAutocollectLength(userID) {
     return query(`SELECT COUNT(*)::int
          FROM hoyolab_cookies_list
          WHERE id = $1`, [userID]).then(res => res[0].count);
 }
-exports.fetchAutocollectLength = fetchAutocollectLength;
 function toggleAutocollect(userID, game, type, idx) {
     return query(`UPDATE hoyolab_cookies_list
          SET ${game} = $2
          WHERE id = $1
            AND idx = $3`, [userID, type, idx]).then(Utils.VOID);
 }
-exports.toggleAutocollect = toggleAutocollect;
 async function addCookie(userID, cookie) {
     // Try to cap at 5 cookies
     // This is not guaranteed to always cap at 5, but won't be too far off like 100
@@ -612,7 +642,6 @@ async function addCookie(userID, cookie) {
              DO NOTHING
          RETURNING *`, [userID, cookie]).then(res => !!res.at(0));
 }
-exports.addCookie = addCookie;
 function deleteCookie(userID, idx) {
     return query(`DELETE
          FROM hoyolab_cookies_list
@@ -620,15 +649,12 @@ function deleteCookie(userID, idx) {
            AND idx = $2
          RETURNING *`, [userID, idx]).then(rows => !!rows.at(0));
 }
-exports.deleteCookie = deleteCookie;
 function getEmoji(name) {
     return query('SELECT emoji FROM emojis WHERE name = $1', [name]).then(res => res.at(0)?.emoji);
 }
-exports.getEmoji = getEmoji;
 function addEmoji(name, emoji) {
     return query('INSERT INTO emojis(name, emoji) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING', [name, emoji]);
 }
-exports.addEmoji = addEmoji;
 /* End HoyoLab data */
 /* User Chars database */
 // Add character(s)
@@ -640,18 +666,15 @@ function fetchAllUsers(wid) {
          LIMIT 20`, // Higher limit to fit embed
     [wid]).then(Character.fromRows);
 }
-exports.fetchAllUsers = fetchAllUsers;
 // For high list
 function fetchUserHighCount(userID) {
     return query(`SELECT MAX(idx)
          FROM
              get_high_user_chars($1)`, [userID]).then(ret => parseInt(ret.at(0)?.max ?? '0'));
 }
-exports.fetchUserHighCount = fetchUserHighCount;
 function fetchUserCharacterCount(userID) {
     return query('SELECT MAX(idx) FROM all_user_chars WHERE uid = $1', [userID]).then(ret => parseInt(ret.at(0)?.max ?? '0'));
 }
-exports.fetchUserCharacterCount = fetchUserCharacterCount;
 function fetchUserCommonCount(userID, { start, end } = {}) {
     let q = 'SELECT COUNT(*)::int FROM all_user_chars WHERE uid = $1 AND fc = FALSE';
     const params = [userID];
@@ -665,14 +688,12 @@ function fetchUserCommonCount(userID, { start, end } = {}) {
     }
     return query(q, params).then(ret => ret[0].count);
 }
-exports.fetchUserCommonCount = fetchUserCommonCount;
 function fetchUserStarredCount(userID) {
     return query(`SELECT COUNT(*)::int
          FROM all_user_chars
          WHERE uid = $1
            AND fc = TRUE`, [userID]).then(ret => ret[0].count);
 }
-exports.fetchUserStarredCount = fetchUserStarredCount;
 function fetchRandomStarred(userID) {
     // For daily to get a random starred character
     return query(`SELECT *
@@ -682,7 +703,6 @@ function fetchRandomStarred(userID) {
          ORDER BY RANDOM()
          LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
-exports.fetchRandomStarred = fetchRandomStarred;
 function fetchUserCharacter(userID, wid) {
     if (parseInt(wid) <= 0)
         throw new Error('Invalid wid');
@@ -691,13 +711,11 @@ function fetchUserCharacter(userID, wid) {
          WHERE uid = $1
            AND wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
-exports.fetchUserCharacter = fetchUserCharacter;
 function fetchUserHighCharacter(userID, wid) {
     return query(`SELECT *
          FROM get_high_user_chars($1)
          WHERE wid = $2`, [userID, wid]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
-exports.fetchUserHighCharacter = fetchUserHighCharacter;
 function fetchUserHighestCharacter(userID) {
     return query(`SELECT *
          FROM all_user_chars
@@ -705,7 +723,6 @@ function fetchUserHighestCharacter(userID) {
          ORDER BY lvl DESC, idx
          LIMIT 1`, [userID]).then(res => res.at(0) ? new Character(res[0]) : undefined);
 }
-exports.fetchUserHighestCharacter = fetchUserHighestCharacter;
 function fetchUserCharactersList(userID, start) {
     if (start <= 0)
         throw new Error('Invalid start');
@@ -714,7 +731,6 @@ function fetchUserCharactersList(userID, start) {
          WHERE idx >= $2
          LIMIT $3`, [userID, start, defaultLimit]).then(Character.fromRows);
 }
-exports.fetchUserCharactersList = fetchUserCharactersList;
 function fetchUserHighCharactersList(userID, start) {
     if (start <= 0)
         throw new Error('Invalid start');
@@ -723,21 +739,18 @@ function fetchUserHighCharactersList(userID, start) {
          WHERE idx >= $2
          LIMIT $3`, [userID, start, defaultLimit]).then(Character.fromRows);
 }
-exports.fetchUserHighCharactersList = fetchUserHighCharactersList;
 function queryUserCharacter(userID, name) {
     const params = [userID, defaultLimit.toString()];
     return query(`SELECT *
          FROM get_user_chars($1) ${sortQueryAndParams('name', params, name)}
          LIMIT $2`, params).then(Character.fromRows);
 }
-exports.queryUserCharacter = queryUserCharacter;
 function queryUserHighCharacter(userID, name) {
     const params = [userID, defaultLimit.toString()];
     return query(`SELECT *
          FROM get_high_user_chars($1) ${sortQueryAndParams('name', params, name)}
          LIMIT $2`, params).then(Character.fromRows);
 }
-exports.queryUserHighCharacter = queryUserHighCharacter;
 function fetchUserAnimeCount(userID, origin) {
     return query(`SELECT COUNT(*)::int
          FROM all_user_chars
@@ -745,7 +758,6 @@ function fetchUserAnimeCount(userID, origin) {
            AND origin = $2
            AND fc = TRUE`, [userID, origin]).then(ret => ret[0].count);
 }
-exports.fetchUserAnimeCount = fetchUserAnimeCount;
 function getCommonQuery() {
     return 'SELECT wid FROM chars WHERE fc = FALSE ORDER BY RANDOM() LIMIT 1';
 }
@@ -806,7 +818,6 @@ async function generateAndAddCharacter(userID, amtTaken) {
         return 'there was an error with the database.';
     });
 }
-exports.generateAndAddCharacter = generateAndAddCharacter;
 function generateAndAddCharacters(userID, special, amtTaken) {
     // special = false - multi
     // special = true - whales
@@ -858,7 +869,6 @@ function generateAndAddCharacters(userID, special, amtTaken) {
         return 'there was an error with the database.';
     });
 }
-exports.generateAndAddCharacters = generateAndAddCharacters;
 function setUserCharacterImage(userID, wid, img) {
     return multi_query([
         `UPDATE user_chars
@@ -924,7 +934,6 @@ async function deleteUserCharacter(char) {
                AND idx >= $2`,
     ], [[char.uid, char.wid, idx], [char.uid, idx]]).then(res => res[0].length);
 }
-exports.deleteUserCharacter = deleteUserCharacter;
 async function deleteUserCommonCharacters(userID, { start = 1, end } = {}) {
     let q = 'DELETE FROM all_user_chars WHERE uid = $1 AND fc = FALSE AND idx >= $2::bigint';
     const params = [userID, start.toString()];
@@ -935,7 +944,6 @@ async function deleteUserCommonCharacters(userID, { start = 1, end } = {}) {
     q += ' RETURNING *';
     return multi_query([q, 'CALL repair_index($1)'], [params, [userID]]).then(res => res[0].length);
 }
-exports.deleteUserCommonCharacters = deleteUserCommonCharacters;
 function moveUserCharacter(char, pos) {
     // Length is not 1 if pos is out of range.
     return multi_query([
@@ -950,7 +958,6 @@ function moveUserCharacter(char, pos) {
         'CALL repair_index($1)',
     ], [[], [char.uid, char.wid, char.idx, pos], [char.uid]]).then(ret => ret[1].length === 1);
 }
-exports.moveUserCharacter = moveUserCharacter;
 function swapUserCharacters(char1, char2) {
     return multi_query([
         'SET CONSTRAINTS ALL DEFERRED',
@@ -970,7 +977,6 @@ function swapUserCharacters(char1, char2) {
         [char2.uid, char2.wid, char2.idx, char1.idx],
     ]).then(Utils.VOID);
 }
-exports.swapUserCharacters = swapUserCharacters;
 const EMPTY_GUILD_SETTINGS = {
     gid: '',
     welcome_msg: null,
@@ -985,13 +991,11 @@ function isGuildEmpty(guild) {
         guild.welcome_channelid === null &&
         guild.emoji_replacement;
 }
-exports.isGuildEmpty = isGuildEmpty;
 // Will return an empty GuildSettings object if not found
 // This allows modification easily even if it does not exist.
 function getGuild(gid) {
     return query('SELECT * FROM guild_settings WHERE gid = $1', [gid]).then(res => res.at(0) ?? { ...EMPTY_GUILD_SETTINGS, gid });
 }
-exports.getGuild = getGuild;
 // Set any to null to remove instead of undefined.
 function setGuild(settings) {
     const params = [settings.gid];
@@ -1016,11 +1020,9 @@ function setGuild(settings) {
          ON CONFLICT (gid)
              DO UPDATE SET ${colUpdates}`, params).then(Utils.VOID);
 }
-exports.setGuild = setGuild;
 function getGuessStreaks(userID) {
     return query('SELECT * FROM guess_info WHERE uid = $1', [userID]).then(res => res.at(0));
 }
-exports.getGuessStreaks = getGuessStreaks;
 function addOneToGuessStreak(userID, level) {
     return query(`INSERT INTO guess_info(uid, ${level}_streak, ${level}_max_streak)
          VALUES ($1, $2, $3)
@@ -1035,13 +1037,11 @@ function addOneToGuessStreak(userID, level) {
         };
     });
 }
-exports.addOneToGuessStreak = addOneToGuessStreak;
 function resetGuessStreak(userID, level) {
     return query(`UPDATE guess_info
          SET ${level}_streak = 0
          WHERE uid = $1`, [userID]).then(Utils.VOID);
 }
-exports.resetGuessStreak = resetGuessStreak;
 /*
  * Special functions for storing local data.
  * Can store any object that can be serialized.
@@ -1078,5 +1078,4 @@ exports.Cache = Cache;
 function deleteLocalData(id) {
     return query('DELETE FROM local_data WHERE id = $1', [id]).then(Utils.VOID, Utils.VOID);
 }
-exports.deleteLocalData = deleteLocalData;
 //# sourceMappingURL=database.js.map
