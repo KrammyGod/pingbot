@@ -24,12 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mod = exports.minigame = exports.help = exports.fun = exports.anime = exports.admin = void 0;
-exports.admin = Promise.resolve().then(() => __importStar(require('./admin_commands')));
-exports.anime = Promise.resolve().then(() => __importStar(require('./anime_commands')));
-exports.fun = Promise.resolve().then(() => __importStar(require('./fun_commands')));
-exports.help = Promise.resolve().then(() => __importStar(require('./help_command')));
-exports.minigame = Promise.resolve().then(() => __importStar(require('./minigame_commands')));
-exports.mod = Promise.resolve().then(() => __importStar(require('./mod_commands')));
+exports.admin = __importStar(require("./admin_commands"));
+exports.anime = __importStar(require("./anime_commands"));
+exports.fun = __importStar(require("./fun_commands"));
+exports.help = __importStar(require("./help_command"));
+exports.minigame = __importStar(require("./minigame_commands"));
+exports.mod = __importStar(require("./mod_commands"));
 // Disabling all music commands atm, there is currently an issue with the player interacting with youtube's API
-// export const music = import('./music_commands') as unknown as CommandFile;
+// export * as music from './music_commands';
 //# sourceMappingURL=index.js.map
