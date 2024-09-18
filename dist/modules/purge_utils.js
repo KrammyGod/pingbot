@@ -23,7 +23,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.purge_from_dm = exports.purge_from_channel = exports.purge_clean_channel = void 0;
+exports.purge_clean_channel = purge_clean_channel;
+exports.purge_from_channel = purge_from_channel;
+exports.purge_from_dm = purge_from_dm;
 const Utils = __importStar(require("./utils"));
 /**
  * Assumes that you have `Manage Channels` permission.
@@ -36,7 +38,6 @@ async function purge_clean_channel(channel) {
     await channel.delete();
     return new_channel;
 }
-exports.purge_clean_channel = purge_clean_channel;
 /**
  * Assumes that you have `Manage Messages` permission.
  * WILL THROW IF NOT!
@@ -90,7 +91,6 @@ async function purge_from_channel(channel, amount, filter = () => true) {
     }
     return deleted;
 }
-exports.purge_from_channel = purge_from_channel;
 async function purge_from_dm(channel, amount, filter = m => m.author.id === channel.client.user.id) {
     let deleted = 0;
     for await (const msg of Utils.fetch_history(channel, amount, filter)) {
@@ -99,5 +99,4 @@ async function purge_from_dm(channel, amount, filter = m => m.author.id === chan
     }
     return deleted;
 }
-exports.purge_from_dm = purge_from_dm;
 //# sourceMappingURL=purge_utils.js.map

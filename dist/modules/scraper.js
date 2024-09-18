@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSauce = exports.getRawImageLink = void 0;
+exports.getRawImageLink = getRawImageLink;
+exports.getSauce = getSauce;
 const crypto_1 = __importDefault(require("crypto"));
 const _config_1 = __importDefault(require("../classes/config.js"));
 const pixiv_ts_1 = __importDefault(require("pixiv.ts"));
@@ -92,7 +93,6 @@ async function getRawImageLink(source) {
     }
     return { images, source };
 }
-exports.getRawImageLink = getRawImageLink;
 const client = new client_lambda_1.LambdaClient();
 /**
  * Scrape saucenao.com API for best image source we can get.
@@ -156,5 +156,4 @@ async function getSauce(rawImageLink, lambda, retries = 2) {
         };
     });
 }
-exports.getSauce = getSauce;
 //# sourceMappingURL=scraper.js.map

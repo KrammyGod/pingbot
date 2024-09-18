@@ -23,7 +23,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getHoyoLabData = exports.getUID = void 0;
+exports.getUID = getUID;
+exports.getHoyoLabData = getHoyoLabData;
 const cookie_1 = require("cookie");
 const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) ' +
     'AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150';
@@ -101,7 +102,6 @@ function getUID(cookie) {
     const cookieObj = (0, cookie_1.parse)(cookie);
     return cookieObj?.account_id ?? cookieObj?.ltuid ?? cookieObj?.account_id_v2 ?? cookieObj?.ltuid_v2 ?? '';
 }
-exports.getUID = getUID;
 async function getHoyoLabData(cookie) {
     if (!cookie)
         return null;
@@ -121,7 +121,6 @@ async function getHoyoLabData(cookie) {
     }
     return null;
 }
-exports.getHoyoLabData = getHoyoLabData;
 // Allows for testing API route with cookie input.
 if (require.main === module) {
     // Conditional import
