@@ -153,13 +153,13 @@ exports.resetdb = new commands_1.MessageCommand({
     admin: true,
     long_description: 'Performs emergency reset on whales and daily.',
     async execute(message) {
+        if (!message.channel.isSendable()) {
+            return message.reply({ content: "Can't use that command here." }).then(Utils.VOID);
+        }
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
-        const msg = await message.reply({
-            content: 'Resetting...',
-            allowedMentions: { repliedUser: false },
-        });
+        await message.channel.sendTyping();
         await (0, reset_db_1.default)();
-        return msg.edit({
+        return message.channel.send({
             content: 'Successfully reset.',
         }).then(msg => msg.delete().then(Utils.VOID, Utils.VOID));
     },
