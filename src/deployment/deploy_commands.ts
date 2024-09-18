@@ -33,12 +33,6 @@ function isString(isThisString: unknown): isThisString is string {
     return typeof isThisString === 'string';
 }
 
-// This function helps us assert that the values of importing all the commands
-// is of type CommandFile. This is useful for type checking.
-function valuesOfCommandFiles(commands: Record<string, CommandFile>): CommandFile[] {
-    return Object.values(commands);
-}
-
 type JSONConvertible = SharedNameAndDescription & { toJSON(): RESTPostAPIChatInputApplicationCommandsJSONBody };
 
 (async function () {
@@ -48,8 +42,8 @@ type JSONConvertible = SharedNameAndDescription & { toJSON(): RESTPostAPIChatInp
     )[] = [];
     const rest = new REST({ version: '10' }).setToken(token);
 
-    for (const commandFile of valuesOfCommandFiles(commands)) {
-        Object.values(commandFile).forEach(command => {
+    for (const commandFile of Object.values(commands)) {
+        Object.values(commandFile as unknown as CommandFile).forEach(command => {
             // Ignore name and desc exported properties.
             if (isString(command)) return;
             // Do not deploy message commands.

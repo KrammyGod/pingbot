@@ -6,19 +6,13 @@ function isString(isThisString: unknown): isThisString is string {
     return typeof isThisString === 'string';
 }
 
-// This function helps us assert that the values of importing all the commands
-// is of type CommandFile. This is useful for type checking.
-function valuesOfCommandFiles(commands: Record<string, CommandFile>): CommandFile[] {
-    return Object.values(commands);
-}
-
 export default function load(client: Client) {
     // Reset to prevent duplicate loads
     client.cogs = [];
     client.interaction_commands = new Map();
     client.message_commands = new Map();
 
-    for (const commandFile of valuesOfCommandFiles(commands)) {
+    for (const commandFile of Object.values(commands)) {
         // Initialize a cog object
         const cog: Cog = {
             name: commandFile.name,
@@ -26,8 +20,8 @@ export default function load(client: Client) {
             displayed_commands: [],
             real_command_count: 0,
         };
-        // We assert that commandFile is a CommandFile object. If we error here, it's the developer's fault.
-        Object.values(commandFile).forEach(command => {
+        // We assert that commandFile is a CommandFile object. If we don't follow it, it's the developer's fault.
+        Object.values(commandFile as unknown as CommandFile).forEach(command => {
             // Ignore name and desc exported properties.
             if (isString(command)) return;
             if (command.isSlashCommand() || (command.isMessageCommand() && !command.admin)) {
