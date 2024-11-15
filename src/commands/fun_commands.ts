@@ -5,7 +5,6 @@ import * as Utils from '@modules/utils';
 import { parseDate } from 'chrono-node';
 import {
     ActionRowBuilder,
-    ApplicationCommandType,
     ButtonBuilder,
     ButtonStyle,
     ChannelSelectMenuBuilder,
@@ -28,6 +27,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
+import { ApplicationCommandType } from 'discord-api-types/v10';
 import { ContextCommand, SlashCommandNoSubcommand } from '@classes/commands';
 
 export const name = 'Fun';
