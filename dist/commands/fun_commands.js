@@ -33,6 +33,7 @@ const Hoyo = __importStar(require("../modules/hoyolab"));
 const Utils = __importStar(require("../modules/utils"));
 const chrono_node_1 = require("chrono-node");
 const discord_js_1 = require("discord.js");
+const v10_1 = require("discord-api-types/v10");
 const commands_1 = require("../classes/commands");
 exports.name = 'Fun';
 exports.desc = 'This category contains all the commands for fun, or are informational.';
@@ -803,7 +804,7 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
 exports.poll_edit = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Edit Poll')
-        .setType(discord_js_1.ApplicationCommandType.Message),
+        .setType(v10_1.ApplicationCommandType.Message),
     long_description: 'Edit a poll that you have created, as a message context command.',
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand())
@@ -830,7 +831,7 @@ exports.poll_edit = new commands_1.ContextCommand({
 exports.poll_end = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('End Poll')
-        .setType(discord_js_1.ApplicationCommandType.Message),
+        .setType(v10_1.ApplicationCommandType.Message),
     long_description: 'End a poll that you have created, as a message context command.',
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand())
