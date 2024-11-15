@@ -34,6 +34,7 @@ const Utils = __importStar(require("../modules/utils"));
 const scraper_1 = require("../modules/scraper");
 const cdn_1 = require("../modules/cdn");
 const discord_js_1 = require("discord.js");
+const v10_1 = require("discord-api-types/v10");
 const commands_1 = require("../classes/commands");
 exports.name = 'Animes/Gacha';
 exports.desc = 'This category is for commands that deal with the character gacha.';
@@ -874,7 +875,7 @@ exports.profile = new commands_1.SlashCommandNoSubcommand({
 exports.profile_menu = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Profile')
-        .setType(discord_js_1.ApplicationCommandType.User),
+        .setType(v10_1.ApplicationCommandType.User),
     long_description: 'Show /profile command on the user',
     execute(interaction) {
         return exports.profile.execute(interaction);
@@ -1496,7 +1497,7 @@ exports.list = new commands_1.SlashCommandNoSubcommand({
 exports.list_menu = new commands_1.ContextCommand({
     data: new discord_js_1.ContextMenuCommandBuilder()
         .setName('Character List')
-        .setType(discord_js_1.ApplicationCommandType.User),
+        .setType(v10_1.ApplicationCommandType.User),
     long_description: 'Show character list from a user',
     execute(interaction) {
         return exports.list.execute(interaction);
