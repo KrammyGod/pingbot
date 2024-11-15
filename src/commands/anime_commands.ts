@@ -7,7 +7,6 @@ import { getImage, uploadToCDN } from '@modules/cdn';
 import {
     ActionRowBuilder,
     AnySelectMenuInteraction,
-    ApplicationCommandType,
     ButtonBuilder,
     ButtonInteraction,
     ButtonStyle,
@@ -29,6 +28,7 @@ import {
     TextInputStyle,
     User,
 } from 'discord.js';
+import { ApplicationCommandType } from 'discord-api-types/v10';
 import type { NodePgJsonSerialized } from '@typings/serialize';
 import { ContextCommand, SlashCommandNoSubcommand } from '@classes/commands';
 
