@@ -71,7 +71,7 @@
     "pg": "^8.13.1",
     "pg-copy-streams": "^6.0.6",
     "pixiv.ts": "github:KrammyGod/pixiv.ts",
-    "play-dl": "^1.9.7",
+    "play-dl": "github:Yoduh/play-dl-test",
     "sodium-native": "^4.3.1"
   }
 }
