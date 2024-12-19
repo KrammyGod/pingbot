@@ -52,16 +52,16 @@
     "@types/pg": "^8.11.10",
     "@types/pg-copy-streams": "^1.2.5",
     "concurrently": "^9.1.0",
-    "eslint": "^9.16.0",
-    "nodemon": "^3.1.7",
+    "eslint": "^9.17.0",
+    "nodemon": "^3.1.9",
     "rimraf": "^6.0.1",
     "run-script-os": "^1.1.6",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.18.0"
+    "typescript-eslint": "^8.18.1"
   },
   "dependencies": {
-    "@aws-sdk/client-lambda": "^3.709.0",
+    "@aws-sdk/client-lambda": "^3.714.0",
     "@discordjs/voice": "^0.18.0",
     "cheerio": "^1.0.0",
     "chrono-node": "^2.7.7",
