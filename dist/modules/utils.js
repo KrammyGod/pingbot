@@ -215,7 +215,7 @@ async function get_results(interaction, choices, { title_fmt = idx => `Found ${i
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new discord_js_1.ActionRowBuilder().addComponents(menu)],
-        ephemeral: true,
+        flags: discord_js_1.MessageFlags.Ephemeral,
     });
     const res = await message.awaitMessageComponent({
         componentType: discord_js_1.ComponentType.StringSelect,

@@ -196,7 +196,7 @@ client.on(discord_js_1.Events.InteractionCreate, interaction => {
     if (!client.is_ready) {
         return interaction.reply({
             content: 'I am loading... Please try again later.',
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         }).then(utils_1.VOID);
     }
     // Process interaction.
@@ -429,9 +429,9 @@ function handle_interaction_errors(interaction, commandName, err) {
         return;
     }
     else if (err instanceof exceptions_1.DatabaseMaintenanceError) {
-        interaction.reply({ content: err.message, ephemeral: true }).catch(() => interaction.followUp({
+        interaction.reply({ content: err.message, flags: discord_js_1.MessageFlags.Ephemeral }).catch(() => interaction.followUp({
             content: err.message,
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         }).catch(utils_1.VOID));
         return;
     }
@@ -447,11 +447,11 @@ function handle_interaction_errors(interaction, commandName, err) {
     // Reply to user with error
     const content = 'Apologies, an unexpected error occurred with that command. ' +
         'Please send a message to the support server or try again later.';
-    interaction.reply({ content: content, ephemeral: true })
+    interaction.reply({ content: content, flags: discord_js_1.MessageFlags.Ephemeral })
         // If the interaction has already been replied, still need to tell user got error
         .catch(() => interaction.followUp({
         content: content,
-        ephemeral: true,
+        flags: discord_js_1.MessageFlags.Ephemeral,
     }).catch(utils_1.VOID)); // If interaction webhook is invalid.
 }
 function handle_message_errors(message, commandName, err) {

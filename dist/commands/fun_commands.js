@@ -72,7 +72,7 @@ exports.count = new commands_1.SlashCommandNoSubcommand({
         'Usage: `/count`',
     async execute(interaction) {
         const id = interaction.user.id;
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         let cache = await this.cache.get(id);
         if (!cache)
             cache = { amt: 0 };
@@ -113,7 +113,7 @@ exports.invite = new commands_1.SlashCommandNoSubcommand({
         .setDescription('Get the invite link for me! (See /help command: invite)'),
     long_description: invite_docs,
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         // Generated via discord's helper with the above permissions.
         const permissions = '1512670883152';
         const url = interaction.client.generateInvite({
@@ -135,7 +135,7 @@ exports.support = new commands_1.SlashCommandNoSubcommand({
         'Usage: `/support`',
     async execute(interaction) {
         const invite_code = 'BKAWvgVZtN';
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         // While we can get guild from fetching, it breaks the point of sharding
         // Maybe guild is unobtainable from fetching...?
         const invite_link = await Utils.fetch_guild_cache(interaction.client, _config_1.default.guild, (guild, invite_code) => {
@@ -270,7 +270,7 @@ const hoyolab_privates = {
                     components: buttons,
                 }),
             ],
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
         const confirmed = await message.awaitMessageComponent({
             componentType: discord_js_1.ComponentType.Button,
@@ -288,14 +288,14 @@ const hoyolab_privates = {
             return interaction.followUp({
                 content: 'Failed to delete cookie, the embed is out of date!\n' +
                     'Please make sure to only use this command once!',
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const retval = await hoyolab_privates.getAccount(interaction, 1, name);
         await interaction.editReply(retval);
         return interaction.followUp({
             content: 'Successfully deleted cookie!',
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         }).then(Utils.VOID);
     },
     async getAccount(interaction, pageOrIdx, name) {
@@ -423,7 +423,7 @@ exports.hoyolab = new commands_1.SlashCommandNoSubcommand({
         if (!info) {
             return interaction.followUp({
                 content: 'Unable to retrieve account information. Please check your cookie and try again.',
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const res = await DB.addCookie(interaction.user.id, cookie);
@@ -431,7 +431,7 @@ exports.hoyolab = new commands_1.SlashCommandNoSubcommand({
             return interaction.followUp({
                 content: 'Failed to add account to autocollector.\nEither you reached the max of 5 accounts, ' +
                     'or you are entering a duplicate cookie.',
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         // Adding new account always brings user to first page to properly reload everything.
@@ -439,7 +439,7 @@ exports.hoyolab = new commands_1.SlashCommandNoSubcommand({
         await interaction.editReply(retval);
         await interaction.followUp({
             content: 'Successfully added account to autocollector!',
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         });
     },
     async buttonReact(interaction) {
@@ -462,7 +462,7 @@ exports.hoyolab = new commands_1.SlashCommandNoSubcommand({
         await interaction.editReply(retval);
     },
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         const retval = await hoyolab_privates.getAccount(interaction, 1, this.data.name);
         await interaction.editReply(retval);
     },
@@ -608,17 +608,17 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
             const choices = c.trim().split('\n').map(x => x.trim()).filter(x => x !== '');
             if (!choices.length) {
                 return interaction.followUp({
-                    content: 'You must provide at least one choice.', ephemeral: true,
+                    content: 'You must provide at least one choice.', flags: discord_js_1.MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             }
             else if (choices.length > 25) {
                 return interaction.followUp({
-                    content: 'You cannot provide more than 25 choices.', ephemeral: true,
+                    content: 'You cannot provide more than 25 choices.', flags: discord_js_1.MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             }
             else if (new Set(choices).size !== choices.length) {
                 return interaction.followUp({
-                    content: 'All choices must be unique.', ephemeral: true,
+                    content: 'All choices must be unique.', flags: discord_js_1.MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             }
             pollInfo.choices = choices.map(c => {
@@ -633,13 +633,13 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
                 if (!date) {
                     return interaction.followUp({
                         content: `\`${expiry}\` is not a valid date/relative time!`,
-                        ephemeral: true,
+                        flags: discord_js_1.MessageFlags.Ephemeral,
                     }).then(Utils.VOID);
                 }
                 else if (new Date() >= date) {
                     return interaction.followUp({
                         content: `${Utils.timestamp(date)} is in the past!`,
-                        ephemeral: true,
+                        flags: discord_js_1.MessageFlags.Ephemeral,
                     }).then(Utils.VOID);
                 }
                 pollInfo.expires = date;
@@ -688,7 +688,7 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
                     message = await channel.send({ embeds, components });
                     await interaction.followUp({
                         content: 'Successfully sent poll! You may now close this dialog.',
-                        ephemeral: true,
+                        flags: discord_js_1.MessageFlags.Ephemeral,
                     });
                 }
                 await this.cache.delete(pollInfo.mid); // Remove old poll from cache
@@ -784,13 +784,13 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
         if (!channel.permissionsFor(interaction.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `You don't have permissions to send messages in ${channel}.`,
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         else if (!channel.permissionsFor(interaction.client.user.id).has(discord_js_1.PermissionsBitField.Flags.SendMessages)) {
             return interaction.followUp({
                 content: `I don't have permissions to send messages in ${channel}.`,
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         pollInfo.cid = channel.id;
@@ -799,7 +799,7 @@ exports.poll = new commands_1.SlashCommandNoSubcommand({
         await interaction.editReply(retval);
     },
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         const id = await interaction.fetchReply().then(m => m.id);
         await this.cache.set(id, {
             uid: interaction.user.id,
@@ -819,7 +819,7 @@ exports.poll_edit = new commands_1.ContextCommand({
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand())
             return;
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         const thisId = await interaction.fetchReply().then(m => m.id);
         const id = interaction.targetId;
         const pollInfo = await exports.poll.cache.get(id, poll_privates.deserialize);
@@ -846,7 +846,7 @@ exports.poll_end = new commands_1.ContextCommand({
     async execute(interaction) {
         if (!interaction.isMessageContextMenuCommand())
             return;
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
         const id = interaction.targetId;
         const pollInfo = await exports.poll.cache.get(id, poll_privates.deserialize);
         // Cache outdated, ignore
