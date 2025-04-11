@@ -8,6 +8,7 @@ import {
     ComponentType,
     EmbedBuilder,
     MessageActionRowComponentBuilder,
+    MessageFlags,
     ModalBuilder,
     RepliableInteraction,
     SlashCommandBuilder,
@@ -71,7 +72,7 @@ async function get_results_category(
         components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     });
 
     // Return promise to let caller await it.
@@ -166,7 +167,7 @@ async function get_results_cmd(interaction: RepliableInteraction, search: string
         components: [
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     });
 
     // Return promise to let caller await it.
@@ -184,7 +185,7 @@ type HelperRetVal = {
     components?: ActionRowBuilder<MessageActionRowComponentBuilder>[],
     followUp?: {
         embeds: EmbedBuilder[],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     }
 };
 
@@ -199,10 +200,10 @@ async function get_cog_page(client: Client<true>, authorID: string, page: number
     // This represents any followup messages that should be sent
     const followUp: {
         embeds: EmbedBuilder[],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     } = {
         embeds: [],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     };
 
     if (max_pages === 0) {
@@ -437,7 +438,7 @@ export const help = new SlashCommandNoSubcommand({
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command\n' +
                             '❓: This help message',
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     }).then(Utils.VOID);
                 } else if (cmdName === 'cog') {
                     return interaction.reply({
@@ -449,7 +450,7 @@ export const help = new SlashCommandNoSubcommand({
                             '❓: This help message\n' +
                             '📄: Search and jump to a specific page/category\n' +
                             '🔍: Search and jump to a specific command',
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     }).then(Utils.VOID);
                 } else {
                     throw new Error(`Command type: ${cmdName} not found.`);
@@ -483,7 +484,10 @@ export const help = new SlashCommandNoSubcommand({
                         title: `No category with name \`${value.replaceAll('`', '\\`')}\` found.`,
                         color: Colors.Red,
                     });
-                    return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
+                    return interaction.followUp({
+                        embeds: [error_embed],
+                        flags: MessageFlags.Ephemeral,
+                    }).then(Utils.VOID);
                 }
                 const { embeds, components, followUp } = await get_cog_page(
                     interaction.client, interaction.user.id, interaction.client.cogs.indexOf(category) + 1,
@@ -505,7 +509,7 @@ export const help = new SlashCommandNoSubcommand({
                     title: `No command with name \`${value.replaceAll('`', '\\`')}\` found.`,
                     color: Colors.Red,
                 });
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
+                return interaction.followUp({ embeds: [error_embed], flags: MessageFlags.Ephemeral }).then(Utils.VOID);
             }
             const res = await get_cmd_page(interaction.client, interaction.user.id, command);
             await interaction.editReply(res);
@@ -557,7 +561,7 @@ export const help = new SlashCommandNoSubcommand({
                     color: Colors.Red,
                 });
                 res = await get_cog_page(interaction.client, interaction.user.id, 1);
-                interaction.followUp({ embeds: [error_embed], ephemeral: true });
+                interaction.followUp({ embeds: [error_embed], flags: MessageFlags.Ephemeral });
             } else {
                 res = await get_cog_page(
                     interaction.client,

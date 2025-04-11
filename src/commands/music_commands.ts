@@ -17,6 +17,7 @@ import {
     EmbedBuilder,
     GuildMember,
     InteractionReplyOptions,
+    MessageFlags,
     ModalBuilder,
     PermissionsBitField,
     SlashCommandBuilder,
@@ -55,9 +56,9 @@ async function get_member(interaction: BaseInteraction) {
 
     member = await interaction.guild!.members.fetch(member?.user.id ?? '0').catch(() => null);
     if (!member) {
-        const reply = {
+        const reply: InteractionReplyOptions = {
             content: 'I was unable to fetch your details. Please report this to the support server!',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         };
         return interaction.isRepliable() ?
             interaction.replied || interaction.deferred ?
@@ -664,10 +665,10 @@ const queue_privates = {
         // This represents any followup messages that should be sent
         const followUp: {
             embeds: EmbedBuilder[],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         } = {
             embeds: [],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         };
         if (page < 1) {
             const error_embed = new EmbedBuilder({
@@ -759,7 +760,7 @@ const queue = new SlashSubcommand({
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const { embeds, components, followUp } = queue_privates.getPage(interaction.user.id, guildVoice, page);
@@ -832,12 +833,12 @@ const shuffle = new SlashSubcommand({
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) return interaction.deleteReply();
         const reply = check_host(member, guildVoice, 'this button');
-        if (reply) return interaction.followUp({ ...reply, ephemeral: true }).then(Utils.VOID);
+        if (reply) return interaction.followUp({ ...reply, flags: MessageFlags.Ephemeral }).then(Utils.VOID);
         guildVoice.shuffle();
         const page = parseInt(interaction.customId.split('/').slice(3)[0]);
         const { embeds, components } = queue_privates.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
-        await interaction.followUp({ content: '🔀 Successfully shuffled the queue.', ephemeral: true });
+        await interaction.followUp({ content: '🔀 Successfully shuffled the queue.', flags: MessageFlags.Ephemeral });
     },
 
     async execute(interaction) {
