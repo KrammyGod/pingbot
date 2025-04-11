@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.guild = exports.purge = exports.desc = exports.name = void 0;
+exports.role = exports.guild = exports.purge = exports.desc = exports.name = void 0;
 const DB = __importStar(require("../modules/database"));
 const Utils = __importStar(require("../modules/utils"));
 const Purge = __importStar(require("../modules/purge_utils"));
@@ -66,7 +66,7 @@ exports.purge = new commands_1.SlashCommandNoSubcommand({
     async execute(interaction) {
         const message = await interaction.reply({
             content: 'Performing intensive calculations...',
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         }).then(i => i.fetch());
         // Parse input
         // amount being NaN means all is true.
@@ -310,7 +310,7 @@ const welcome_menu = {
                         '> ${USER} - Mentions the newly joined member.\n' +
                         '> ${SERVER} - Replaces with the name of the server.\n' +
                         '> ${MEMBER_COUNT} - Replaces with the number of current members in the server.',
-                    ephemeral: true,
+                    flags: discord_js_1.MessageFlags.Ephemeral,
                 });
                 break;
             default:
@@ -328,7 +328,7 @@ const welcome_menu = {
                         await interaction.editReply({ content: null });
                         await interaction.followUp({
                             content: 'Channel must be a text channel.',
-                            ephemeral: true,
+                            flags: discord_js_1.MessageFlags.Ephemeral,
                         });
                         return menu;
                     }
@@ -336,7 +336,7 @@ const welcome_menu = {
                         await interaction.editReply({ content: null });
                         await interaction.followUp({
                             content: `You do not have permission to send messages in ${chn}.`,
-                            ephemeral: true,
+                            flags: discord_js_1.MessageFlags.Ephemeral,
                         });
                         return menu;
                     }
@@ -344,7 +344,7 @@ const welcome_menu = {
                         await interaction.editReply({ content: null });
                         await interaction.followUp({
                             content: `I do not have permission to send messages in ${chn}.`,
-                            ephemeral: true,
+                            flags: discord_js_1.MessageFlags.Ephemeral,
                         });
                         return menu;
                     }
@@ -359,7 +359,7 @@ const welcome_menu = {
                         await interaction.editReply({ content: null });
                         await interaction.followUp({
                             content: 'Cannot assign a bot role.',
-                            ephemeral: true,
+                            flags: discord_js_1.MessageFlags.Ephemeral,
                         });
                         return menu;
                     }
@@ -370,7 +370,7 @@ const welcome_menu = {
                         await interaction.followUp({
                             content: `I am unable to add ${role} due to my role ` +
                                 'being lower than it.',
-                            ephemeral: true,
+                            flags: discord_js_1.MessageFlags.Ephemeral,
                         });
                         return menu;
                     }
@@ -380,7 +380,7 @@ const welcome_menu = {
                         await interaction.followUp({
                             content: `You are unable to add ${role} due to your highest role ` +
                                 'being lower than it.',
-                            ephemeral: true,
+                            flags: discord_js_1.MessageFlags.Ephemeral,
                         });
                         return menu;
                     }
@@ -475,7 +475,7 @@ exports.guild = new commands_1.SlashCommandNoSubcommand({
         .setName('guild')
         .setDescription('Edits bot specific guild settings.')
         .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageGuild)
-        .setDMPermission(false),
+        .setContexts(discord_js_1.InteractionContextType.Guild),
     long_description: 'Starts a dialogue to edit some guild settings.\n\n' +
         '__**<<RESTRICTED FOR USERS WITH MANAGE GUILD PERMISSIONS ONLY>>**__\n\n' +
         '__Replacement Options For Welcome Message:__\n' +
@@ -613,6 +613,161 @@ exports.guild = new commands_1.SlashCommandNoSubcommand({
         const embeds = guild_privates.buildEmbeds(guildCache, 'main_menu');
         const components = guild_privates.buildComponents(interaction.user.id, guildCache, 'main_menu');
         await interaction.editReply({ content: null, embeds, components });
+    },
+});
+exports.role = new commands_1.SlashCommandNoSubcommand({
+    data: new discord_js_1.SlashCommandBuilder()
+        .setName('role')
+        .setDescription('Setup a pretty dialogue for adding roles.')
+        .setDefaultMemberPermissions(discord_js_1.PermissionsBitField.Flags.ManageGuild)
+        .setContexts(discord_js_1.InteractionContextType.Guild),
+    long_description: 'Setup a pretty dialogue to allow users to assign roles to themselves.\n\n' +
+        '__**<<RESTRICTED FOR USERS WITH MANAGE ROLES PERMISSIONS ONLY>>**__\n\n' +
+        'Usage: `/role`',
+    async execute(interaction) {
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
+        if (!interaction.guild.members.me.permissions.has(discord_js_1.PermissionsBitField.Flags.ManageRoles)) {
+            return interaction.editReply({
+                content: 'I do not have permission to assign roles.\n' +
+                    'I need the Manage Roles permission.',
+            }).then(Utils.VOID);
+        }
+        const roleSelector = new discord_js_1.ActionRowBuilder({
+            components: [new discord_js_1.RoleSelectMenuBuilder({
+                    custom_id: 'role_role',
+                    min_values: 0,
+                    max_values: 25, // Discord limit
+                    placeholder: 'Select roles to display',
+                })],
+        });
+        const apply = new discord_js_1.ActionRowBuilder({
+            components: [new discord_js_1.ButtonBuilder({
+                    custom_id: 'apply_self_role',
+                    label: 'Apply',
+                    style: discord_js_1.ButtonStyle.Success,
+                    emoji: '✅',
+                    disabled: true,
+                })],
+        });
+        const channel = interaction.channel;
+        const base_desc = 'Select the roles you want to be added to the ' +
+            'self role menu and then click apply.\n\n__**Selected channel:**__\n' +
+            `${interaction.channel}\n\n__**Selected roles:**__\n`;
+        let selectedRoles = [];
+        const embed = new discord_js_1.EmbedBuilder({
+            title: 'Self Role Setup',
+            description: base_desc + '*No roles selected.*',
+        }).setColor('Gold');
+        const base_components = [roleSelector, apply];
+        const msg = await interaction.editReply({ embeds: [embed], components: base_components });
+        const collector = msg.createMessageComponentCollector();
+        collector.on('collect', async (i) => {
+            if (i.isButton()) {
+                await i.deferUpdate();
+                // Add message
+                let desc = 'Click on the buttons to add the role to yourself:\n\n';
+                const roles = await i.guild.roles.fetch();
+                const btns = [];
+                for (const role of selectedRoles) {
+                    if (!roles.has(role))
+                        continue;
+                    btns.push(new discord_js_1.ButtonBuilder({
+                        custom_id: `role/0/${role}/${i.user.id}`,
+                        label: roles.get(role).name.slice(0, 80),
+                        style: discord_js_1.ButtonStyle.Primary,
+                    }));
+                    desc += `${roles.get(role)}\n`;
+                }
+                if (!btns)
+                    return;
+                const components = [];
+                // Split into 5 buttons per row
+                while (btns.length > 0) {
+                    components.push(new discord_js_1.ActionRowBuilder({
+                        components: btns.splice(0, 5),
+                    }));
+                }
+                const roleEmbed = new discord_js_1.EmbedBuilder({
+                    title: 'Select Roles to add',
+                    description: desc,
+                }).setColor('Gold');
+                return channel.send({ embeds: [roleEmbed], components: components })
+                    .then(() => i.deleteReply())
+                    .catch(() => i.followUp({
+                    content: `I do not have permission to send messages in ${channel}`,
+                    flags: discord_js_1.MessageFlags.Ephemeral,
+                }));
+            }
+            else if (i.isRoleSelectMenu()) {
+                selectedRoles = [];
+                const invalidRoles = [];
+                const me = i.guild.members.me.roles.highest;
+                const their = i.member.roles;
+                const them = their instanceof discord_js_1.GuildMemberRoleManager ? their.highest : their[their.length - 1];
+                await i.deferUpdate();
+                for (const role of i.roles.values()) {
+                    if (i.guild.roles.comparePositions(me, role.id) <= 0 || role.managed) {
+                        // Invalid role for us to give
+                        invalidRoles.push(role.id);
+                    }
+                    else if (i.guild.roles.comparePositions(them, role.id) <= 0 &&
+                        i.guild.ownerId !== i.user.id) {
+                        // Invalid role for us to give
+                        invalidRoles.push(role.id);
+                    }
+                    else {
+                        // Valid role for us to give
+                        selectedRoles.push(role.id);
+                    }
+                }
+                selectedRoles.sort((a, b) => i.guild.roles.comparePositions(b, a));
+                // If length is 0, disable apply button
+                apply.components[0].setDisabled(!selectedRoles.length);
+                let desc = base_desc;
+                if (!selectedRoles.length) {
+                    desc += '*No roles selected.*';
+                }
+                for (const role of selectedRoles) {
+                    desc += `<@&${role}>\n`;
+                }
+                embed.setDescription(desc);
+                await i.editReply({ embeds: [embed], components: base_components });
+                if (invalidRoles.length) {
+                    let ctnt = 'There were some roles that I was unable to add ' +
+                        'due to either my role being lower than them, your role ' +
+                        'lower than them, or they are not assignable roles:\n';
+                    for (const role of invalidRoles) {
+                        ctnt += `<@&${role}>\n`;
+                    }
+                    return i.followUp({
+                        content: ctnt,
+                        flags: discord_js_1.MessageFlags.Ephemeral,
+                    });
+                }
+            }
+        });
+        collector.on('end', async () => {
+            await msg.edit({
+                content: 'Self role setup has timed out.',
+                embeds: [],
+                components: [],
+            }).catch(() => { });
+        });
+    },
+    async buttonReact(interaction) {
+        await interaction.deferReply({ flags: discord_js_1.MessageFlags.Ephemeral });
+        const roleId = interaction.customId.split('/')[2];
+        let reply = '';
+        const roles = interaction.member.roles;
+        if (roles.cache.has(roleId)) {
+            reply = `You lost <@&${roleId}>.`;
+            await roles.remove(roleId, 'Self role');
+        }
+        else {
+            reply = `You now have <@&${roleId}>.`;
+            await roles.add(roleId, 'Self role');
+        }
+        await interaction.editReply({ content: reply });
     },
 });
 //# sourceMappingURL=mod_commands.js.map

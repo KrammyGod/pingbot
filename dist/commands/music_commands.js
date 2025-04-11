@@ -69,7 +69,7 @@ async function get_member(interaction) {
     if (!member) {
         const reply = {
             content: 'I was unable to fetch your details. Please report this to the support server!',
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         };
         return interaction.isRepliable() ?
             interaction.replied || interaction.deferred ?
@@ -642,7 +642,7 @@ const queue_privates = {
         // This represents any followup messages that should be sent
         const followUp = {
             embeds: [],
-            ephemeral: true,
+            flags: discord_js_1.MessageFlags.Ephemeral,
         };
         if (page < 1) {
             const error_embed = new discord_js_1.EmbedBuilder({
@@ -730,7 +730,7 @@ const queue = new commands_1.SlashSubcommand({
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
-                ephemeral: true,
+                flags: discord_js_1.MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const { embeds, components, followUp } = queue_privates.getPage(interaction.user.id, guildVoice, page);
@@ -804,12 +804,12 @@ const shuffle = new commands_1.SlashSubcommand({
             return interaction.deleteReply();
         const reply = check_host(member, guildVoice, 'this button');
         if (reply)
-            return interaction.followUp({ ...reply, ephemeral: true }).then(Utils.VOID);
+            return interaction.followUp({ ...reply, flags: discord_js_1.MessageFlags.Ephemeral }).then(Utils.VOID);
         guildVoice.shuffle();
         const page = parseInt(interaction.customId.split('/').slice(3)[0]);
         const { embeds, components } = queue_privates.getPage(interaction.user.id, guildVoice, page);
         await interaction.editReply({ embeds, components });
-        await interaction.followUp({ content: '🔀 Successfully shuffled the queue.', ephemeral: true });
+        await interaction.followUp({ content: '🔀 Successfully shuffled the queue.', flags: discord_js_1.MessageFlags.Ephemeral });
     },
     async execute(interaction) {
         await interaction.deferReply();
