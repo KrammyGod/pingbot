@@ -18,6 +18,7 @@ import {
     EmbedBuilder,
     GuildTextBasedChannel,
     InteractionReplyOptions,
+    MessageFlags,
     ModalBuilder,
     ModalSubmitInteraction,
     RepliableInteraction,
@@ -169,10 +170,10 @@ const animes_privates = {
         // This represents any followup messages that should be sent
         const followUp: {
             embeds: EmbedBuilder[],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         } = {
             embeds: [],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         };
         if (max_pages === 0) {
             embed.setDescription(`Page 0/${max_pages}`).setFields({
@@ -320,7 +321,7 @@ export const animes = new SlashCommandNoSubcommand({
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const { embeds, components, followUp } = await animes_privates.getPage(interaction.user.id, user, page);
@@ -353,7 +354,7 @@ export const animes = new SlashCommandNoSubcommand({
                 });
                 return interaction.showModal(input);
             } else if (page === 'help') {
-                return interaction.reply({ content: GLOBAL_HELP, ephemeral: true }).then(Utils.VOID);
+                return interaction.reply({ content: GLOBAL_HELP, flags: MessageFlags.Ephemeral }).then(Utils.VOID);
             } else {
                 throw new Error(`Button type: ${page} not found.`);
             }
@@ -380,7 +381,7 @@ export const animes = new SlashCommandNoSubcommand({
             await interaction.followUp({
                 content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
                     `and gained +${gain} ${interaction.client.bot_emojis.brons}!`,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).catch(Utils.VOID);
         }
     },
@@ -471,7 +472,7 @@ export const anime = new SlashCommandNoSubcommand({
                     await interaction.followUp({
                         content: `You collected bonuses for \`${series}\`! ` +
                             `+${gain} ${interaction.client.bot_emojis.brons}`,
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                 }
             }
@@ -538,10 +539,10 @@ const lb_privates = {
         // This represents any followup messages that should be sent
         const followUp: {
             embeds: EmbedBuilder[],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         } = {
             embeds: [],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         };
         if (max_pages === 0) {
             embed.setDescription(`Page 0/${max_pages}`).setFields({
@@ -675,7 +676,7 @@ export const lb = new SlashCommandNoSubcommand({
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const { embeds, components, followUp } = await lb_privates.getPage(
@@ -714,7 +715,7 @@ export const lb = new SlashCommandNoSubcommand({
             } else if (page === 'help') {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by stars',
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             } else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -985,10 +986,10 @@ async function get_list_as_embed(
     // This represents any followup messages that should be sent
     const followUp: {
         embeds: EmbedBuilder[],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     } = {
         embeds: [],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     };
     if (max_pages === 0) {
         embed.setDescription(`Page 0/${max_pages}`).setFields({
@@ -1121,10 +1122,10 @@ async function get_char_as_embed(
     // This represents any followup messages that should be sent
     const followUp: {
         embeds: EmbedBuilder[],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     } = {
         embeds: [],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     };
     if (max_idx === 0) {
         embed.setDescription(`Waifu 0/${max_idx}`).setFields({
@@ -1319,7 +1320,7 @@ async function switch_char_image(interaction: AnySelectMenuInteraction, char: DB
         return {
             embeds,
             components,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         };
     }
 
@@ -1372,7 +1373,7 @@ async function switch_char_image(interaction: AnySelectMenuInteraction, char: DB
             title: 'Apologies, that action failed. Please contact the support server.',
             color: Colors.Red,
         });
-        return { embeds: [embed], ephemeral: true };
+        return { embeds: [embed], flags: MessageFlags.Ephemeral };
     }
 }
 
@@ -1385,7 +1386,7 @@ async function toggle_char_nsfw(interaction: AnySelectMenuInteraction, char: DB.
                 "Either you don't own the character anymore, or there is an error.",
             color: Colors.Red,
         });
-        return { embeds: [embed], ephemeral: true };
+        return { embeds: [embed], flags: MessageFlags.Ephemeral };
     }
 }
 
@@ -1416,7 +1417,7 @@ async function delete_char(interaction: AnySelectMenuInteraction, char: DB.Chara
     const message = await interaction.followUp({
         embeds: [embed],
         components: [buttons],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     });
     const confirmed = await Utils.wait_for_button(message, 'delete_char/confirm');
     await Utils.delete_ephemeral_message(interaction, message);
@@ -1426,7 +1427,7 @@ async function delete_char(interaction: AnySelectMenuInteraction, char: DB.Chara
     const res = await DB.deleteUserCharacter(char);
     if (res === 0) {
         embed.setTitle(`Failed to delete ${char.name}. Please contact the support server.`);
-        return { embeds: [embed], ephemeral: true };
+        return { embeds: [embed], flags: MessageFlags.Ephemeral };
     }
     const refund = (char.fc ? 4 : 2) * res; // CONSTANT: Refund brons
     DB.addBrons(interaction.user.id, refund);
@@ -1434,7 +1435,7 @@ async function delete_char(interaction: AnySelectMenuInteraction, char: DB.Chara
         `Successfully deleted ${char.getWFC(interaction.channel!)}${char.name} ` +
         `${char.gender}! +${refund} ${interaction.client.bot_emojis.brons}`,
     );
-    return { embeds: [embed], ephemeral: true };
+    return { embeds: [embed], flags: MessageFlags.Ephemeral };
 }
 
 // This collection of helpers is because list and high are identical, with one parameter difference
@@ -1492,7 +1493,7 @@ const listHelpers = {
                         `🔄: ${high ?
                             'Swap to normal list' :
                             'Swap to list sorted by highest upgradable waifus'}`,
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             } else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -1521,14 +1522,14 @@ const listHelpers = {
             await DB.fetchUserCharacter(interaction.user.id, wid);
         const callFn = fnMappings[fn as keyof typeof fnMappings];
         if (callFn) {
-            const res = await callFn(interaction, char!);
+            const res = await callFn(interaction, char!) as InteractionReplyOptions | null;
             if (res) {
                 await interaction.followUp(res);
             }
         } else {
             await interaction.followUp({
                 content: 'This feature does not exist. Please contact the support server.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
         }
         // 15 minutes passed, interaction expired
@@ -1567,7 +1568,7 @@ const listHelpers = {
             if (isNaN(page)) {
                 return interaction.followUp({
                     content: 'Invalid page number.',
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             }
             const { embeds, components, followUp } = await get_list_as_embed(
@@ -1588,10 +1589,10 @@ const listHelpers = {
                 return;
             } else if (!char) {
                 error_embed.setTitle(`No character found with name \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
+                return interaction.followUp({ embeds: [error_embed], flags: MessageFlags.Ephemeral }).then(Utils.VOID);
             } else if (char === NO_NUM) {
                 error_embed.setTitle(`No character found with index \`${value}\`.`);
-                return interaction.followUp({ embeds: [error_embed], ephemeral: true }).then(Utils.VOID);
+                return interaction.followUp({ embeds: [error_embed], flags: MessageFlags.Ephemeral }).then(Utils.VOID);
             }
             const { embeds, components, followUp } = await get_char_as_embed(
                 interaction.channel!,
@@ -1819,7 +1820,7 @@ export const roll = new SlashCommandNoSubcommand({
         'Usage: `/roll ephemeral: [ephemeral]`\n\n' +
         '__**Options**__\n' +
         '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
-        'Examples: `/roll`, `/roll ephemeral: True`',
+        'Examples: `/roll`, `/roll flags: MessageFlags.Ephemeral`',
 
     async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
@@ -1864,7 +1865,7 @@ export const multi = new SlashCommandNoSubcommand({
         'Usage: `/multi ephemeral: [ephemeral]`\n\n' +
         '__**Options**__\n' +
         '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
-        'Examples: `/multi`, `/multi ephemeral: True`',
+        'Examples: `/multi`, `/multi flags: MessageFlags.Ephemeral`',
 
     async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
@@ -1917,7 +1918,7 @@ export const whale = new SlashCommandNoSubcommand({
         'Usage: `/whale ephemeral: [ephemeral]`\n\n' +
         '__**Options**__\n' +
         '*ephemeral:* A flag to hide your pulls. (Default: off)\n\n' +
-        'Examples: `/whale`, `/whale ephemeral: True`',
+        'Examples: `/whale`, `/whale flags: MessageFlags.Ephemeral`',
 
     async execute(interaction) {
         const eph = interaction.options.getBoolean('ephemeral') ?? false;
@@ -1981,7 +1982,7 @@ export const dall = new SlashCommandNoSubcommand({
             title: 'Searching...',
             color: Colors.LightGrey,
         });
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         let first: DB.Character | -1 | null | undefined = undefined;
         let last: DB.Character | -1 | null | undefined = undefined;
         let start: number | undefined = undefined;
@@ -1991,7 +1992,7 @@ export const dall = new SlashCommandNoSubcommand({
             if (first === NO_NUM || !first) {
                 embed.setTitle(`Invalid waifu \`${begin}\`. Defaulting to first waifu...`);
                 embed.setColor(Colors.Red);
-                await interaction.followUp({ embeds: [embed], ephemeral: true });
+                await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
             } else {
                 start = first.idx;
             }
@@ -2001,7 +2002,7 @@ export const dall = new SlashCommandNoSubcommand({
             if (last === NO_NUM || !last) {
                 embed.setTitle(`Invalid waifu \`${finish}\`. Defaulting to last waifu...`);
                 embed.setColor(Colors.Red);
-                await interaction.followUp({ embeds: [embed], ephemeral: true });
+                await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
                 last = undefined;
             } else {
                 end = last.idx;
@@ -2065,7 +2066,7 @@ export const stars = new SlashCommandNoSubcommand({
         'Examples: `/stars`, `/stars user: @krammygod`',
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const user = interaction.options.getUser('user') ?? interaction.user;
         const starsString = user.id === interaction.client.user.id ? '∞' :
             await DB.fetchUserStarredCount(user.id);
@@ -2101,10 +2102,10 @@ const top_privates = {
         // This represents any followup messages that should be sent
         const followUp: {
             embeds: EmbedBuilder[],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         } = {
             embeds: [],
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         };
         if (max_pages === 0) {
             embed.setDescription(`Page 0/${max_pages}`).setFields({
@@ -2217,7 +2218,7 @@ export const top = new SlashCommandNoSubcommand({
         if (isNaN(page)) {
             return interaction.followUp({
                 content: 'Invalid page number.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const { embeds, components, followUp } = await top_privates.getPage(
@@ -2256,7 +2257,7 @@ export const top = new SlashCommandNoSubcommand({
             } else if (page === 'help') {
                 return interaction.reply({
                     content: GLOBAL_HELP + '🔄: Swaps to leaderboards sorted by brons',
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 }).then(Utils.VOID);
             } else {
                 throw new Error(`Button type: ${page} not found.`);
@@ -2383,7 +2384,7 @@ export const swap = new SlashCommandNoSubcommand({
             title: 'Waiting for selection...',
             color: Colors.Yellow,
         });
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         embed.setColor(Colors.Red);
         const char1 = await search_character(interaction, interaction.user.id, c1, false);
         if (char1 === null) {
@@ -2451,7 +2452,7 @@ export const move = new SlashCommandNoSubcommand({
             title: 'Waiting for selection...',
             color: Colors.Yellow,
         });
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         embed.setColor(Colors.Red);
         const char = await search_character(interaction, interaction.user.id, c, false);
         if (char === null) {
@@ -2638,7 +2639,7 @@ const submit_privates = {
         } else if (!waifu) {
             return interaction.followUp({
                 content: `No waifu found with name \`${waifu_name}\``,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(() => undefined);
         }
         embed.setDescription(
@@ -2673,7 +2674,7 @@ const submit_privates = {
         } else if (!series) {
             return interaction.followUp({
                 content: `No anime found with name \`${name}\`.`,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(() => undefined);
         }
         const anime_chars = await DB.getAnime(series);
@@ -2783,7 +2784,7 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
                 nimg.some(i => !i.startsWith(config.cdn))) {
                 await interaction.followUp({
                     content: 'Submission has invalid images! Please fix!',
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
                 await interaction.editReply({ components: [submit_privates.secretButtons] });
                 return;
@@ -2880,7 +2881,7 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
         if (gender !== 'Female' && gender !== 'Male' && gender !== 'Unknown') {
             return interaction.followUp({
                 content: 'Gender must be one of `Female`, `Male` or `Unknown`!',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         // Ensure that they meant to add to the anime, rather than creating a new one.
@@ -2892,12 +2893,12 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
         if (img.length === 0 && nimg.length === 0) {
             return interaction.followUp({
                 content: 'You must submit at least 1 image!',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         } else if (!waifu && img.length === 0) {
             return interaction.followUp({
                 content: 'New waifus must have at least 1 normal image!',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).then(Utils.VOID);
         }
         const submission_log = await interaction.client.channels.fetch(submission_log_id) as GuildTextBasedChannel;
@@ -2905,7 +2906,7 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
         const embed = await submit_privates.getWaifuInfoEmbed(interaction.client, new_submission);
 
         if (submission) interaction.deleteReply();
-        else interaction.followUp({ content: 'Received!', ephemeral: true });
+        else interaction.followUp({ content: 'Received!', flags: MessageFlags.Ephemeral });
         const content = waifu ?
             'A wild **character update** has appeared!' :
             'A wild **new submission** has appeared!';
@@ -2949,7 +2950,7 @@ export const submit = new SlashCommandNoSubcommand<SubmissionCache>({
             uid = res.fields.getTextInputValue('uid');
             interaction = res as unknown as ChatInputCommandInteraction;
         }
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const embed = new EmbedBuilder({
             title: 'No Selection',
             description: 'Click select now to start an empty submission.',

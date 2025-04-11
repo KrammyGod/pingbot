@@ -18,6 +18,7 @@ import {
     GuildTextBasedChannel,
     IntentsBitField,
     Message,
+    MessageFlags,
     Partials,
     PermissionsBitField,
     RepliableInteraction,
@@ -182,7 +183,7 @@ client.on(Events.InteractionCreate, interaction => {
     if (!client.is_ready) {
         return interaction.reply({
             content: 'I am loading... Please try again later.',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         }).then(VOID);
     }
 
@@ -455,10 +456,10 @@ function handle_interaction_errors(interaction: RepliableInteraction, commandNam
     if (!err) {
         return;
     } else if (err instanceof DatabaseMaintenanceError) {
-        interaction.reply({ content: err.message, ephemeral: true }).catch(() =>
+        interaction.reply({ content: err.message, flags: MessageFlags.Ephemeral }).catch(() =>
             interaction.followUp({
                 content: err.message,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             }).catch(VOID),
         );
         return;
@@ -477,11 +478,11 @@ function handle_interaction_errors(interaction: RepliableInteraction, commandNam
     // Reply to user with error
     const content = 'Apologies, an unexpected error occurred with that command. ' +
         'Please send a message to the support server or try again later.';
-    interaction.reply({ content: content, ephemeral: true })
+    interaction.reply({ content: content, flags: MessageFlags.Ephemeral })
         // If the interaction has already been replied, still need to tell user got error
         .catch(() => interaction.followUp({
             content: content,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         }).catch(VOID)); // If interaction webhook is invalid.
 }
 

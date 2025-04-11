@@ -16,8 +16,12 @@ import {
     escapeCodeBlock,
     escapeEscape,
     escapeInlineCode,
+    GuildMemberRoleManager,
+    GuildTextBasedChannel,
+    InteractionContextType,
     Message,
     MessageActionRowComponentBuilder,
+    MessageFlags,
     ModalBuilder,
     ModalSubmitFields,
     ModalSubmitInteraction,
@@ -66,7 +70,7 @@ export const purge = new SlashCommandNoSubcommand({
     async execute(interaction) {
         const message = await interaction.reply({
             content: 'Performing intensive calculations...',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         }).then(i => i.fetch());
         // Parse input
         // amount being NaN means all is true.
@@ -363,7 +367,7 @@ const welcome_menu: GuildMenus = {
                     '> ${USER} - Mentions the newly joined member.\n' +
                     '> ${SERVER} - Replaces with the name of the server.\n' +
                     '> ${MEMBER_COUNT} - Replaces with the number of current members in the server.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
             break;
         default:
@@ -381,7 +385,7 @@ const welcome_menu: GuildMenus = {
                     await interaction.editReply({ content: null });
                     await interaction.followUp({
                         content: 'Channel must be a text channel.',
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                     return menu;
                 }
@@ -389,7 +393,7 @@ const welcome_menu: GuildMenus = {
                     await interaction.editReply({ content: null });
                     await interaction.followUp({
                         content: `You do not have permission to send messages in ${chn}.`,
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                     return menu;
                 } else if (!chn.permissionsFor(interaction.guild.members.me!).has(
@@ -398,7 +402,7 @@ const welcome_menu: GuildMenus = {
                     await interaction.editReply({ content: null });
                     await interaction.followUp({
                         content: `I do not have permission to send messages in ${chn}.`,
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                     return menu;
                 }
@@ -413,7 +417,7 @@ const welcome_menu: GuildMenus = {
                     await interaction.editReply({ content: null });
                     await interaction.followUp({
                         content: 'Cannot assign a bot role.',
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                     return menu;
                 }
@@ -424,7 +428,7 @@ const welcome_menu: GuildMenus = {
                     await interaction.followUp({
                         content: `I am unable to add ${role} due to my role ` +
                             'being lower than it.',
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                     return menu;
                 } else if (interaction.guild.ownerId !== interaction.user.id &&
@@ -433,7 +437,7 @@ const welcome_menu: GuildMenus = {
                     await interaction.followUp({
                         content: `You are unable to add ${role} due to your highest role ` +
                             'being lower than it.',
-                        ephemeral: true,
+                        flags: MessageFlags.Ephemeral,
                     });
                     return menu;
                 }
@@ -534,7 +538,7 @@ export const guild = new SlashCommandNoSubcommand<GuildCacheType>({
         .setName('guild')
         .setDescription('Edits bot specific guild settings.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild)
-        .setDMPermission(false),
+        .setContexts(InteractionContextType.Guild),
 
     long_description:
         'Starts a dialogue to edit some guild settings.\n\n' +
@@ -681,5 +685,163 @@ export const guild = new SlashCommandNoSubcommand<GuildCacheType>({
         const embeds = guild_privates.buildEmbeds(guildCache, 'main_menu');
         const components = guild_privates.buildComponents(interaction.user.id, guildCache, 'main_menu');
         await interaction.editReply({ content: null, embeds, components });
+    },
+});
+
+export const role = new SlashCommandNoSubcommand({
+    data: new SlashCommandBuilder()
+        .setName('role')
+        .setDescription('Setup a pretty dialogue for adding roles.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild)
+        .setContexts(InteractionContextType.Guild),
+
+    long_description:
+        'Setup a pretty dialogue to allow users to assign roles to themselves.\n\n' +
+        '__**<<RESTRICTED FOR USERS WITH MANAGE ROLES PERMISSIONS ONLY>>**__\n\n' +
+        'Usage: `/role`',
+
+    async execute(interaction) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        if (!interaction.guild!.members.me!.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+            return interaction.editReply({
+                content: 'I do not have permission to assign roles.\n' +
+                    'I need the Manage Roles permission.',
+            }).then(Utils.VOID);
+        }
+
+        const roleSelector = new ActionRowBuilder<RoleSelectMenuBuilder>({
+            components: [new RoleSelectMenuBuilder({
+                custom_id: 'role_role',
+                min_values: 0,
+                max_values: 25, // Discord limit
+                placeholder: 'Select roles to display',
+            })],
+        });
+        const apply = new ActionRowBuilder<ButtonBuilder>({
+            components: [new ButtonBuilder({
+                custom_id: 'apply_self_role',
+                label: 'Apply',
+                style: ButtonStyle.Success,
+                emoji: '✅',
+                disabled: true,
+            })],
+        });
+        const channel = interaction.channel as GuildTextBasedChannel;
+        const base_desc = 'Select the roles you want to be added to the ' +
+            'self role menu and then click apply.\n\n__**Selected channel:**__\n' +
+            `${interaction.channel}\n\n__**Selected roles:**__\n`;
+        let selectedRoles: string[] = [];
+
+        const embed = new EmbedBuilder({
+            title: 'Self Role Setup',
+            description: base_desc + '*No roles selected.*',
+        }).setColor('Gold');
+        const base_components: ActionRowBuilder<RoleSelectMenuBuilder | ButtonBuilder>[] = [roleSelector, apply];
+        const msg = await interaction.editReply({ embeds: [embed], components: base_components });
+        const collector = msg.createMessageComponentCollector();
+        collector.on('collect', async i => {
+            if (i.isButton()) {
+                await i.deferUpdate();
+                // Add message
+                let desc = 'Click on the buttons to add the role to yourself:\n\n';
+                const roles = await i.guild!.roles.fetch();
+                const btns = [];
+                for (const role of selectedRoles) {
+                    if (!roles.has(role)) continue;
+                    btns.push(new ButtonBuilder({
+                        custom_id: `role/0/${role}/${i.user.id}`,
+                        label: roles.get(role)!.name.slice(0, 80),
+                        style: ButtonStyle.Primary,
+                    }));
+                    desc += `${roles.get(role)}\n`;
+                }
+                if (!btns) return;
+                const components: ActionRowBuilder<ButtonBuilder>[] = [];
+                // Split into 5 buttons per row
+                while (btns.length > 0) {
+                    components.push(new ActionRowBuilder({
+                        components: btns.splice(0, 5),
+                    }));
+                }
+                const roleEmbed = new EmbedBuilder({
+                    title: 'Select Roles to add',
+                    description: desc,
+                }).setColor('Gold');
+                return channel.send({ embeds: [roleEmbed], components: components })
+                    .then(() => i.deleteReply())
+                    .catch(() => i.followUp({
+                        content: `I do not have permission to send messages in ${channel}`,
+                        flags: MessageFlags.Ephemeral,
+                    }));
+            } else if (i.isRoleSelectMenu()) {
+                selectedRoles = [];
+                const invalidRoles = [];
+                const me = i.guild!.members.me!.roles.highest;
+                const their = i.member!.roles;
+                const them = their instanceof GuildMemberRoleManager ? their.highest : their[their.length - 1];
+                await i.deferUpdate();
+                for (const role of i.roles.values()) {
+                    if (i.guild!.roles.comparePositions(me, role.id) <= 0 || role.managed) {
+                        // Invalid role for us to give
+                        invalidRoles.push(role.id);
+                    } else if (i.guild!.roles.comparePositions(them, role.id) <= 0 &&
+                        i.guild!.ownerId !== i.user.id) {
+                        // Invalid role for us to give
+                        invalidRoles.push(role.id);
+                    } else {
+                        // Valid role for us to give
+                        selectedRoles.push(role.id);
+                    }
+                }
+                selectedRoles.sort((a, b) => i.guild!.roles.comparePositions(b, a));
+
+                // If length is 0, disable apply button
+                apply.components[0].setDisabled(!selectedRoles.length);
+                let desc = base_desc;
+                if (!selectedRoles.length) {
+                    desc += '*No roles selected.*';
+                }
+                for (const role of selectedRoles) {
+                    desc += `<@&${role}>\n`;
+                }
+                embed.setDescription(desc);
+
+                await i.editReply({ embeds: [embed], components: base_components });
+                if (invalidRoles.length) {
+                    let ctnt = 'There were some roles that I was unable to add ' +
+                        'due to either my role being lower than them, your role ' +
+                        'lower than them, or they are not assignable roles:\n';
+                    for (const role of invalidRoles) {
+                        ctnt += `<@&${role}>\n`;
+                    }
+                    return i.followUp({
+                        content: ctnt,
+                        flags: MessageFlags.Ephemeral,
+                    });
+                }
+            }
+        });
+        collector.on('end', async () => {
+            await msg.edit({
+                content: 'Self role setup has timed out.',
+                embeds: [],
+                components: [],
+            }).catch(() => {});
+        });
+    },
+
+    async buttonReact(interaction) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const roleId = interaction.customId.split('/')[2];
+        let reply = '';
+        const roles = interaction.member!.roles as GuildMemberRoleManager;
+        if (roles.cache.has(roleId)) {
+            reply = `You lost <@&${roleId}>.`;
+            await roles.remove(roleId, 'Self role');
+        } else {
+            reply = `You now have <@&${roleId}>.`;
+            await roles.add(roleId, 'Self role');
+        }
+        await interaction.editReply({ content: reply });
     },
 });

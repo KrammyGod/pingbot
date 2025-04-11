@@ -13,6 +13,7 @@ import {
     GuildEmoji,
     GuildMember,
     Message,
+    MessageFlags,
     RepliableInteraction,
     Routes,
     Serialized,
@@ -337,7 +338,7 @@ export async function get_results<T>(
     const message = await interaction.followUp({
         embeds: [embed],
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     });
 
     const res = await message.awaitMessageComponent({
