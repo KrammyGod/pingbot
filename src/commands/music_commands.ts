@@ -16,6 +16,7 @@ import {
     ComponentType,
     EmbedBuilder,
     GuildMember,
+    InteractionEditReplyOptions,
     InteractionReplyOptions,
     MessageFlags,
     ModalBuilder,
@@ -83,7 +84,7 @@ async function member_voice_valid(interaction: ChatInputCommandInteraction) {
 }
 
 function check_host(member: GuildMember, guildVoice: GuildVoice, rich_cmd: string):
-    InteractionReplyOptions | null {
+    InteractionEditReplyOptions | null {
     if (member.id !== guildVoice.host.id) {
         const host = guildVoice.host.id === member.client.user.id ? 'me' : guildVoice.host.toString();
         return {
@@ -95,7 +96,7 @@ function check_host(member: GuildMember, guildVoice: GuildVoice, rich_cmd: strin
 }
 
 function check_move_permission(member: GuildMember, guildVoice: GuildVoice, rich_cmd: string):
-    InteractionReplyOptions | null {
+    InteractionEditReplyOptions | null {
     // Either they have move members permission or they are host
     if (member.permissionsIn(guildVoice.voiceChannel).has(PermissionsBitField.Flags.MoveMembers)) return null;
     return check_host(member, guildVoice, rich_cmd);
@@ -832,7 +833,7 @@ const shuffle = new SlashSubcommand({
         if (!member) return;
         const guildVoice = GuildVoices.get(interaction.guildId!);
         if (!guildVoice) return interaction.deleteReply();
-        const reply = check_host(member, guildVoice, 'this button');
+        const reply = check_host(member, guildVoice, 'this button') as InteractionReplyOptions | null;
         if (reply) return interaction.followUp({ ...reply, flags: MessageFlags.Ephemeral }).then(Utils.VOID);
         guildVoice.shuffle();
         const page = parseInt(interaction.customId.split('/').slice(3)[0]);
