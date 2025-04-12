@@ -1218,7 +1218,7 @@ async function switch_char_image(interaction, char) {
             await i.deferUpdate();
             const page = parseInt(i.customId.split('/')[1]);
             const opts = await get_char_images_embed(page);
-            await i.editReply(opts);
+            await i.editReply({ ...opts, flags: undefined });
         });
         collector.once('end', (_, reason) => {
             if (reason !== 'time' && reason !== 'messageDelete') {
