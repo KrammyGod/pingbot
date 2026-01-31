@@ -55,7 +55,17 @@ CREATE TABLE IF NOT EXISTS hoyolab_cookies_list (
     genshin checkin_type NOT NULL DEFAULT 'none',
     star_rail checkin_type NOT NULL DEFAULT 'none',
     honkai checkin_type NOT NULL DEFAULT 'none',
+    endfield checkin_type NOT NULL DEFAULT 'none',
     PRIMARY KEY (id, cookie)
+    -- We need to ensure that endfield cookie isn't shared with hoyolab
+    CHECK (
+        endfield = 'none' OR
+        (
+            genshin = 'none' AND
+            star_rail = 'none' AND
+            honkai = 'none'
+        )
+    )
 );
 
 CREATE TABLE IF NOT EXISTS guess_info (
