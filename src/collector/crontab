@@ -1,4 +1,5 @@
 0 16 * * * npm run collect:gi >> /logs/genshin.log 2>&1
 0 16 * * * npm run collect:hi3 >> /logs/honkai.log 2>&1
 0 16 * * * npm run collect:hsr >> /logs/starrail.log 2>&1
+0 16 * * * npm run collect:ef >> /logs/endfield.log 2>&1
 0 5 * * * npm run reset >> /logs/reset.log 2>&1
