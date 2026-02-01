@@ -22,6 +22,7 @@
     "collect:hi3": "env-cmd --environments hi3 node --env-file .env --enable-source-maps dist/collector/collect",
     "collect:hsr": "env-cmd --environments hsr node --env-file .env --enable-source-maps dist/collector/collect",
     "collect:gi": "env-cmd --environments gi node --env-file .env --enable-source-maps dist/collector/collect",
+    "collect:ef": "env-cmd --environments ef node --env-file .env --enable-source-maps dist/collector/collect",
     "reset": "node --env-file=.env --enable-source-maps dist/modules/reset_db",
     "cookie": "node --enable-source-maps dist/modules/hoyolab",
     "predownload": "tsc scripts/download_waifus_txt.ts",
