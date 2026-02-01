@@ -38,7 +38,6 @@ class HoyolabCollector {
             ?? cookieObj?.ltuid
             ?? cookieObj?.account_id_v2
             ?? cookieObj?.ltuid_v2
-            ?? cookieObj?.['sk-game-role']
             ?? '';
     }
     async getAwards() {
