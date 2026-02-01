@@ -147,7 +147,7 @@ async function sendCollectorResults(body) {
                     const role = guild.members.me.roles.botRole;
                     return guild.emojis.create({
                         attachment: acc.award.icon,
-                        name: acc.award.name,
+                        name: acc.award.name.replaceAll(' ', '_').toLowerCase(),
                         roles: [role],
                         reason: `New emoji for ${name} auto collect.`,
                     });
