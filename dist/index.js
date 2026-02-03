@@ -51,10 +51,8 @@ function cleanEmojiName(name) {
     return name
         // Don't edit the original string
         .slice()
-        // Remove all non-alphanumeric characters
-        .replace(/[^a-zA-Z0-9_]/g, '')
-        // Replace spaces with underscores
-        .replace(/\s+/g, '_')
+        // Replace all non-alphanumeric characters with underscore
+        .replace(/[^a-zA-Z0-9_]/g, '_')
         // Limit length to 32 characters
         .slice(0, 32)
         // Convert to lowercase
