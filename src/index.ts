@@ -11,21 +11,6 @@ const manager = new ShardingManager('./dist/bot.js', {
     execArgv: ['--enable-source-maps'],
 });
 
-// unrelated; used to clean emoji names when creating them
-function cleanEmojiName(name: string) {
-    return name
-        // Don't edit the original string
-        .slice()
-        // Replace all non-alphanumeric characters with underscore
-        .replace(/[^a-zA-Z0-9_]/g, '_')
-        // Limit length to 32 characters
-        .slice(0, 32)
-        // Convert to lowercase
-        .toLowerCase()
-        // Pad with underscore if 1 character (min 2 characters)
-        .padEnd(2, '_');
-}
-
 // Load user cache for each shard once every shard is ready
 async function setupCache() {
     const bad_load = await DB.start();
@@ -130,7 +115,17 @@ async function sendCollectorResults(body: SendMessage) {
                     const role = guild.members.me!.roles.botRole!;
                     return guild.emojis.create({
                         attachment: acc.award.icon,
-                        name: cleanEmojiName(acc.award.name),
+                        name: acc.award.name
+                            // Don't edit the original string
+                            .slice()
+                            // Replace all non-alphanumeric characters with underscore
+                            .replace(/[^a-zA-Z0-9_]/g, '_')
+                            // Limit length to 32 characters
+                            .slice(0, 32)
+                            // Convert to lowercase
+                            .toLowerCase()
+                            // Pad with underscore if 1 character (min 2 characters)
+                            .padEnd(2, '_'),
                         roles: [role],
                         reason: `New emoji for ${name} auto collect.`,
                     });
