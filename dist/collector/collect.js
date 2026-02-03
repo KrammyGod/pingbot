@@ -67,7 +67,7 @@ function getCollector(type, account) {
     if (type === 'endfield') {
         return new skport_1.SkportCollector(account.cookie, account.endfield === 'notify', account.id, LOGGER);
     }
-    return new hoyolab_1.HoyolabCollector(account.cookie, account.endfield === 'notify', account.id, LOGGER);
+    return new hoyolab_1.HoyolabCollector(account.cookie, account[type] === 'notify', account.id, LOGGER);
 }
 async function collect() {
     const accounts = await client.query(`SELECT *
