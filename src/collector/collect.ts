@@ -123,7 +123,7 @@ function getCollector(type: CollectorType, account: DatabaseAccount): CollectBas
     if (type === 'endfield') {
         return new SkportCollector(account.cookie, account.endfield === 'notify', account.id, LOGGER);
     }
-    return new HoyolabCollector(account.cookie, account.endfield === 'notify', account.id, LOGGER);
+    return new HoyolabCollector(account.cookie, account[type] === 'notify', account.id, LOGGER);
 }
 
 async function collect() {
