@@ -1,0 +1,16 @@
+# This Service exists for the four CronJob pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: pingbot
+  labels:
+    app: pingbot
+spec:
+  type: ClusterIP
+  selector:
+    app: pingbot
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+      protocol: TCP

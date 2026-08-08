@@ -2,7 +2,7 @@ import http from 'http';
 import config from '@config';
 import * as DB from '@modules/database';
 import { Colors, EmbedBuilder, ShardEvents, ShardingManager } from 'discord.js';
-import type { SendMessage } from 'collector/collect';
+import type { SendMessage } from './collector/collect';
 
 const manager = new ShardingManager('./dist/bot.js', {
     token: config.token,
@@ -41,6 +41,7 @@ async function setupCache() {
 
 let readyShards = 0;
 let deadShards = 0;
+let shuttingDown = false;
 manager.on('shardCreate', shard => {
     shard.once(ShardEvents.Spawn, () => {
         shard.process!.stdout!.pipe(process.stdout);
@@ -67,7 +68,6 @@ manager.on('shardCreate', shard => {
                     shard.send('ready');
                 }
                 setupCache();
-                if (process.send) process.send('ready'); // Send to pm2 process
             }
         }
     });
@@ -179,9 +179,25 @@ async function sendCollectorResults(body: SendMessage) {
     console.log(`Completed check-in for ${body.name}!\n`);
 }
 
-// Currently we only use this port for auto collector,
+// Currently we only use this port for auto collector & kubernetes,
 // so we don't have to worry about parsing other bodies.
 http.createServer((req, res) => {
+    // Probes must be answered before the body is buffered below, since they send
+    // no body at all and would otherwise fall into the 400 Bad Request path.
+    if (req.method === 'GET' && req.url === '/healthz') {
+        // Liveness: either shutting down or all shards are alive.
+        const healthy = shuttingDown || deadShards === 0;
+        res.writeHead(healthy ? 200 : 503, { 'Content-Type': 'text/plain' });
+        return res.end(healthy ? 'OK\n' : 'Unhealthy\n');
+    } else if (req.method === 'GET' && req.url === '/readyz') {
+        // Readiness: every shard must have reported ready, and we must not be shutting down.
+        const ready = !shuttingDown &&
+            typeof manager.totalShards === 'number' &&
+            readyShards === manager.totalShards;
+        res.writeHead(ready ? 200 : 503, { 'Content-Type': 'text/plain' });
+        return res.end(ready ? 'OK\n' : 'Not Ready\n');
+    }
+
     const chunks: Uint8Array[] = [];
     req.on('data', chunk => {
         chunks.push(chunk);
@@ -212,6 +228,7 @@ http.createServer((req, res) => {
 
 // Gracefully kill all shards and then exit
 function cleanup() {
+    shuttingDown = true;
     for (const shard of manager.shards.values()) {
         shard.process?.send('shutdown');
     }
@@ -221,7 +238,3 @@ function cleanup() {
 process.on('SIGINT', cleanup);
 // Sent by linux when machine shuts down
 process.on('SIGTERM', cleanup);
-// Sent by pm2
-process.on('message', message => {
-    if (message === 'shutdown') cleanup();
-});

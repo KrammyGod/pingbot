@@ -9,6 +9,7 @@ node_modules/
 
 # dotenv environment variable files
 .env
+.env.*
 
 # VSCode settings
 .vscode
@@ -23,5 +24,6 @@ dist/
 # Custom toolbox
 tools/
 
-# Play-dl config
-.data
+.DS_Store
+
+docs/

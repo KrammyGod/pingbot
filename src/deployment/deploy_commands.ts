@@ -62,9 +62,13 @@ type JSONConvertible = SharedNameAndDescription & { toJSON(): RESTPostAPIChatInp
         });
     }
     const res = await rest.put(Routes.applicationCommands(clientId), { body: commandsToDeploy })
-        .catch(err => console.error(err)) as APIApplicationCommand[];
+        .catch(err => {
+            console.error(err);
+        }) as APIApplicationCommand[] | void;
     const user = await rest.get(Routes.user()).catch(err => console.error(err)) as ClientUser | void;
-    if (user) {
+    if (!res) {
+        console.log('Commands failed to register.');
+    } else if (user) {
         console.log(`${user.username}: Successfully registered ${res.length} application commands (/).`);
     } else {
         console.log('Unknown user, might be error?');

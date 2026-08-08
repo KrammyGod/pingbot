@@ -1,0 +1,14 @@
+resources:
+  - ./deployment.yaml
+  - ./pvc.yaml
+  - ./service.yaml
+
+configMapGenerator:
+  - name: postgres-config
+    envs:
+      - ./config.env
+
+labels:
+  - pairs:
+      app: postgres
+    includeSelectors: true

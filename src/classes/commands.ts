@@ -223,7 +223,7 @@ export type { SlashCommand };
  * Objects of this class can be exported by command files.
  */
 export class SlashCommandNoSubcommand<CacheType extends NodePgJsonValue = never> extends SlashCommand<CacheType> {
-    data!: SlashCommandOptionsOnlyBuilder;
+    declare data: SlashCommandOptionsOnlyBuilder;
 
     constructor(options: SlashCommandNoSubcommandOptions<CacheType>) {
         super(options);
@@ -236,7 +236,7 @@ export class SlashCommandNoSubcommand<CacheType extends NodePgJsonValue = never>
  * Objects of this class can be exported by command files.
  */
 export class SlashCommandWithSubcommand<CacheType extends NodePgJsonValue = never> extends SlashCommand<CacheType> {
-    data!: SlashCommandSubcommandsOnlyBuilder;
+    declare data: SlashCommandSubcommandsOnlyBuilder;
     subcommands: Map<string, SlashSubcommandGroup | SlashSubcommand>;
 
     constructor(options: SlashCommandWithSubcommandOptions<CacheType>) {
@@ -299,7 +299,7 @@ export class SlashCommandWithSubcommand<CacheType extends NodePgJsonValue = neve
  * Objects of this class should not be exported by command files.
  */
 export class SlashSubcommandGroup<CacheType extends NodePgJsonValue = never> extends SlashCommand<CacheType> {
-    data!: SlashCommandSubcommandGroupBuilder;
+    declare data: SlashCommandSubcommandGroupBuilder;
     subcommands: Map<string, SlashSubcommand>;
 
     constructor(options: SlashSubcommandGroupOptions<CacheType>) {
@@ -352,7 +352,7 @@ export class SlashSubcommandGroup<CacheType extends NodePgJsonValue = never> ext
  * Objects of this class should not be exported by command files.
  */
 export class SlashSubcommand<CacheType extends NodePgJsonValue = never> extends SlashCommand<CacheType> {
-    data!: SlashCommandSubcommandBuilder;
+    declare data: SlashCommandSubcommandBuilder;
 
     constructor(options: SlashSubcommandOptions<CacheType>) {
         super(options);

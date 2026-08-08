@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pingbot
+  labels:
+    app: pingbot
+spec:
+  # The Discord gateway gives each shard ID an exclusive WebSocket identity, so a
+  # second pod claiming the same shard IDs does not split load. Both pods receive
+  # every event, both answer every command, and Discord rate-limits the duplicate
+  # identify. Scale by raising totalShards (ShardingManager already negotiates this
+  # with totalShards: 'auto'), never by raising replicas.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pingbot
+  template:
+    metadata:
+      labels:
+        app: pingbot
+    spec:
+      terminationGracePeriodSeconds: 30
+      # Registers the slash commands before the bot serves them.
+      initContainers:
+        - name: register-commands
+          image: ghcr.io/krammygod/pingbot
+          imagePullPolicy: IfNotPresent
+          args: ["node", "--enable-source-maps", "dist/deployment/deploy_commands.js"]
+          envFrom:
+            - secretRef:
+                name: pingbot-secrets
+            - configMapRef:
+                name: pingbot-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+      containers:
+        - name: bot
+          image: ghcr.io/krammygod/pingbot
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: pingbot-secrets
+            - configMapRef:
+                name: pingbot-config
+            - configMapRef:
+                name: postgres-config
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          # /readyz is 200 only when every shard has reported ready
+          # give extra time for all shards to start up
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+          # /healthz is 503 when any shard has died. Shards are spawned with
+          # respawn: false, so a dead shard leaves a half-alive manager that used to
+          # linger forever; now Kubernetes restarts the pod.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              memory: 512Mi

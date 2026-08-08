@@ -1,0 +1,231 @@
+# Each job reaches the bot at BOT_URL=http://pingbot:5000 (from the ConfigMap)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pingbot-collect-gi
+  labels:
+    app: pingbot-collector
+spec:
+  schedule: "0 16 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: pingbot-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: ghcr.io/krammygod/pingbot
+              imagePullPolicy: IfNotPresent
+              args: ["npm", "run", "collect:gi"]
+              envFrom:
+                - secretRef:
+                    name: pingbot-secrets
+                - configMapRef:
+                    name: pingbot-config
+                - configMapRef:
+                    name: postgres-config
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pingbot-collect-hi3
+  labels:
+    app: pingbot-collector
+spec:
+  schedule: "0 16 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: pingbot-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: ghcr.io/krammygod/pingbot
+              imagePullPolicy: IfNotPresent
+              args: ["npm", "run", "collect:hi3"]
+              envFrom:
+                - secretRef:
+                    name: pingbot-secrets
+                - configMapRef:
+                    name: pingbot-config
+                - configMapRef:
+                    name: postgres-config
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pingbot-collect-hsr
+  labels:
+    app: pingbot-collector
+spec:
+  schedule: "0 16 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: pingbot-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: ghcr.io/krammygod/pingbot
+              imagePullPolicy: IfNotPresent
+              args: ["npm", "run", "collect:hsr"]
+              envFrom:
+                - secretRef:
+                    name: pingbot-secrets
+                - configMapRef:
+                    name: pingbot-config
+                - configMapRef:
+                    name: postgres-config
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pingbot-collect-ef
+  labels:
+    app: pingbot-collector
+spec:
+  schedule: "0 16 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: pingbot-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: ghcr.io/krammygod/pingbot
+              imagePullPolicy: IfNotPresent
+              args: ["npm", "run", "collect:ef"]
+              envFrom:
+                - secretRef:
+                    name: pingbot-secrets
+                - configMapRef:
+                    name: pingbot-config
+                - configMapRef:
+                    name: postgres-config
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pingbot-reset
+  labels:
+    app: pingbot-collector
+spec:
+  schedule: "0 5 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: pingbot-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: reset
+              image: ghcr.io/krammygod/pingbot
+              imagePullPolicy: IfNotPresent
+              args: ["npm", "run", "reset"]
+              envFrom:
+                - secretRef:
+                    name: pingbot-secrets
+                - configMapRef:
+                    name: pingbot-config
+                - configMapRef:
+                    name: postgres-config
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password

@@ -156,7 +156,7 @@ async function collect() {
         LOGGER.error('With errors...');
     }
     // Send message to be received by index.ts
-    return fetch(`http://localhost:${config.port}`, {
+    return fetch(config.botUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(message),

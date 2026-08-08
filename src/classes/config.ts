@@ -81,6 +81,11 @@ export default {
      */
     port: process.env.PORT || 5000,
     /**
+     * The base url used to reach the bot's message server.
+     * Defaults to localhost, overridden in Kubernetes with the service DNS name.
+     */
+    botUrl: process.env.BOT_URL || `http://localhost:${process.env.PORT || 5000}`,
+    /**
      * The environment the bot is running in. Only used to determine whether to send a welcome message or not.
      */
     env: process.env.BOT_ENV,
