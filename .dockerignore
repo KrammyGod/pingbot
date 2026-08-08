@@ -1,0 +1,41 @@
+# Installed fresh inside the builder; host copies are the wrong platform/ABI.
+node_modules
+**/node_modules
+
+# Compiled inside the builder by `npm run build`.
+dist
+
+# VCS and VCS metadata
+.git
+.gitignore
+.gitattributes
+
+# Secrets and local runtime state.
+# NOTE: `.env.*` does not match `.env-cmdrc` (hyphen, not dot), but the explicit
+# un-ignore below guarantees it survives regardless of pattern edits above.
+.env
+.env.*
+.env.template
+!.env-cmdrc
+
+# Local-only / editor / private tooling
+.idea
+.vscode
+.DS_Store
+**/.DS_Store
+*.log
+npm-debug.log*
+
+# Docs and SQL fixtures are not used by the image.
+sqls
+*.md
+**/*.md
+
+# CI, orchestration, lint
+.github
+kustomize
+eslint.config.mjs
+
+# Self-referential
+Dockerfile
+.dockerignore

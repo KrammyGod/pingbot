@@ -195,7 +195,7 @@ client.on(Events.InteractionCreate, interaction => {
         // Special event reversed command; typescript doesn't like the hacky solutions
         commandName = commandName.split('').reverse().join('');
         // Reverse subcommand names back to original.
-        if (interaction.options) {
+        if ('options' in interaction && interaction.options) {
             // @ts-expect-error We forcefully reassign to rename the subcommand
             interaction.options._subcommand = interaction.options._subcommand?.split('').reverse().join('');
             // @ts-expect-error We forcefully reassign to rename the subcommand group
@@ -397,14 +397,16 @@ function handle_error(err: Error, opts: ErrorOpts = {}) {
         if (nameCommand && interaction) {
             // Using this to include subcommands and subcommand groups for slash commands
             // This is especially helpful for commands like music where they are all grouped up.
-            if (interaction.isCommand() && !interaction.isContextMenuCommand()) {
+            // isChatInputCommand() rather than isCommand() minus context menus:
+            if (interaction.isChatInputCommand()) {
                 nameCommand = interaction.commandName;
                 const sub_cmd_group_name = interaction.options.getSubcommandGroup(false);
                 const sub_cmd_name = interaction.options.getSubcommand(false);
                 if (sub_cmd_group_name) nameCommand += ` ${sub_cmd_group_name}`;
                 if (sub_cmd_name) nameCommand += ` ${sub_cmd_name}`;
                 nameCommand = `</${nameCommand}:${interaction.commandId}>`;
-            } else if (!interaction.isContextMenuCommand()) {
+            // !isCommand() rather than !isContextMenuCommand()
+            } else if (!interaction.isCommand()) {
                 nameCommand += interaction.isButton() ? ' (button)' :
                     interaction.isAnySelectMenu() ? ' (select menu)' :
                         interaction.isModalSubmit() ? ' (modal)' : '';
@@ -569,7 +571,7 @@ process.on('message', (message: string) => {
         // Get ready message means all shards are ready.
         client.is_ready = true;
     } else if (message === 'shutdown') {
-        // shutdown message is by PM2 (see index.ts)
+        // shutdown message is sent by the sharding manager on SIGTERM (see index.ts)
         cleanup();
     }
 });

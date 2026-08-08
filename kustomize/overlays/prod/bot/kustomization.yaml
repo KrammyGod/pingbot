@@ -1,0 +1,13 @@
+resources:
+  - ../../../base/bot/
+  - ./sealed-secret.yaml
+
+configMapGenerator:
+  - name: pingbot-config
+    envs:
+      - ./config.env
+
+labels:
+  - pairs:
+      app: pingbot
+    includeSelectors: true

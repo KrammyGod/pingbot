@@ -1338,8 +1338,8 @@ async function switch_char_image(interaction: AnySelectMenuInteraction, char: DB
         collector.once('collect', async i => {
             await i.deferUpdate();
             const page = parseInt(i.customId.split('/')[1]);
-            const opts = await get_char_images_embed(page);
-            await i.editReply({ ...opts, flags: undefined });
+            const { embeds, components } = await get_char_images_embed(page);
+            await i.editReply({ embeds, components });
         });
         collector.once('end', (_, reason) => {
             if (reason !== 'time' && reason !== 'messageDelete') {
@@ -2700,11 +2700,12 @@ const submit_privates = {
         } else if (data.origin) {
             modalInput.setTitle('Add new character to anime');
         }
-        modalInput.components[0].components[0].setValue(data.name ?? '');
-        modalInput.components[1].components[0].setValue(data.gender ?? '');
-        modalInput.components[2].components[0].setValue(data.origin ?? '');
-        modalInput.components[3].components[0].setValue(data.img.join('\n'));
-        modalInput.components[4].components[0].setValue(data.nimg.join('\n'));
+        const rows = modalInput.components as ActionRowBuilder<TextInputBuilder>[];
+        rows[0].components[0].setValue(data.name ?? '');
+        rows[1].components[0].setValue(data.gender ?? '');
+        rows[2].components[0].setValue(data.origin ?? '');
+        rows[3].components[0].setValue(data.img.join('\n'));
+        rows[4].components[0].setValue(data.nimg.join('\n'));
         return interaction.showModal(modalInput);
     },
 

@@ -37,11 +37,11 @@ Prior to formal education on databases, the schema for the Postgres instance was
 viewed [here](sqls/old_schema.sql)). As such, there is a [migration script](sqls/migrate.sql) to move to the new
 and [improved schema](sqls/schema.sql).
 
-This specific bot is hosted on a
-personal [Orange Pi 5](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html), and
-to lessen the burden on its processor, there is a [workflow](.github/workflows/push.yml) that transpiles the TypeScript
-files into JavaScript files, and then uploads them to a different branch, `dist`. The same workflow uses pm2, and
-the [configuration file](ecosystem.config.js) to automatically deploy the latest version.
+This specific bot is hosted on personal ARM64 hardware running Kubernetes. To keep the build off that
+hardware, a [workflow](.github/workflows/deploy.yml) builds a container image on a GitHub-hosted ARM64 runner and
+pushes it to the GitHub Container Registry.
+
+Growth comes from raising the shard count, which the `ShardingManager` negotiates automatically, and not from adding replicas.
 
 ## package.json scripts
 
@@ -56,5 +56,9 @@ the [configuration file](ecosystem.config.js) to automatically deploy the latest
 - `build` - Transpiles the source code
 - `deploy` - Transpiles the source code and registers slash commands
 - `start` - Transpiles the source code and starts the bot
+
+Every script that needs configuration reads it from a `.env` file when one is present
+(`node --env-file-if-exists=.env`). This keeps a single definition of each command: locally the file supplies the
+environment, and inside the container it is simply absent, because the environment arrives from the Kubernetes Secret instead.
 
 More details will be added as the project progresses when necessary.

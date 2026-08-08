@@ -1,0 +1,43 @@
+# Build and deploy. The build/publish pipeline itself is a shared reusable
+# workflow, so only the lint gate lives here.
+#
+# Slash-command registration is deliberately NOT here: it runs as an init
+# container on the Deployment, which orders it against the pod that serves those
+# commands and keeps the Discord token out of CI. This workflow therefore needs
+# no repository secrets at all beyond the automatic GITHUB_TOKEN.
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: ["main"]
+  workflow_dispatch:
+
+# Two runs racing would push two artifacts and leave :main on whichever finished
+# last rather than whichever is newer.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Lint
+        run: npm i && npm run lint
+  deploy:
+    needs: [lint]
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.author_association == 'OWNER' }}
+    permissions:
+      contents: read
+      packages: write
+    uses: KrammyGod/actions-system/.github/workflows/deploy.yml@v1
+    with:
+      namespace: pingbot
+      images: '[{"name": "pingbot"}]'
+      pr_overlay: overlays/pr

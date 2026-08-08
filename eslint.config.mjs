@@ -12,11 +12,14 @@ export default tseslint.config(
             '@stylistic/js': stylisticJs,
         },
         'rules': {
+            'no-useless-assignment': 'off',
+            'preserve-caught-error': 'off',
             '@stylistic/js/indent': [
                 'error',
                 4,
                 {
                     'MemberExpression': 'off',
+                    'SwitchCase': 0,
                 },
             ],
             '@stylistic/js/quotes': [
