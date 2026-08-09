@@ -22,6 +22,14 @@ spec:
         app: pingbot
     spec:
       terminationGracePeriodSeconds: 30
+      # The default ndots:5 sends every name with fewer than five dots through the
+      # three cluster search domains first, so Discord and googlevideo hostnames cost
+      # four lookups (eight, with A and AAAA) instead of one. Bare service names have
+      # no dots and still resolve through the search list unchanged.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       # Registers the slash commands before the bot serves them.
       initContainers:
         - name: register-commands
@@ -87,9 +95,20 @@ spec:
               port: http
             periodSeconds: 20
             failureThreshold: 3
+          volumeMounts:
+            - name: yt-cookies
+              mountPath: /var/run/secrets/youtube
+              readOnly: true
           resources:
             requests:
               cpu: 100m
               memory: 100Mi
             limits:
               memory: 512Mi
+      # optional: the bot starts fine without it, age gated videos just stay
+      # unplayable. See YOUTUBE_COOKIES.md for creating the SealedSecret.
+      volumes:
+        - name: yt-cookies
+          secret:
+            secretName: pingbot-yt-cookies
+            optional: true
