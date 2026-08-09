@@ -82,22 +82,38 @@ type CommonData = {
     desc: string;
 } | -1 | string;
 
+/** Upstream goes down for maintenance, so a run tolerates a few misses before failing. */
+const MAX_FETCH_ATTEMPTS = 5;
+const RETRY_BASE_MS = 2_000;
+
+// Temporarily disable copying commons
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function copy() {
     const API_URL = 'https://www.animecharactersdatabase.com/api_series_characters.php';
     const _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-        '(KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.59';
+        '(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36';
     const HEADERS = { 'User-Agent': _USER_AGENT };
     let i = await query<{ id: number }>('SELECT MAX(iid) AS id FROM commons').then(r => ++r[0].id);
     let chars = 0;
     let s = '';
+    let attempts = 0;
     LOGGER.log(`Retrieving from id ${i}`);
-    // Add constant to prevent true infinite loop
-    while (chars <= 100_000_000) {
+    // Only add up to 100 characters at one time
+    while (chars <= 100) {
         let res: CommonData | void = await fetch(`${API_URL}?character_id=${i}`, { headers: HEADERS })
             .then(res => res.json())
             .catch(() => { });
-        // Rate limits/maintenance.
-        if (!res) continue;
+        if (!res) {
+            // Maintenance or rate limits, we don't want to retry infinitely.
+            if (++attempts >= MAX_FETCH_ATTEMPTS) {
+                throw new Error(`No usable response from ${API_URL} for id ${i} ` +
+                    `after ${MAX_FETCH_ATTEMPTS} attempts; giving up on this run.`);
+            }
+            await new Promise(resolve => setTimeout(resolve, RETRY_BASE_MS * 2 ** (attempts - 1)));
+            continue;
+        }
+        // Upon successful, we don't want to keep attempts
+        attempts = 0;
         // Bad unicode
         if (typeof res === 'string') {
             const bad: string = res;
@@ -117,7 +133,7 @@ async function copy() {
         ++i;
         ++chars;
         // Do a call within rate limits
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
     const dumpFile = path.resolve(__dirname, 'update.dump');
     await fs.promises.writeFile(dumpFile, s);
@@ -140,10 +156,11 @@ if (require.main === module) {
     (async () => {
         LOGGER.start();
         await reset();
-        const result = await copy().catch(ret => LOGGER.error(ret));
-        if (result) {
-            LOGGER.log(`Added ${result} commons.`);
-        }
+        // Temporarily disable copying commons
+        // const result = await copy().catch(ret => LOGGER.error(ret));
+        // if (result) {
+        //     LOGGER.log(`Added ${result} commons.`);
+        // }
         LOGGER.log('Done!');
         LOGGER.end();
         await pool.end();

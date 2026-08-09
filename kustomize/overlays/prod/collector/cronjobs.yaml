@@ -210,7 +210,7 @@ spec:
             - name: reset
               image: ghcr.io/krammygod/pingbot
               imagePullPolicy: IfNotPresent
-              args: ["npm", "run", "reset"]
+              args: ["node", "--enable-source-maps", "dist/modules/reset_db"]
               envFrom:
                 - secretRef:
                     name: pingbot-secrets
