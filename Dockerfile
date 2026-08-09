@@ -84,7 +84,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && pip3 install --no-cache-dir --break-system-packages "yt-dlp==${YTDLP_VERSION}" \
   # Fail the build loudly if any of these assumptions break.
   && test -x /usr/bin/tini \
-  # Asserted by path, not by name: FFMPEG_BIN below hard-codes this location.
   && test -x /usr/bin/ffmpeg \
   && node --version \
   && yt-dlp --version \
@@ -94,12 +93,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # so the extractor is upgraded by rebuilding this image, not by a package release.
 ENV YTDLP_PATH=/usr/local/bin/yt-dlp
 
-# Same idea for ffmpeg, but this one is mandatory, not a preference. ffmpeg-static
-# ships a statically linked glibc build; static glibc has to dlopen NSS to resolve
-# hostnames, and this image's glibc is far newer than the one it was built against,
-# so every lookup fails with "Failed to resolve hostname: System error" and playback
-# silently yields no audio. The distro build is dynamically linked and resolves fine.
-# ffmpeg-static stays a dependency because it is what local development uses.
+# ffmpeg-static's binary is statically linked against a much older glibc, and static
+# glibc cannot resolve hostnames here, so every stream fails. The distro build is
+# dynamic and works; ffmpeg-static stays a dependency for local development.
 ENV FFMPEG_BIN=/usr/bin/ffmpeg
 
 WORKDIR /home/node

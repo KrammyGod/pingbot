@@ -13,6 +13,7 @@ import {
 } from '@discordjs/voice';
 import { FFmpeg } from 'prism-media';
 import { resolveStream, StreamTarget, TrackInfo } from '@modules/ytdlp';
+import { VOID } from '@modules/utils';
 
 /**
  * ffmpeg flags that have to precede -i because they configure the input protocol.
@@ -24,12 +25,10 @@ const FFMPEG_INPUT_ARGS = [
     '-reconnect_streamed', '1',
     '-reconnect_delay_max', '5',
     '-analyzeduration', '0',
-    // Not 0: a silenced ffmpeg turns every playback failure into an unexplained
-    // "End of queue", which is exactly how a broken stream URL went undiagnosed.
+    // Not 0: silencing ffmpeg turns any playback failure into an unexplained "End of queue".
     '-loglevel', 'error',
 ];
 
-/** Enough of ffmpeg's stderr to name the failure, without logging a whole stream. */
 const FFMPEG_STDERR_TAIL = 2000;
 
 /**
@@ -49,10 +48,8 @@ function createOpusStream(source: StreamTarget) {
         ],
     });
 
-    // prism-media forwards stdout and never inspects the exit code, so an ffmpeg that
-    // dies on startup closes the pipe with zero bytes -- indistinguishable from a song
-    // that played to the end. The player goes straight to Idle and the queue silently
-    // "ends" with nothing logged. Watch the process ourselves so that never recurs.
+    // prism-media never inspects the exit code, so a dead ffmpeg closes stdout with zero
+    // bytes and is indistinguishable from a song that played out.
     const child = stream.process;
     let stderr = '';
     child.stderr?.on('data', (chunk: Buffer) => {
@@ -271,13 +268,15 @@ export class GuildVoice {
         const connection = this.join(voiceChannel);
         connection.subscribe(this.player);
 
-        this.player.on('error', async err => {
-            await this.textChannel.send({
+        // Deliberately not async: a throw here is an unhandled rejection that takes the
+        // shard down. The player goes Idle after an error, so the next song follows anyway.
+        this.player.on('error', err => {
+            console.error(err);
+            this.textChannel.send({
                 content:
                     'Something bad happened while I was playing...\n' +
                     'Sorry! I will continue to play the next song.',
-            });
-            throw err;
+            }).catch(VOID);
         });
         connection.on(VoiceConnectionStatus.Ready, async () => {
             // Get latest voice channel info

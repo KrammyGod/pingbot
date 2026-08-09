@@ -99,7 +99,7 @@ kubectl kustomize kustomize/overlays/pr
 
 - **`kustomize/overlays/*/{bot,database}/sealed-secret.yaml` contain real committed ciphertext.** Never overwrite them with placeholders to make a render succeed, and never delete them. SealedSecret ciphertext is bound to its namespace *and* name, so it cannot be regenerated from this repo.
 - **`NPM_VERSION` in the Dockerfile must match the npm that generated `package-lock.json`.** A mismatch makes `npm ci` fail on lockfile contents that are actually fine.
-- **`FFMPEG_BIN` must keep pointing the container at the distro ffmpeg.** `ffmpeg-static`'s binary is statically linked against a much older glibc, and static glibc cannot resolve hostnames without matching NSS modules to dlopen, so in-cluster it fails every lookup with "Failed to resolve hostname: System error". Only playback breaks, because yt-dlp is dynamically linked and keeps working — which makes it look like a bug in the bot rather than the image.
+- **`FFMPEG_BIN` must keep pointing the container at the distro ffmpeg.** `ffmpeg-static`'s binary is statically linked against a much older glibc and cannot resolve hostnames in this image, failing every lookup with "Failed to resolve hostname: System error". Only playback breaks — yt-dlp is dynamically linked and keeps working — so it looks like a bug in the bot rather than the image.
 - This is a **public** repository. Don't reference private infrastructure repositories, internal hostnames, or machine names in code, comments, or docs.
 
 ## Style
