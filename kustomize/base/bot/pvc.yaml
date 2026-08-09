@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pingbot-yt-cookies-jar
+  labels:
+    app: pingbot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    # A cookie jar is a few KB. The floor exists because the field is required.
+    requests:
+      storage: 8Mi

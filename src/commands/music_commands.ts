@@ -296,9 +296,15 @@ const play_privates = {
 
     on_partial_error(
         interaction: CommandInteraction,
-        err: { invalid?: boolean, notFound?: boolean, unsupported?: boolean },
+        err: { invalid?: boolean, notFound?: boolean, unsupported?: boolean, ageGated?: boolean },
     ) {
-        if (err.unsupported) {
+        if (err.ageGated) {
+            return interaction.followUp({
+                content: 'This video is age restricted, and YouTube will only serve it to a ' +
+                    'signed in account. My credentials are missing or no longer valid, so I ' +
+                    'cannot read it.\nPlease report this to the support server.',
+            }).then(Utils.VOID);
+        } else if (err.unsupported) {
             return interaction.followUp({
                 content: 'Spotify links are not supported. Spotify does not allow playback, ' +
                     'so please use a YouTube link or a search query instead.',
@@ -402,8 +408,9 @@ const play = new SlashSubcommand({
                 }
             } else {
                 // Otherwise It's still a single video
-                const infoData = await fetchVideo(link);
-                const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
+                const { info, ageGated } = await fetchVideo(link);
+                if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
+                const song = new Song(info, guildVoice.getUniqueId(), isNsfw);
                 if (!play_privates.validate_song(song, member)) {
                     return play_privates.on_partial_error(interaction, song);
                 }
@@ -413,8 +420,9 @@ const play = new SlashSubcommand({
             }
         } else if (validateResults === 'yt_video') {
             // Link is single video
-            const infoData = await fetchVideo(link);
-            const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
+            const { info, ageGated } = await fetchVideo(link);
+            if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
+            const song = new Song(info, guildVoice.getUniqueId(), isNsfw);
             if (!play_privates.validate_song(song, member)) {
                 return play_privates.on_partial_error(interaction, song);
             }
@@ -424,8 +432,9 @@ const play = new SlashSubcommand({
         } else if (validateResults === 'spotify') {
             return play_privates.on_partial_error(interaction, { unsupported: true });
         } else {
-            const infoData = await fetchVideo(link);
-            const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
+            const { info, ageGated } = await fetchVideo(link);
+            if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
+            const song = new Song(info, guildVoice.getUniqueId(), isNsfw);
             if (!play_privates.validate_song(song, member)) {
                 return play_privates.on_partial_error(interaction, song);
             }
