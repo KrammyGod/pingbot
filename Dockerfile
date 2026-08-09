@@ -73,6 +73,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Bumped by the scheduled rebuild. A stale yt-dlp is the single most likely cause
 # of playback breaking, since YouTube changes often.
 ARG YTDLP_VERSION=2026.07.04
+# YouTube's "n challenge" has to be solved in JavaScript or only storyboard images come
+# back. yt-dlp needs both this solver distribution and a runtime enabled with
+# --js-runtimes; the runtime is the node already in this image.
+ARG YTDLP_EJS_VERSION=0.8.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
@@ -81,12 +85,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* \
-  && pip3 install --no-cache-dir --break-system-packages "yt-dlp==${YTDLP_VERSION}" \
+  && pip3 install --no-cache-dir --break-system-packages \
+    "yt-dlp==${YTDLP_VERSION}" "yt-dlp-ejs==${YTDLP_EJS_VERSION}" \
   # Fail the build loudly if any of these assumptions break.
   && test -x /usr/bin/tini \
   && test -x /usr/bin/ffmpeg \
   && node --version \
   && yt-dlp --version \
+  # Age gated playback silently degrades to "no formats" without the solver.
+  && python3 -c "import yt_dlp_ejs" \
   && ffmpeg -version
 
 # Point youtube-dl-exec at the pinned system yt-dlp rather than the copy it bundles,

@@ -1,6 +1,0 @@
-resources:
-  - ../../../base/collector/
-
-labels:
-  - pairs:
-      app: pingbot-collector

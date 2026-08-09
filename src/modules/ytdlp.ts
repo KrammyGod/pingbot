@@ -71,14 +71,15 @@ const COOKIES_PATH = (() => {
     return configured;
 })();
 
-/** Merges credentials into a call's flags. Every yt-dlp invocation goes through this. */
+/**
+ * Merges credentials into a call's flags. Every yt-dlp invocation goes through this.
+ */
 function withCookies(flags: Record<string, unknown>): Record<string, unknown> {
     // Inject JS runtimes so it can solve JS challenges, only if there is a cookie included.
     return COOKIES_PATH ? {
         ...flags,
         cookies: COOKIES_PATH,
         jsRuntimes: 'node',
-        remoteComponent: 'ejs:github',
     } : flags;
 }
 

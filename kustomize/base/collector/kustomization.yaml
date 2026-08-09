@@ -1,6 +1,0 @@
-resources:
-  - ./cronjobs.yaml
-
-labels:
-  - pairs:
-      app: pingbot-collector
