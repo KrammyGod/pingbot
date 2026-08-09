@@ -24,8 +24,13 @@ const FFMPEG_INPUT_ARGS = [
     '-reconnect_streamed', '1',
     '-reconnect_delay_max', '5',
     '-analyzeduration', '0',
-    '-loglevel', '0',
+    // Not 0: a silenced ffmpeg turns every playback failure into an unexplained
+    // "End of queue", which is exactly how a broken stream URL went undiagnosed.
+    '-loglevel', 'error',
 ];
+
+/** Enough of ffmpeg's stderr to name the failure, without logging a whole stream. */
+const FFMPEG_STDERR_TAIL = 2000;
 
 /**
  * Wraps a resolved stream in Ogg so @discordjs/voice can demux straight to Opus.
@@ -34,7 +39,7 @@ function createOpusStream(source: StreamTarget) {
     const codecArgs = source.acodec === 'opus'
         ? ['-c:a', 'copy']
         : ['-c:a', 'libopus', '-b:a', '128k', '-ar', '48000', '-ac', '2'];
-    return new FFmpeg({
+    const stream = new FFmpeg({
         args: [
             ...FFMPEG_INPUT_ARGS,
             '-i', source.streamUrl,
@@ -43,6 +48,22 @@ function createOpusStream(source: StreamTarget) {
             '-f', 'opus',
         ],
     });
+
+    // prism-media forwards stdout and never inspects the exit code, so an ffmpeg that
+    // dies on startup closes the pipe with zero bytes -- indistinguishable from a song
+    // that played to the end. The player goes straight to Idle and the queue silently
+    // "ends" with nothing logged. Watch the process ourselves so that never recurs.
+    const child = stream.process;
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+        stderr = (stderr + chunk.toString()).slice(-FFMPEG_STDERR_TAIL);
+    });
+    child.once('close', (code, signal) => {
+        // Skipping or stopping SIGKILLs ffmpeg, and prism clears .process first.
+        if (signal || stream.process !== child) return;
+        if (code) console.error(`ffmpeg exited ${code} playing ${source.webpageUrl}\n${stderr.trim()}`);
+    });
+    return stream;
 }
 
 export const enum LoopType {
