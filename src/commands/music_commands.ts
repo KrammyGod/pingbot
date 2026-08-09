@@ -1,8 +1,7 @@
 import util from 'util';
-import type { SpotifyAlbum, SpotifyPlaylist, SpotifyTrack } from 'play-dl';
-import Play from 'play-dl';
 import { GuildVoice, GuildVoices, LoopType, Song } from '@classes/voice';
 import * as Utils from '@modules/utils';
+import { classifyLink, fetchPlaylist, fetchVideo } from '@modules/ytdlp';
 import { AudioPlayerStatus } from '@discordjs/voice';
 import {
     ActionRowBuilder,
@@ -295,8 +294,16 @@ const play_privates = {
         }
     },
 
-    on_partial_error(interaction: CommandInteraction, err: { invalid?: boolean, notFound?: boolean }) {
-        if (err.notFound) {
+    on_partial_error(
+        interaction: CommandInteraction,
+        err: { invalid?: boolean, notFound?: boolean, unsupported?: boolean },
+    ) {
+        if (err.unsupported) {
+            return interaction.followUp({
+                content: 'Spotify links are not supported. Spotify does not allow playback, ' +
+                    'so please use a YouTube link or a search query instead.',
+            }).then(Utils.VOID);
+        } else if (err.notFound) {
             return interaction.followUp({
                 content: 'Data could not be found. Perhaps the video/playlist is private.\n' +
                     'If you believe this is an error, please report it to the support server.',
@@ -325,7 +332,7 @@ const play = new SlashSubcommand({
         .addStringOption(option =>
             option
                 .setName('query')
-                .setDescription('The youtube, spotify, or search query to play.')
+                .setDescription('The youtube link or search query to play.')
                 .setRequired(true))
         .addStringOption(option =>
             option
@@ -345,7 +352,7 @@ const play = new SlashSubcommand({
         'Plays a query in the voice channel! I will automatically join if I am not with you.\n\n' +
         'Usage: `/music play query: <query> loop: [loop] shuffle: [shuffle]`\n\n' +
         '__**Options**__\n' +
-        '*query:* The youtube, spotify, or search query to add. (Required)\n' +
+        '*query:* The youtube link or search query to add. (Required)\n' +
         '*loop:* Set a loop option for the playlist. (Default: None)\n' +
         '*shuffle:* Whether to shuffle the playlist before adding. Only affects playlists. (Default: False) \n\n' +
         'Examples: `/music play query: Rick Astley loop: 🔁 All`, ' +
@@ -377,30 +384,25 @@ const play = new SlashSubcommand({
         let showLink = '';
         let showThumbnail: string | null = null;
 
-        // Now we search
-        const validateResults = await Play.validate(link);
-        // Do token refresh in case of expiry for both Spotify and YouTube
-        if (Play.is_expired()) {
-            await Play.refreshToken();
-        }
+        // Now we search. Classification is pure string work now, not a network call,
+        // and yt-dlp needs no token refresh the way play-dl did.
+        const validateResults = classifyLink(link);
         const isNsfw = Utils.channel_is_nsfw_safe(interaction.channel!) &&
             Utils.channel_is_nsfw_safe(guildVoice.voiceChannel);
         if (validateResults === 'yt_playlist') {
             if (!link.match(/([&?])index=[0-9]+/)) {
-                const playlistInfo = await Play.playlist_info(link, { incomplete: true }).catch(() => undefined);
+                const playlistInfo = await fetchPlaylist(link);
                 if (!playlistInfo) return play_privates.on_partial_error(interaction, { notFound: true });
-                showLink = playlistInfo.url!;
-                showThumbnail = playlistInfo.thumbnail?.url ?? null;
-                for (const video of await playlistInfo.all_videos()) {
+                showLink = playlistInfo.url;
+                showThumbnail = playlistInfo.thumbnail;
+                for (const video of playlistInfo.entries) {
                     const song = new Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
                     if (!play_privates.validate_song(song, member)) continue;
                     songs.push(song);
                 }
             } else {
                 // Otherwise It's still a single video
-                const infoData = await Play.video_basic_info(link)
-                    .then(res => res.video_details)
-                    .catch(() => undefined);
+                const infoData = await fetchVideo(link);
                 const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
                 if (!play_privates.validate_song(song, member)) {
                     return play_privates.on_partial_error(interaction, song);
@@ -411,9 +413,7 @@ const play = new SlashSubcommand({
             }
         } else if (validateResults === 'yt_video') {
             // Link is single video
-            const infoData = await Play.video_basic_info(link)
-                .then(res => res.video_details)
-                .catch(() => undefined);
+            const infoData = await fetchVideo(link);
             const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!play_privates.validate_song(song, member)) {
                 return play_privates.on_partial_error(interaction, song);
@@ -421,37 +421,10 @@ const play = new SlashSubcommand({
             showLink = song.url;
             showThumbnail = song.thumbnail;
             songs.push(song);
-        } else if (validateResults && validateResults.startsWith('sp')) {
-            // All spotify links
-            const spotify = await Play.spotify(link).catch(() => undefined);
-            if (!spotify) return play_privates.on_partial_error(interaction, { notFound: true });
-            showLink = spotify.url;
-            showThumbnail = spotify.thumbnail?.url ?? null;
-            if (spotify.type === 'track') {
-                const song = new Song(spotify as SpotifyTrack, guildVoice.getUniqueId(), isNsfw);
-                if (!play_privates.validate_song(song, member)) {
-                    return play_privates.on_partial_error(interaction, song);
-                }
-                songs.push(song);
-            } else {
-                // Else its multiple songs
-                const all_tracks = await (
-                    spotify as SpotifyPlaylist | SpotifyAlbum
-                ).all_tracks();
-                for (const track of all_tracks) {
-                    const song = new Song(track, guildVoice.getUniqueId(), isNsfw, spotify.url);
-                    if (!play_privates.validate_song(song, member)) {
-                        return play_privates.on_partial_error(interaction, song);
-                    }
-                    songs.push(song);
-                }
-            }
+        } else if (validateResults === 'spotify') {
+            return play_privates.on_partial_error(interaction, { unsupported: true });
         } else {
-            const infoData = await Play.search(link, {
-                source: { youtube: 'video' },
-                limit: 1,
-                unblurNSFWThumbnails: isNsfw,
-            }).then(res => res.at(0)).catch(() => undefined);
+            const infoData = await fetchVideo(link);
             const song = new Song(infoData, guildVoice.getUniqueId(), isNsfw);
             if (!play_privates.validate_song(song, member)) {
                 return play_privates.on_partial_error(interaction, song);

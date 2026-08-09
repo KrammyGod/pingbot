@@ -22,7 +22,7 @@ internally.
         - Includes an under-the-hood implementation of a scraper that is capable of scraping images from X (formerly
           Twitter), Pixiv, and Danbooru.
 - Music commands
-    - Play music from YouTube, Spotify, SoundCloud, and more to come!
+    - Play music from YouTube, SoundCloud, and the many other sites yt-dlp supports.
     - Advanced queue system with support for skipping and removing songs, and playing on repeats.
 - Miscellaneous commands
     - Hoyolab autocollector

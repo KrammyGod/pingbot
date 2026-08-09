@@ -6,3 +6,6 @@ labels:
   - pairs:
       app: postgres
     includeSelectors: true
+
+patches:
+  - path: ./deployment.patch.yaml
