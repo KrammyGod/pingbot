@@ -18,6 +18,7 @@
  *     exits, and ffmpeg streams from that URL. Piping through yt-dlp would hold
  *     a Python process open for the length of every song.
  */
+import { existsSync } from 'fs';
 import youtubeDl, { create as createYoutubeDl } from 'youtube-dl-exec';
 
 /**
@@ -39,6 +40,40 @@ type YtdlpRun = (
     options?: { timeout?: number },
 ) => Promise<unknown>;
 const run = ytdlp as unknown as YtdlpRun;
+
+/**
+ * Netscape cookie file for a signed in YouTube account, which is the only way to
+ * reach age gated videos.
+ */
+const COOKIES_PATH = (() => {
+    const configured = process.env.YT_COOKIES_PATH;
+    if (!configured) return undefined;
+    if (existsSync(configured)) return configured;
+    // Loud on purpose: an absent file is otherwise indistinguishable from no credentials.
+    console.error(`YT_COOKIES_PATH is set to ${configured}, but nothing is there.`);
+    return undefined;
+})();
+
+/**
+ * Runs yt-dlp, retrying with credentials when the first attempt yields nothing.
+ * Age gated videos fail extraction outright rather than reporting an age, so the
+ * retry is what reaches them; preferCookies skips the wasted first call when the
+ * caller already knows the video is gated.
+ */
+async function runPrint(
+    target: string,
+    flags: Record<string, unknown>,
+    timeout: number,
+    preferCookies = false,
+): Promise<string | undefined> {
+    const withCookies = { ...flags, cookies: COOKIES_PATH };
+    const attempts = !COOKIES_PATH ? [flags] : preferCookies ? [withCookies] : [flags, withCookies];
+    for (const attempt of attempts) {
+        const printed = await run(target, attempt, { timeout }).catch(() => undefined);
+        if (typeof printed === 'string' && printed.trim()) return printed;
+    }
+    return undefined;
+}
 
 /**
  * Unit separator. yt-dlp --print emits raw field values, so the delimiter has to
@@ -85,6 +120,8 @@ export interface StreamTarget {
     durationInSec: number;
     /** Codec of the chosen format. 'opus' means it can reach Discord unmodified. */
     acodec: string;
+    /** YouTube age gate. Playlist entries only report this once resolved. */
+    ageLimit: number;
 }
 
 /** Reads a --print field, mapping yt-dlp's NA placeholder onto undefined. */
@@ -128,12 +165,43 @@ export function classifyLink(link: string): LinkKind {
 }
 
 /**
+ * First hit for a search phrase, read the same way playlists are: --flat-playlist
+ * skips the per video extraction that dominates a search, which is about a third of
+ * the wall time. The entry still carries a title, duration and thumbnails; the one
+ * field it loses is age_limit, so searched songs are gated when they start playing
+ * rather than when they are queued, exactly as playlist entries already were.
+ */
+async function searchVideo(query: string): Promise<TrackInfo | undefined> {
+    const dumped = await run(`ytsearch1:${query}`, {
+        dumpJson: true,
+        flatPlaylist: true,
+        noWarnings: true,
+    }, { timeout: METADATA_TIMEOUT_MS }).catch(() => undefined);
+
+    let entry;
+    try {
+        entry = typeof dumped === 'string' ? JSON.parse(dumped) : dumped;
+    } catch {
+        return undefined;
+    }
+    if (!entry?.title) return undefined;
+    const url = entry.webpage_url ?? entry.url;
+    if (!url) return undefined;
+    return {
+        url: url,
+        title: entry.title,
+        durationInSec: Math.floor(entry.duration ?? 0),
+        thumbnail: bestThumbnail(entry.thumbnails),
+    };
+}
+
+/**
  * Metadata for one video, or the first hit for a search phrase.
  * Deliberately does not resolve a stream URL; see resolveStream.
  */
 export async function fetchVideo(urlOrQuery: string): Promise<TrackInfo | undefined> {
-    const target = /^https?:\/\//i.test(urlOrQuery) ? urlOrQuery : `ytsearch1:${urlOrQuery}`;
-    const printed = await run(target, {
+    if (!/^https?:\/\//i.test(urlOrQuery)) return searchVideo(urlOrQuery);
+    const printed = await runPrint(urlOrQuery, {
         print: [
             '%(webpage_url)s',
             '%(title)s',
@@ -144,8 +212,8 @@ export async function fetchVideo(urlOrQuery: string): Promise<TrackInfo | undefi
         noWarnings: true,
         noPlaylist: true,
         skipDownload: true,
-    }, { timeout: METADATA_TIMEOUT_MS }).catch(() => undefined);
-    if (typeof printed !== 'string') return undefined;
+    }, METADATA_TIMEOUT_MS);
+    if (!printed) return undefined;
 
     const [url, title, duration, thumbnail, ageLimit] = printed.trim().split(SEP);
     if (!field(url) || !field(title)) return undefined;
@@ -204,9 +272,9 @@ export async function fetchPlaylist(url: string): Promise<PlaylistInfo | undefin
  * Resolves something playable into a direct CDN URL, in a single yt-dlp call
  * Accepts a URL or a bare search phrase.
  */
-export async function resolveStream(urlOrQuery: string): Promise<StreamTarget | undefined> {
+export async function resolveStream(urlOrQuery: string, ageRestricted = false): Promise<StreamTarget | undefined> {
     const target = /^https?:\/\//i.test(urlOrQuery) ? urlOrQuery : `ytsearch1:${urlOrQuery}`;
-    const printed = await run(target, {
+    const printed = await runPrint(target, {
         // Opus is preferred over an equal bitrate AAC because it is already the
         // codec Discord speaks, so it can be forwarded without re-encoding.
         // See createOpusStream() in classes/voice.
@@ -217,14 +285,15 @@ export async function resolveStream(urlOrQuery: string): Promise<StreamTarget | 
             '%(title)s',
             '%(duration)s',
             '%(acodec)s',
+            '%(age_limit)s',
         ].join(SEP),
         noWarnings: true,
         noPlaylist: true,
         skipDownload: true,
-    }, { timeout: METADATA_TIMEOUT_MS }).catch(() => undefined);
-    if (typeof printed !== 'string') return undefined;
+    }, METADATA_TIMEOUT_MS, ageRestricted);
+    if (!printed) return undefined;
 
-    const [streamUrl, webpageUrl, title, duration, acodec] = printed.trim().split(SEP);
+    const [streamUrl, webpageUrl, title, duration, acodec, ageLimit] = printed.trim().split(SEP);
     if (!field(streamUrl) || !field(webpageUrl)) return undefined;
     return {
         streamUrl: streamUrl.split('\n')[0],
@@ -232,6 +301,7 @@ export async function resolveStream(urlOrQuery: string): Promise<StreamTarget | 
         title: field(title) ?? '',
         durationInSec: numberField(duration),
         acodec: field(acodec) ?? '',
+        ageLimit: numberField(ageLimit),
     };
 }
 

@@ -13,7 +13,8 @@ import {
 } from '@discordjs/voice';
 import { FFmpeg } from 'prism-media';
 import { resolveStream, StreamTarget, TrackInfo } from '@modules/ytdlp';
-import { VOID } from '@modules/utils';
+import { channel_is_nsfw_safe, VOID } from '@modules/utils';
+import config from '@config';
 
 /**
  * ffmpeg flags that have to precede -i because they configure the input protocol.
@@ -34,7 +35,7 @@ const FFMPEG_STDERR_TAIL = 2000;
 /**
  * Wraps a resolved stream in Ogg so @discordjs/voice can demux straight to Opus.
  */
-function createOpusStream(source: StreamTarget) {
+function createOpusStream(source: StreamTarget, onFailure: (report: string) => void) {
     const codecArgs = source.acodec === 'opus'
         ? ['-c:a', 'copy']
         : ['-c:a', 'libopus', '-b:a', '128k', '-ar', '48000', '-ac', '2'];
@@ -58,7 +59,7 @@ function createOpusStream(source: StreamTarget) {
     child.once('close', (code, signal) => {
         // Skipping or stopping SIGKILLs ffmpeg, and prism clears .process first.
         if (signal || stream.process !== child) return;
-        if (code) console.error(`ffmpeg exited ${code} playing ${source.webpageUrl}\n${stderr.trim()}`);
+        if (code) onFailure(`ffmpeg exited ${code} playing ${source.webpageUrl}\n${stderr.trim()}`);
     });
     return stream;
 }
@@ -79,6 +80,7 @@ export class Song {
     duration!: number;
     id!: number;
     user!: User;
+    ageRestricted: boolean; // Lets playback ask for credentials without a wasted lookup
     notFound: boolean; // When infoData is undefined
     invalid: boolean; // When channel is not NSFW attempts to play NSFW song
 
@@ -90,8 +92,10 @@ export class Song {
     ) {
         this.invalid = true;
         this.notFound = true;
+        this.ageRestricted = false;
         if (!infoData) return;
         this.notFound = false;
+        this.ageRestricted = infoData.ageRestricted ?? false;
         if (infoData.ageRestricted && !isNsfw) return;
         this.url = infoData.url;
         this.playUrl = infoData.url;
@@ -119,6 +123,9 @@ export class GuildVoice {
     fullQueue: Song[];
     songs: Song[];
     IDCounter: number;
+    /** Set by a failed ffmpeg so the Idle it triggers replays the song instead of skipping it. */
+    private failedPlayback: { songId: number; report: string } | null;
+    private retriedSongId: number | null;
 
     constructor(
         textChannel: GuildTextBasedChannel,
@@ -138,6 +145,8 @@ export class GuildVoice {
         this.fullQueue = [];
         this.songs = [];
         this.IDCounter = 0;
+        this.failedPlayback = null;
+        this.retriedSongId = null;
         this.connectAndListen(voiceChannel);
     }
 
@@ -157,6 +166,8 @@ export class GuildVoice {
         this.paused = false;
         this.currentSongResource = null;
         this.songs = songs;
+        this.failedPlayback = null;
+        this.retriedSongId = null;
         this.player.stop();
     }
 
@@ -185,14 +196,63 @@ export class GuildVoice {
         return this.songs.at(0);
     }
 
+    /** Same pairing the play command gates on, re-checked when a song actually starts. */
+    nsfwAllowed() {
+        return channel_is_nsfw_safe(this.textChannel) && channel_is_nsfw_safe(this.voiceChannel);
+    }
+
+    /**
+     * ffmpeg dies outside any interaction, so bot.ts's handle_error never sees it.
+     * Mirrors what that does: console always, log channel unless testing.
+     */
+    private reportPlaybackFailure(report: string) {
+        console.error(report);
+        const client = this.textChannel.client;
+        if (config.testing || !client.is_ready) return;
+        const body = report.replaceAll('```', '\\`\\`\\`');
+        const header = '**ffmpeg failed during playback!**\n';
+        // 2000 Discord limit, minus the header and the backticks and ellipsis around it.
+        const room = 2000 - header.length - 12;
+        client.log_channel.send({
+            content: header + '```\n' + (body.length > room ? `${body.slice(0, room)}...` : body) + '\n```',
+        }).catch(VOID);
+    }
+
     async playNextSong(): Promise<boolean> {
-        if (this.started) this.shiftToNextSong();
+        // A dead ffmpeg usually means the CDN URL went stale or was refused, and it is
+        // also what caused the Idle that got us here. Resolving again mints a new URL,
+        // so replay the song once before letting the queue move past it, and only say
+        // anything if that second attempt dies too.
+        const failure = this.failedPlayback;
+        this.failedPlayback = null;
+        let retrying = false;
+        if (failure) {
+            retrying = this.getCurrentSong()?.id === failure.songId &&
+                this.retriedSongId !== failure.songId;
+            if (retrying) this.retriedSongId = failure.songId;
+            else this.reportPlaybackFailure(failure.report);
+        }
+        if (!retrying) this.retriedSongId = null;
+
+        if (this.started && !retrying) this.shiftToNextSong();
         const song = this.getCurrentSong();
         if (!song) return this.started = false;
         else this.started = true;
-        const source = await resolveStream(song.playUrl);
+        const source = await resolveStream(song.playUrl, song.ageRestricted);
         if (!source) {
             // Forcefully skip song on error
+            if (this.loop === LoopType.one) {
+                this.songs.shift();
+            }
+            return this.playNextSong();
+        }
+        // --flat-playlist reports no age limit, so a gated song inside a playlist is
+        // only recognisable here. Before credentials existed it failed to resolve and
+        // skipped itself; now that it resolves, the gate has to be applied by hand.
+        if (source.ageLimit > 0 && !this.nsfwAllowed()) {
+            this.textChannel.send({
+                content: `Skipping ${song.linkedTitle} — it is age restricted and this channel is not NSFW.`,
+            }).catch(VOID);
             if (this.loop === LoopType.one) {
                 this.songs.shift();
             }
@@ -202,9 +262,12 @@ export class GuildVoice {
         // directly, so nothing holds a Python process open for the whole song.
         // Destroying playStream tears down the whole pipeline, so the player
         // stopping or skipping kills this ffmpeg rather than leaking it.
-        this.currentSongResource = createAudioResource(createOpusStream(source), {
-            inputType: StreamType.OggOpus,
-        });
+        this.currentSongResource = createAudioResource(
+            createOpusStream(source, report => {
+                this.failedPlayback = { songId: song.id, report };
+            }),
+            { inputType: StreamType.OggOpus },
+        );
         this.currentSongResource.playStream.on('error', e => {
             console.error(e);
         });
