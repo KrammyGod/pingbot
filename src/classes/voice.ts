@@ -1,4 +1,3 @@
-import Play, { SpotifyTrack, YouTubeVideo } from 'play-dl';
 import { ChannelType, GuildMember, GuildTextBasedChannel, Message, User, VoiceBasedChannel } from 'discord.js';
 import {
     AudioPlayer,
@@ -9,27 +8,47 @@ import {
     entersState,
     getVoiceConnection,
     joinVoiceChannel,
+    StreamType,
     VoiceConnectionStatus,
 } from '@discordjs/voice';
-import { VOID } from '@modules/utils';
+import { FFmpeg } from 'prism-media';
+import { resolveStream, StreamTarget, TrackInfo } from '@modules/ytdlp';
+
+/**
+ * ffmpeg flags that have to precede -i because they configure the input protocol.
+ * The CDN drops long lived connections, and without these a single dropped packet
+ * silently truncates the song; the stream URL stays valid, so retrying works.
+ */
+const FFMPEG_INPUT_ARGS = [
+    '-reconnect', '1',
+    '-reconnect_streamed', '1',
+    '-reconnect_delay_max', '5',
+    '-analyzeduration', '0',
+    '-loglevel', '0',
+];
+
+/**
+ * Wraps a resolved stream in Ogg so @discordjs/voice can demux straight to Opus.
+ */
+function createOpusStream(source: StreamTarget) {
+    const codecArgs = source.acodec === 'opus'
+        ? ['-c:a', 'copy']
+        : ['-c:a', 'libopus', '-b:a', '128k', '-ar', '48000', '-ac', '2'];
+    return new FFmpeg({
+        args: [
+            ...FFMPEG_INPUT_ARGS,
+            '-i', source.streamUrl,
+            '-vn',
+            ...codecArgs,
+            '-f', 'opus',
+        ],
+    });
+}
 
 export const enum LoopType {
     none = 'NONE',
     one = 'ONE',
     all = 'ALL',
-}
-
-// Because Play-DL does not export this type
-interface PlayYoutubeThumbnail {
-    url: string;
-    width: number;
-    height: number;
-
-    toJSON(): {
-        url: string;
-        width: number;
-        height: number;
-    };
 }
 
 export class Song {
@@ -42,12 +61,11 @@ export class Song {
     duration!: number;
     id!: number;
     user!: User;
-    artists?: string; // Only for spotify
     notFound: boolean; // When infoData is undefined
     invalid: boolean; // When channel is not NSFW attempts to play NSFW song
 
     constructor(
-        infoData: YouTubeVideo | SpotifyTrack | undefined,
+        infoData: TrackInfo | undefined,
         uniqueId: number,
         isNsfw: boolean,
         playlist_url?: string,
@@ -56,38 +74,16 @@ export class Song {
         this.notFound = true;
         if (!infoData) return;
         this.notFound = false;
-        if (infoData instanceof SpotifyTrack) {
-            if (infoData.explicit && !isNsfw) return;
-            this.url = infoData.url;
-            this.playUrl = infoData.url;
-            this.albumUrl = playlist_url ?? infoData.url;
-            this.title = infoData.name;
-            this.linkedTitle = `[${this.title}](${this.url})`;
-            this.thumbnail = infoData.thumbnail?.url ?? null;
-            this.duration = infoData.durationInSec;
-            this.artists = infoData.artists.map(a => a.name).join(', ');
-            this.id = uniqueId;
-            this.invalid = false;
-        } else if (!infoData.discretionAdvised || isNsfw) {
-            this.url = infoData.url;
-            this.playUrl = infoData.url;
-            this.albumUrl = playlist_url ?? infoData.url;
-            this.title = infoData.title ?? '';
-            this.linkedTitle = `[${this.title}](${this.url})`;
-            this.thumbnail = this.findBestThumbnail(infoData.thumbnails);
-            this.duration = infoData.durationInSec;
-            this.id = uniqueId;
-            this.invalid = false;
-        }
-    }
-
-    findBestThumbnail(thumbnails: PlayYoutubeThumbnail[]) {
-        thumbnails.sort((thumb1, thumb2) => {
-            const thumb1dims = thumb1.width * thumb1.height;
-            const thumb2dims = thumb2.width * thumb2.height;
-            return thumb2dims - thumb1dims;
-        });
-        return thumbnails.at(0)?.url ?? null;
+        if (infoData.ageRestricted && !isNsfw) return;
+        this.url = infoData.url;
+        this.playUrl = infoData.url;
+        this.albumUrl = playlist_url ?? infoData.url;
+        this.title = infoData.title;
+        this.linkedTitle = `[${this.title}](${this.url})`;
+        this.thumbnail = infoData.thumbnail;
+        this.duration = infoData.durationInSec;
+        this.id = uniqueId;
+        this.invalid = false;
     }
 }
 
@@ -176,25 +172,7 @@ export class GuildVoice {
         const song = this.getCurrentSong();
         if (!song) return this.started = false;
         else this.started = true;
-        if (song.artists) {
-            const info = await Play.search(`${song.title} by ${song.artists}`, {
-                source: { youtube: 'video' },
-                limit: 1,
-                unblurNSFWThumbnails: true, // We wouldn't have added if it wasn't NSFW allowed
-            }).then(res => res.at(0)).catch(() => undefined);
-            if (info) {
-                song.playUrl = info.url; // Different url to actually stream the song
-                song.duration = info.durationInSec;
-                song.artists = undefined; // So we don't repeatedly search for this song.
-            } else {
-                // Forcibly skip song if we can't find details of it.
-                if (this.loop === LoopType.one) {
-                    this.songs.shift();
-                }
-                return this.playNextSong();
-            }
-        }
-        const source = await Play.stream(song.playUrl).catch(VOID);
+        const source = await resolveStream(song.playUrl);
         if (!source) {
             // Forcefully skip song on error
             if (this.loop === LoopType.one) {
@@ -202,11 +180,15 @@ export class GuildVoice {
             }
             return this.playNextSong();
         }
-        source.stream.on('error', e => {
-            console.error(e);
+        // yt-dlp has already exited by this point. ffmpeg pulls from the CDN URL
+        // directly, so nothing holds a Python process open for the whole song.
+        // Destroying playStream tears down the whole pipeline, so the player
+        // stopping or skipping kills this ffmpeg rather than leaking it.
+        this.currentSongResource = createAudioResource(createOpusStream(source), {
+            inputType: StreamType.OggOpus,
         });
-        this.currentSongResource = createAudioResource(source.stream, {
-            inputType: source.type,
+        this.currentSongResource.playStream.on('error', e => {
+            console.error(e);
         });
         this.player.play(this.currentSongResource);
         this.voted = [];
