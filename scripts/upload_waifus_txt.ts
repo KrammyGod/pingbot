@@ -4,6 +4,7 @@
  */
 import * as fs from 'fs';
 import * as rl from 'readline/promises';
+import * as conn from './kubectl_helper';
 import { Pool, PoolClient, QueryResultRow } from 'pg';
 
 // The shared file path between upload_waifus_txt.ts and download_waifus_txt.ts
@@ -72,7 +73,10 @@ interface CompletedSeriesDetails {
 }
 
 const pool = new Pool({
-    host: process.env.PRODHOST, // Not included in .env.example, since for personal use only.
+    // Using a different port, so kubectl port-forward can connect to the database
+    // without conflicting with the main database port
+    port: 5555,
+    user: process.env.PRODUSER,
 });
 
 function getClient() {
@@ -151,6 +155,9 @@ function completedSeriesDiff(origins: CompletedSeriesDetails[]) {
 }
 
 async function upload() {
+    conn.start();
+    await conn.ready();
+
     const client = await getClient();
 
     const database_waifus = await query(client, `
@@ -169,6 +176,7 @@ async function upload() {
             modified.push({ old: waifu, updated: match });
         }
     }
+    console.log();
     console.log(`Modifying ${modified.length} waifus...`);
     for (const { old, updated } of modified) {
         console.log(findDiff(old, updated));
@@ -267,6 +275,7 @@ async function upload() {
 
 if (require.main === module) {
     upload().then(confirmed => {
+        conn.stop();
         if (!confirmed) {
             process.exit(1);
         }
