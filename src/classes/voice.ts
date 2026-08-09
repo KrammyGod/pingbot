@@ -13,6 +13,7 @@ import {
 } from '@discordjs/voice';
 import { FFmpeg } from 'prism-media';
 import { resolveStream, StreamTarget, TrackInfo } from '@modules/ytdlp';
+import { VOID } from '@modules/utils';
 
 /**
  * ffmpeg flags that have to precede -i because they configure the input protocol.
@@ -24,8 +25,11 @@ const FFMPEG_INPUT_ARGS = [
     '-reconnect_streamed', '1',
     '-reconnect_delay_max', '5',
     '-analyzeduration', '0',
-    '-loglevel', '0',
+    // Not 0: silencing ffmpeg turns any playback failure into an unexplained "End of queue".
+    '-loglevel', 'error',
 ];
+
+const FFMPEG_STDERR_TAIL = 2000;
 
 /**
  * Wraps a resolved stream in Ogg so @discordjs/voice can demux straight to Opus.
@@ -34,7 +38,7 @@ function createOpusStream(source: StreamTarget) {
     const codecArgs = source.acodec === 'opus'
         ? ['-c:a', 'copy']
         : ['-c:a', 'libopus', '-b:a', '128k', '-ar', '48000', '-ac', '2'];
-    return new FFmpeg({
+    const stream = new FFmpeg({
         args: [
             ...FFMPEG_INPUT_ARGS,
             '-i', source.streamUrl,
@@ -43,6 +47,20 @@ function createOpusStream(source: StreamTarget) {
             '-f', 'opus',
         ],
     });
+
+    // prism-media never inspects the exit code, so a dead ffmpeg closes stdout with zero
+    // bytes and is indistinguishable from a song that played out.
+    const child = stream.process;
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+        stderr = (stderr + chunk.toString()).slice(-FFMPEG_STDERR_TAIL);
+    });
+    child.once('close', (code, signal) => {
+        // Skipping or stopping SIGKILLs ffmpeg, and prism clears .process first.
+        if (signal || stream.process !== child) return;
+        if (code) console.error(`ffmpeg exited ${code} playing ${source.webpageUrl}\n${stderr.trim()}`);
+    });
+    return stream;
 }
 
 export const enum LoopType {
@@ -250,13 +268,15 @@ export class GuildVoice {
         const connection = this.join(voiceChannel);
         connection.subscribe(this.player);
 
-        this.player.on('error', async err => {
-            await this.textChannel.send({
+        // Deliberately not async: a throw here is an unhandled rejection that takes the
+        // shard down. The player goes Idle after an error, so the next song follows anyway.
+        this.player.on('error', err => {
+            console.error(err);
+            this.textChannel.send({
                 content:
                     'Something bad happened while I was playing...\n' +
                     'Sorry! I will continue to play the next song.',
-            });
-            throw err;
+            }).catch(VOID);
         });
         connection.on(VoiceConnectionStatus.Ready, async () => {
             // Get latest voice channel info

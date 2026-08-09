@@ -76,6 +76,7 @@ ARG YTDLP_VERSION=2026.07.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
+    ffmpeg \
     python3 \
     python3-pip \
   && apt-get clean \
@@ -83,12 +84,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && pip3 install --no-cache-dir --break-system-packages "yt-dlp==${YTDLP_VERSION}" \
   # Fail the build loudly if any of these assumptions break.
   && test -x /usr/bin/tini \
+  && test -x /usr/bin/ffmpeg \
   && node --version \
-  && yt-dlp --version
+  && yt-dlp --version \
+  && ffmpeg -version
 
 # Point youtube-dl-exec at the pinned system yt-dlp rather than the copy it bundles,
 # so the extractor is upgraded by rebuilding this image, not by a package release.
 ENV YTDLP_PATH=/usr/local/bin/yt-dlp
+
+# ffmpeg-static's binary is statically linked against a much older glibc, and static
+# glibc cannot resolve hostnames here, so every stream fails. The distro build is
+# dynamic and works; ffmpeg-static stays a dependency for local development.
+ENV FFMPEG_BIN=/usr/bin/ffmpeg
 
 WORKDIR /home/node
 
