@@ -80,7 +80,6 @@ export class Song {
     duration!: number;
     id!: number;
     user!: User;
-    ageRestricted: boolean; // Lets playback ask for credentials without a wasted lookup
     notFound: boolean; // When infoData is undefined
     invalid: boolean; // When channel is not NSFW attempts to play NSFW song
 
@@ -92,10 +91,8 @@ export class Song {
     ) {
         this.invalid = true;
         this.notFound = true;
-        this.ageRestricted = false;
         if (!infoData) return;
         this.notFound = false;
-        this.ageRestricted = infoData.ageRestricted ?? false;
         if (infoData.ageRestricted && !isNsfw) return;
         this.url = infoData.url;
         this.playUrl = infoData.url;
@@ -238,7 +235,7 @@ export class GuildVoice {
         const song = this.getCurrentSong();
         if (!song) return this.started = false;
         else this.started = true;
-        const source = await resolveStream(song.playUrl, song.ageRestricted);
+        const source = await resolveStream(song.playUrl);
         if (!source) {
             // Forcefully skip song on error
             if (this.loop === LoopType.one) {

@@ -18,7 +18,7 @@
  *     exits, and ffmpeg streams from that URL. Piping through yt-dlp would hold
  *     a Python process open for the length of every song.
  */
-import { existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import youtubeDl, { create as createYoutubeDl } from 'youtube-dl-exec';
 
 /**
@@ -48,32 +48,62 @@ const run = ytdlp as unknown as YtdlpRun;
 const COOKIES_PATH = (() => {
     const configured = process.env.YT_COOKIES_PATH;
     if (!configured) return undefined;
-    if (existsSync(configured)) return configured;
-    // Loud on purpose: an absent file is otherwise indistinguishable from no credentials.
-    console.error(`YT_COOKIES_PATH is set to ${configured}, but nothing is there.`);
-    return undefined;
+
+    let jar;
+    try {
+        jar = readFileSync(configured, 'utf8');
+    } catch {
+        console.error(`YT_COOKIES_PATH is set to ${configured}, but nothing is there. ` +
+            'Age gated videos will not play until a cookie jar is put at that path.');
+        return undefined;
+    }
+    // Every lookup carries these, so a jar yt-dlp rejects would fail all of them rather
+    // than just the age gated ones. Both checks drop the credentials instead.
+    if (!/^#\s*(Netscape\s+)?HTTP Cookie File/i.test(jar)) {
+        console.error(`${configured} is not a Netscape cookie file; ignoring it.`);
+        return undefined;
+    }
+    if (!jar.split('\n').some(line => line.trim() && !line.startsWith('#'))) {
+        console.error(`${configured} holds no cookies. Copy a signed in export over it. ` +
+            'Age gated videos will not play until then.');
+        return undefined;
+    }
+    return configured;
 })();
 
-/**
- * Runs yt-dlp, retrying with credentials when the first attempt yields nothing.
- * Age gated videos fail extraction outright rather than reporting an age, so the
- * retry is what reaches them; preferCookies skips the wasted first call when the
- * caller already knows the video is gated.
- */
+/** Merges credentials into a call's flags. Every yt-dlp invocation goes through this. */
+function withCookies(flags: Record<string, unknown>): Record<string, unknown> {
+    // Inject JS runtimes so it can solve JS challenges, only if there is a cookie included.
+    return COOKIES_PATH ? {
+        ...flags,
+        cookies: COOKIES_PATH,
+        jsRuntimes: 'node',
+        remoteComponent: 'ejs:github',
+    } : flags;
+}
+
+/** Runs yt-dlp once, carrying credentials, and reports why it failed if it did. */
 async function runPrint(
     target: string,
     flags: Record<string, unknown>,
     timeout: number,
-    preferCookies = false,
-): Promise<string | undefined> {
-    const withCookies = { ...flags, cookies: COOKIES_PATH };
-    const attempts = !COOKIES_PATH ? [flags] : preferCookies ? [withCookies] : [flags, withCookies];
-    for (const attempt of attempts) {
-        const printed = await run(target, attempt, { timeout }).catch(() => undefined);
-        if (typeof printed === 'string' && printed.trim()) return printed;
-    }
-    return undefined;
+): Promise<{ printed?: string; error?: string }> {
+    let error = '';
+    const printed = await run(target, withCookies(flags), { timeout }).catch((err: unknown) => {
+        const failure = err as { stderr?: string; message?: string };
+        error = failure?.stderr || failure?.message || '';
+        return undefined;
+    });
+    if (typeof printed === 'string' && printed.trim()) return { printed: printed };
+    console.error(error);
+    return { error: error };
 }
+
+/**
+ * yt-dlp's wording for a video it can see but may not read without an account. Worth
+ * telling apart from a genuinely missing video, since the two need different answers.
+ */
+const AGE_GATE = /confirm your age|age.restricted|inappropriate for some users/i;
 
 /**
  * Unit separator. yt-dlp --print emits raw field values, so the delimiter has to
@@ -172,11 +202,11 @@ export function classifyLink(link: string): LinkKind {
  * rather than when they are queued, exactly as playlist entries already were.
  */
 async function searchVideo(query: string): Promise<TrackInfo | undefined> {
-    const dumped = await run(`ytsearch1:${query}`, {
+    const dumped = await run(`ytsearch1:${query}`, withCookies({
         dumpJson: true,
         flatPlaylist: true,
         noWarnings: true,
-    }, { timeout: METADATA_TIMEOUT_MS }).catch(() => undefined);
+    }), { timeout: METADATA_TIMEOUT_MS }).catch(() => undefined);
 
     let entry;
     try {
@@ -198,10 +228,14 @@ async function searchVideo(query: string): Promise<TrackInfo | undefined> {
 /**
  * Metadata for one video, or the first hit for a search phrase.
  * Deliberately does not resolve a stream URL; see resolveStream.
+ *
+ * ageGated separates "YouTube will not show me this without an account" from "no such
+ * video". They look identical from here but need opposite answers: one is a credential
+ * problem to fix, the other is a bad link.
  */
-export async function fetchVideo(urlOrQuery: string): Promise<TrackInfo | undefined> {
-    if (!/^https?:\/\//i.test(urlOrQuery)) return searchVideo(urlOrQuery);
-    const printed = await runPrint(urlOrQuery, {
+export async function fetchVideo(urlOrQuery: string): Promise<{ info?: TrackInfo; ageGated?: boolean }> {
+    if (!/^https?:\/\//i.test(urlOrQuery)) return { info: await searchVideo(urlOrQuery) };
+    const { printed, error } = await runPrint(urlOrQuery, {
         print: [
             '%(webpage_url)s',
             '%(title)s',
@@ -213,16 +247,18 @@ export async function fetchVideo(urlOrQuery: string): Promise<TrackInfo | undefi
         noPlaylist: true,
         skipDownload: true,
     }, METADATA_TIMEOUT_MS);
-    if (!printed) return undefined;
+    if (!printed) return { ageGated: AGE_GATE.test(error ?? '') };
 
     const [url, title, duration, thumbnail, ageLimit] = printed.trim().split(SEP);
-    if (!field(url) || !field(title)) return undefined;
+    if (!field(url) || !field(title)) return {};
     return {
-        url: url,
-        title: title,
-        durationInSec: numberField(duration),
-        thumbnail: field(thumbnail) ?? null,
-        ageRestricted: numberField(ageLimit) > 0,
+        info: {
+            url: url,
+            title: title,
+            durationInSec: numberField(duration),
+            thumbnail: field(thumbnail) ?? null,
+            ageRestricted: numberField(ageLimit) > 0,
+        },
     };
 }
 
@@ -233,11 +269,11 @@ export async function fetchVideo(urlOrQuery: string): Promise<TrackInfo | undefi
  * here and re-checked when each one is actually resolved for playback.
  */
 export async function fetchPlaylist(url: string): Promise<PlaylistInfo | undefined> {
-    const dumped = await run(url, {
+    const dumped = await run(url, withCookies({
         dumpSingleJson: true,
         flatPlaylist: true,
         noWarnings: true,
-    }, { timeout: PLAYLIST_TIMEOUT_MS }).catch(() => undefined);
+    }), { timeout: PLAYLIST_TIMEOUT_MS }).catch(() => undefined);
 
     let parsed;
     try {
@@ -272,9 +308,9 @@ export async function fetchPlaylist(url: string): Promise<PlaylistInfo | undefin
  * Resolves something playable into a direct CDN URL, in a single yt-dlp call
  * Accepts a URL or a bare search phrase.
  */
-export async function resolveStream(urlOrQuery: string, ageRestricted = false): Promise<StreamTarget | undefined> {
+export async function resolveStream(urlOrQuery: string): Promise<StreamTarget | undefined> {
     const target = /^https?:\/\//i.test(urlOrQuery) ? urlOrQuery : `ytsearch1:${urlOrQuery}`;
-    const printed = await runPrint(target, {
+    const { printed } = await runPrint(target, {
         // Opus is preferred over an equal bitrate AAC because it is already the
         // codec Discord speaks, so it can be forwarded without re-encoding.
         // See createOpusStream() in classes/voice.
@@ -290,7 +326,7 @@ export async function resolveStream(urlOrQuery: string, ageRestricted = false): 
         noWarnings: true,
         noPlaylist: true,
         skipDownload: true,
-    }, METADATA_TIMEOUT_MS, ageRestricted);
+    }, METADATA_TIMEOUT_MS);
     if (!printed) return undefined;
 
     const [streamUrl, webpageUrl, title, duration, acodec, ageLimit] = printed.trim().split(SEP);

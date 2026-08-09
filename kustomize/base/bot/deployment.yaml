@@ -95,20 +95,20 @@ spec:
               port: http
             periodSeconds: 20
             failureThreshold: 3
+          # Read write on purpose: yt-dlp dumps the refreshed jar back after every run,
+          # which is what keeps the session alive without re-sealing the Secret.
           volumeMounts:
             - name: yt-cookies
-              mountPath: /var/run/secrets/youtube
-              readOnly: true
+              mountPath: /data/youtube
           resources:
             requests:
               cpu: 100m
               memory: 100Mi
             limits:
               memory: 512Mi
-      # optional: the bot starts fine without it, age gated videos just stay
-      # unplayable. See YOUTUBE_COOKIES.md for creating the SealedSecret.
       volumes:
+        # The jar is placed on this volume by hand and then maintained by yt-dlp, which
+        # rewrites it after every run. Nothing in the repo populates it.
         - name: yt-cookies
-          secret:
-            secretName: pingbot-yt-cookies
-            optional: true
+          persistentVolumeClaim:
+            claimName: pingbot-yt-cookies-jar
