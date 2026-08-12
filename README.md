@@ -23,6 +23,7 @@ internally.
           Twitter), Pixiv, and Danbooru.
 - Music commands
     - Play music from YouTube, SoundCloud, and the many other sites yt-dlp supports.
+    - Paste a Spotify track, album, or playlist link and it is matched to YouTube for playback.
     - Advanced queue system with support for skipping and removing songs, and playing on repeats.
 - Miscellaneous commands
     - Hoyolab autocollector

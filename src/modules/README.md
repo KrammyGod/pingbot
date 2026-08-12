@@ -17,5 +17,10 @@ list of files, however effort will be made to keep it updated.
   common characters from a specified public database as possible.
 - [scraper.ts](scraper.ts): A script that supports scraping the raw image link from a variety of websites, including
   Twitter, Pixiv, and Danbooru.
+- [spotify.ts](spotify.ts): Reads metadata for Spotify track, album, and playlist links through the Web API. Spotify
+  streams cannot be played, so each track carries a search query that [ytdlp.ts](ytdlp.ts) matches against YouTube at
+  playback time.
 - [utils.ts](utils.ts): A collection of very useful helper functions, like converting a name to a Discord object, and
   creating a unique dialog to allow users to select a specific option.
+- [ytdlp.ts](ytdlp.ts): Wraps yt-dlp to classify links, read video and playlist metadata, and resolve a direct stream
+  URL at playback time. Deliberately invokes yt-dlp as few times as possible; the file's header explains why.

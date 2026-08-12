@@ -64,6 +64,12 @@ export default {
      * The saucenao API key to use for sauce command in base64.
      */
     saucenao: process.env.SAUCENAO!,
+    /**
+     * Spotify app credentials, used to read metadata for Spotify links. Playback still
+     * comes from YouTube. Without them, Spotify links are rejected and nothing else changes.
+     */
+    spotifyId: process.env.SPOTIFY_CLIENT_ID || '',
+    spotifySecret: process.env.SPOTIFY_CLIENT_SECRET || '',
 
     ////// Flags
     /**

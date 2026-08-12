@@ -121,7 +121,7 @@ const METADATA_TIMEOUT_MS = 30_000;
 const PLAYLIST_TIMEOUT_MS = 60_000;
 
 /** Guards against a runaway playlist exhausting memory on a small device. */
-const MAX_PLAYLIST_ENTRIES = 500;
+export const MAX_PLAYLIST_ENTRIES = 500;
 
 /** A song, normalised so nothing downstream depends on the extractor's shapes. */
 export interface TrackInfo {
@@ -131,6 +131,7 @@ export interface TrackInfo {
     thumbnail: string | null;
     /** YouTube age gate. */
     ageRestricted?: boolean;
+    searchQuery?: string;
 }
 
 /** A playlist and the tracks in it. */
@@ -176,6 +177,9 @@ function numberField(value: string | undefined): number {
  * play-dl did this over the network; it is pure string work.
  */
 export function classifyLink(link: string): LinkKind {
+    // spotify: URIs are not URLs, so they have to be caught before the scheme check
+    // below sends them off to be searched on YouTube as literal text.
+    if (/^spotify:/i.test(link)) return 'spotify';
     if (!/^https?:\/\//i.test(link)) return 'search';
     let url;
     try {
@@ -184,7 +188,10 @@ export function classifyLink(link: string): LinkKind {
         return 'search';
     }
     const host = url.hostname.replace(/^www\./, '');
+    // Short links are routed here rather than to search so they earn a real explanation;
+    // the Spotify module rejects them instead of following the redirect.
     if (host === 'open.spotify.com' || host === 'spotify.com') return 'spotify';
+    if (host === 'spotify.link' || host === 'link.tospotify.com') return 'spotify';
     if (host === 'youtu.be') return 'yt_video';
     if (host === 'youtube.com' || host === 'music.youtube.com' || host === 'm.youtube.com') {
         // A watch URL carrying a list= is still a single video unless it is the

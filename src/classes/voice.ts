@@ -95,7 +95,9 @@ export class Song {
         this.notFound = false;
         if (infoData.ageRestricted && !isNsfw) return;
         this.url = infoData.url;
-        this.playUrl = infoData.url;
+        // Spotify links are displayed but cannot be played from, so they carry a phrase for
+        // resolveStream to search instead. It already treats a non-URL as a YouTube search.
+        this.playUrl = infoData.searchQuery ?? infoData.url;
         this.albumUrl = playlist_url ?? infoData.url;
         this.title = infoData.title;
         this.linkedTitle = `[${this.title}](${this.url})`;
@@ -255,6 +257,11 @@ export class GuildVoice {
             }
             return this.playNextSong();
         }
+        // Spotify reports the studio track's length, which the YouTube match can miss by
+        // seconds; left alone that drifts the progress bar for the whole song. Guarded
+        // because live streams resolve with no duration at all.
+        if (source.durationInSec) song.duration = source.durationInSec;
+
         // yt-dlp has already exited by this point. ffmpeg pulls from the CDN URL
         // directly, so nothing holds a Python process open for the whole song.
         // Destroying playStream tears down the whole pipeline, so the player

@@ -1,6 +1,7 @@
 import util from 'util';
 import { GuildVoice, GuildVoices, LoopType, Song } from '@classes/voice';
 import * as Utils from '@modules/utils';
+import { fetchSpotify, SpotifyFailure } from '@modules/spotify';
 import { classifyLink, fetchPlaylist, fetchVideo } from '@modules/ytdlp';
 import { AudioPlayerStatus } from '@discordjs/voice';
 import {
@@ -283,6 +284,38 @@ const np = new SlashSubcommand({
     },
 });
 
+/**
+ * Failures on the yt-dlp path. Named for the module rather than for YouTube because only the
+ * age gate is YouTube's: notFound covers every site yt-dlp handles, and invalid is Discord's
+ * NSFW rule. Unlike SpotifyFailure these are not returned by the module — the command layer
+ * derives them from Song's own flags, so the union lives here rather than in ytdlp.ts.
+ */
+type YtdlpFailure = 'ageGated' | 'notFound' | 'invalid';
+
+const YTDLP_ERRORS: Record<YtdlpFailure, string> = {
+    ageGated: 'This video is age restricted, and YouTube will only serve it to a ' +
+        'signed in account. My credentials are missing or no longer valid, so I ' +
+        'cannot read it.\nPlease report this to the support server.',
+    notFound: 'Data could not be found. Perhaps the video/playlist is private.\n' +
+        'If you believe this is an error, please report it to the support server.',
+    invalid: 'This video is NSFW and you are not in an NSFW enabled text channel ' +
+        "AND voice channel (due to discord's policies).\n" +
+        'If you believe this is an error, please report it to the support server.',
+};
+
+const SPOTIFY_ERRORS: Record<SpotifyFailure, string> = {
+    unconfigured: "Spotify links aren't set up on this bot.\nPlease report this to the support server.",
+    notFound: "I couldn't read that Spotify link. Either it's dead, or it has nothing playable in it " +
+        '(an empty playlist, or one of only local files or podcast episodes) — that also covers ' +
+        "Spotify's own playlists, like Discover Weekly, Daily Mix, Release Radar, or *This Is…*, " +
+        'which are not available to bots.',
+    rateLimited: 'Spotify is rate limiting me right now. Please try again in a moment.',
+    unsupported: 'I can only play Spotify **track**, **album**, and **playlist** links.\n' +
+        'A shortened `spotify.link` address needs to be opened first — paste the resulting ' +
+        '`open.spotify.com` link instead.',
+    error: 'Something went wrong talking to Spotify.\nPlease report this to the support server.',
+};
+
 const play_privates = {
     shuffle(arr: unknown[]) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -296,33 +329,17 @@ const play_privates = {
 
     on_partial_error(
         interaction: CommandInteraction,
-        err: { invalid?: boolean, notFound?: boolean, unsupported?: boolean, ageGated?: boolean },
+        err: { invalid?: boolean, notFound?: boolean, spotify?: SpotifyFailure, ageGated?: boolean },
     ) {
-        if (err.ageGated) {
-            return interaction.followUp({
-                content: 'This video is age restricted, and YouTube will only serve it to a ' +
-                    'signed in account. My credentials are missing or no longer valid, so I ' +
-                    'cannot read it.\nPlease report this to the support server.',
-            }).then(Utils.VOID);
-        } else if (err.unsupported) {
-            return interaction.followUp({
-                content: 'Spotify links are not supported. Spotify does not allow playback, ' +
-                    'so please use a YouTube link or a search query instead.',
-            }).then(Utils.VOID);
-        } else if (err.notFound) {
-            return interaction.followUp({
-                content: 'Data could not be found. Perhaps the video/playlist is private.\n' +
-                    'If you believe this is an error, please report it to the support server.',
-            }).then(Utils.VOID);
-        } else if (err.invalid) {
-            return interaction.followUp({
-                content: 'This video is NSFW and you are not in an NSFW enabled text channel ' +
-                    "AND voice channel (due to discord's policies).\n" +
-                    'If you believe this is an error, please report it to the support server.',
-            }).then(Utils.VOID);
-        } else {
-            throw new Error(`Error ${util.inspect(err)} does not have what I expect`);
-        }
+        // Order matters: a Song carries both notFound and invalid, and the age gate is the
+        // more specific reason whenever it applies.
+        let content;
+        if (err.ageGated) content = YTDLP_ERRORS.ageGated;
+        else if (err.spotify) content = SPOTIFY_ERRORS[err.spotify];
+        else if (err.notFound) content = YTDLP_ERRORS.notFound;
+        else if (err.invalid) content = YTDLP_ERRORS.invalid;
+        else throw new Error(`Error ${util.inspect(err)} does not have what I expect`);
+        return interaction.followUp({ content }).then(Utils.VOID);
     },
 
     validate_song(song: Song, member: GuildMember) {
@@ -338,7 +355,7 @@ const play = new SlashSubcommand({
         .addStringOption(option =>
             option
                 .setName('query')
-                .setDescription('The youtube link or search query to play.')
+                .setDescription('The YouTube or Spotify link, or a search query, to play.')
                 .setRequired(true))
         .addStringOption(option =>
             option
@@ -358,7 +375,8 @@ const play = new SlashSubcommand({
         'Plays a query in the voice channel! I will automatically join if I am not with you.\n\n' +
         'Usage: `/music play query: <query> loop: [loop] shuffle: [shuffle]`\n\n' +
         '__**Options**__\n' +
-        '*query:* The youtube link or search query to add. (Required)\n' +
+        '*query:* The YouTube or Spotify link, or a search query, to add. (Required)\n' +
+        'Spotify tracks, albums and playlists are matched to YouTube for playback.\n' +
         '*loop:* Set a loop option for the playlist. (Default: None)\n' +
         '*shuffle:* Whether to shuffle the playlist before adding. Only affects playlists. (Default: False) \n\n' +
         'Examples: `/music play query: Rick Astley loop: 🔁 All`, ' +
@@ -430,7 +448,26 @@ const play = new SlashSubcommand({
             showThumbnail = song.thumbnail;
             songs.push(song);
         } else if (validateResults === 'spotify') {
-            return play_privates.on_partial_error(interaction, { unsupported: true });
+            const result = await fetchSpotify(link);
+            if (result.kind === 'failure') {
+                return play_privates.on_partial_error(interaction, { spotify: result.failure });
+            } else if (result.kind === 'collection') {
+                showLink = result.collection.url;
+                showThumbnail = result.collection.thumbnail;
+                for (const track of result.collection.entries) {
+                    const song = new Song(track, guildVoice.getUniqueId(), isNsfw, result.collection.url);
+                    if (!play_privates.validate_song(song, member)) continue;
+                    songs.push(song);
+                }
+            } else {
+                const song = new Song(result.track, guildVoice.getUniqueId(), isNsfw);
+                if (!play_privates.validate_song(song, member)) {
+                    return play_privates.on_partial_error(interaction, song);
+                }
+                showLink = song.url;
+                showThumbnail = song.thumbnail;
+                songs.push(song);
+            }
         } else {
             const { info, ageGated } = await fetchVideo(link);
             if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
@@ -439,6 +476,7 @@ const play = new SlashSubcommand({
                 return play_privates.on_partial_error(interaction, song);
             }
             showLink = song.url;
+            showThumbnail = song.thumbnail;
             songs.push(song);
         }
         if (shuffle) play_privates.shuffle(songs);
