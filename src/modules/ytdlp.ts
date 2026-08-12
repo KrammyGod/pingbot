@@ -76,10 +76,12 @@ const COOKIES_PATH = (() => {
  */
 function withCookies(flags: Record<string, unknown>): Record<string, unknown> {
     // Inject JS runtimes so it can solve JS challenges, only if there is a cookie included.
+    // https://github.com/yt-dlp/yt-dlp/issues/17389
     return COOKIES_PATH ? {
         ...flags,
         cookies: COOKIES_PATH,
         jsRuntimes: 'node',
+        extractorArgs: 'youtube:player_client=default,web_embedded',
     } : flags;
 }
 
