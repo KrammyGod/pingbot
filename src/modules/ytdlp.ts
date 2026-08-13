@@ -141,8 +141,12 @@ export interface PlaylistInfo {
     entries: TrackInfo[];
 }
 
-/** What a link points at, replacing play-dl's validate(). */
-export type LinkKind = 'yt_video' | 'yt_playlist' | 'spotify' | 'search';
+/**
+ * What a link points at. Only playlists need telling apart: everything else goes to
+ * fetchVideo, which decides for itself whether to extract a URL or run a search. Links
+ * yt-dlp cannot handle fail there on their own rather than being screened out up front.
+ */
+export type LinkKind = 'playlist' | 'single';
 
 /** A resolved, directly playable stream. */
 export interface StreamTarget {
@@ -176,25 +180,22 @@ function numberField(value: string | undefined): number {
  * play-dl did this over the network; it is pure string work.
  */
 export function classifyLink(link: string): LinkKind {
-    if (!/^https?:\/\//i.test(link)) return 'search';
+    if (!/^https?:\/\//i.test(link)) return 'single';
     let url;
     try {
         url = new URL(link);
     } catch {
-        return 'search';
+        return 'single';
     }
+    // youtu.be short links are always one video, and every other host is either a site
+    // yt-dlp handles as a single item or one it will reject when it tries.
     const host = url.hostname.replace(/^www\./, '');
-    if (host === 'open.spotify.com' || host === 'spotify.com') return 'spotify';
-    if (host === 'youtu.be') return 'yt_video';
-    if (host === 'youtube.com' || host === 'music.youtube.com' || host === 'm.youtube.com') {
-        // A watch URL carrying a list= is still a single video unless it is the
-        // playlist page itself, which matches how the old code special cased index=.
-        if (url.pathname === '/playlist' && url.searchParams.has('list')) return 'yt_playlist';
-        if (url.searchParams.has('list') && !url.searchParams.has('v')) return 'yt_playlist';
-        return 'yt_video';
-    }
-    // Anything else is not something yt-dlp is being asked to guess at.
-    return 'search';
+    if (host !== 'youtube.com' && host !== 'music.youtube.com' && host !== 'm.youtube.com') return 'single';
+    // A watch URL carrying a list= is still a single video unless it is the
+    // playlist page itself, which matches how the old code special cased index=.
+    if (url.pathname === '/playlist' && url.searchParams.has('list')) return 'playlist';
+    if (url.searchParams.has('list') && !url.searchParams.has('v')) return 'playlist';
+    return 'single';
 }
 
 /**

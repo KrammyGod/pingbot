@@ -296,18 +296,13 @@ const play_privates = {
 
     on_partial_error(
         interaction: CommandInteraction,
-        err: { invalid?: boolean, notFound?: boolean, unsupported?: boolean, ageGated?: boolean },
+        err: { invalid?: boolean, notFound?: boolean, ageGated?: boolean },
     ) {
         if (err.ageGated) {
             return interaction.followUp({
                 content: 'This video is age restricted, and YouTube will only serve it to a ' +
                     'signed in account. My credentials are missing or no longer valid, so I ' +
                     'cannot read it.\nPlease report this to the support server.',
-            }).then(Utils.VOID);
-        } else if (err.unsupported) {
-            return interaction.followUp({
-                content: 'Spotify links are not supported. Spotify does not allow playback, ' +
-                    'so please use a YouTube link or a search query instead.',
             }).then(Utils.VOID);
         } else if (err.notFound) {
             return interaction.followUp({
@@ -390,47 +385,22 @@ const play = new SlashSubcommand({
         let showLink = '';
         let showThumbnail: string | null = null;
 
-        // Now we search. Classification is pure string work now, not a network call,
-        // and yt-dlp needs no token refresh the way play-dl did.
+        // Now we search. Classification is pure string work now, not a network call.
         const validateResults = classifyLink(link);
         const isNsfw = Utils.channel_is_nsfw_safe(interaction.channel!) &&
             Utils.channel_is_nsfw_safe(guildVoice.voiceChannel);
-        if (validateResults === 'yt_playlist') {
-            if (!link.match(/([&?])index=[0-9]+/)) {
-                const playlistInfo = await fetchPlaylist(link);
-                if (!playlistInfo) return play_privates.on_partial_error(interaction, { notFound: true });
-                showLink = playlistInfo.url;
-                showThumbnail = playlistInfo.thumbnail;
-                for (const video of playlistInfo.entries) {
-                    const song = new Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
-                    if (!play_privates.validate_song(song, member)) continue;
-                    songs.push(song);
-                }
-            } else {
-                // Otherwise It's still a single video
-                const { info, ageGated } = await fetchVideo(link);
-                if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
-                const song = new Song(info, guildVoice.getUniqueId(), isNsfw);
-                if (!play_privates.validate_song(song, member)) {
-                    return play_privates.on_partial_error(interaction, song);
-                }
-                showThumbnail = song.thumbnail;
-                showLink = song.url;
+        // A playlist URL carrying index= points at one entry rather than the whole list, so
+        // it takes the single song path along with videos, other sites, and search phrases.
+        if (validateResults === 'playlist' && !link.match(/([&?])index=[0-9]+/)) {
+            const playlistInfo = await fetchPlaylist(link);
+            if (!playlistInfo) return play_privates.on_partial_error(interaction, { notFound: true });
+            showLink = playlistInfo.url;
+            showThumbnail = playlistInfo.thumbnail;
+            for (const video of playlistInfo.entries) {
+                const song = new Song(video, guildVoice.getUniqueId(), isNsfw, playlistInfo.url);
+                if (!play_privates.validate_song(song, member)) continue;
                 songs.push(song);
             }
-        } else if (validateResults === 'yt_video') {
-            // Link is single video
-            const { info, ageGated } = await fetchVideo(link);
-            if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
-            const song = new Song(info, guildVoice.getUniqueId(), isNsfw);
-            if (!play_privates.validate_song(song, member)) {
-                return play_privates.on_partial_error(interaction, song);
-            }
-            showLink = song.url;
-            showThumbnail = song.thumbnail;
-            songs.push(song);
-        } else if (validateResults === 'spotify') {
-            return play_privates.on_partial_error(interaction, { unsupported: true });
         } else {
             const { info, ageGated } = await fetchVideo(link);
             if (ageGated) return play_privates.on_partial_error(interaction, { ageGated: true });
@@ -439,6 +409,7 @@ const play = new SlashSubcommand({
                 return play_privates.on_partial_error(interaction, song);
             }
             showLink = song.url;
+            showThumbnail = song.thumbnail;
             songs.push(song);
         }
         if (shuffle) play_privates.shuffle(songs);
