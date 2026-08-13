@@ -240,41 +240,42 @@ export class SlashCommandWithSubcommand<CacheType extends NodePgJsonValue = neve
     subcommands: Map<string, SlashSubcommandGroup | SlashSubcommand>;
 
     constructor(options: SlashCommandWithSubcommandOptions<CacheType>) {
+        type Self = SlashCommandWithSubcommand<CacheType>;
         super(options);
         this.subcommands = new Map();
         this.type = CommandType.SLASH_COMMAND_WITH_SUBCOMMAND;
         // Different from SlashCommand without subcommands in the sense that we handle the execute
         // and all other functions automatically so only one definition is required in the lowest subcommand level.
-        this.execute = async function (i) {
+        this.execute = (async function (this: Self, i: ChatInputCommandInteraction) {
             if (this.subcommands.size === 0) throw new Error(`execute: NO SUBCOMMANDS FOR ${this.data.name}`);
             const subcommand = this.subcommands.get(
                 i.options.getSubcommandGroup(false) ??
                 i.options.getSubcommand()!,
             );
             if (!subcommand) throw new Error(`execute: SUBCOMMAND FOR ${this.data.name} NOT FOUND`);
-            return subcommand.execute.bind(this)(i);
-        };
-        this.buttonReact = async function (i) {
+            return subcommand.execute(i);
+        }).bind(this);
+        this.buttonReact = (async function (this: Self, i: ButtonInteraction) {
             if (this.subcommands.size === 0) throw new Error(`buttonReact: NO SUBCOMMANDS FOR ${this.data.name}`);
             const subcommandName = await options.buttonReactGetter?.bind(this)(i);
             const subcommand = this.subcommands.get(subcommandName ?? '');
             if (!subcommand) throw new Error(`buttonReact: SUBCOMMAND FOR ${this.data.name} NOT FOUND`);
             return subcommand.buttonReact(i);
-        };
-        this.menuReact = async function (i) {
+        }).bind(this);
+        this.menuReact = (async function (this: Self, i: AnySelectMenuInteraction) {
             if (this.subcommands.size === 0) throw new Error(`menuReact: NO SUBCOMMANDS FOR ${this.data.name}`);
             const subcommandName = await options.menuReactGetter?.bind(this)(i);
             const subcommand = this.subcommands.get(subcommandName ?? '');
             if (!subcommand) throw new Error(`menuReact: SUBCOMMAND FOR ${this.data.name} NOT FOUND`);
-            return subcommand.menuReact.bind(this)(i);
-        };
-        this.textInput = async function (i) {
+            return subcommand.menuReact(i);
+        }).bind(this);
+        this.textInput = (async function (this: Self, i: ModalSubmitInteraction) {
             if (this.subcommands.size === 0) throw new Error(`textInput: NO SUBCOMMANDS FOR ${this.data.name}`);
             const subcommandName = await options.textInputGetter?.bind(this)(i);
             const subcommand = this.subcommands.get(subcommandName ?? '');
             if (!subcommand) throw new Error(`textInput: SUBCOMMAND FOR ${this.data.name} NOT FOUND`);
-            return subcommand.textInput.bind(this)(i);
-        };
+            return subcommand.textInput(i);
+        }).bind(this);
         for (const subcommand of options.subcommands ?? []) {
             if (subcommand.isSlashSubcommand()) this.addSubcommand(subcommand);
             else this.addSubcommandGroup(subcommand);
@@ -303,38 +304,39 @@ export class SlashSubcommandGroup<CacheType extends NodePgJsonValue = never> ext
     subcommands: Map<string, SlashSubcommand>;
 
     constructor(options: SlashSubcommandGroupOptions<CacheType>) {
+        type Self = SlashSubcommandGroup<CacheType>;
         super(options);
         this.subcommands = new Map();
         this.type = CommandType.SLASH_SUBCOMMAND_GROUP;
         // Different from SlashCommand without subcommands in the sense that we handle the execute
         // and all other functions automatically so only one definition is required in the lowest subcommand level.
-        this.execute = async function (i) {
+        this.execute = (async function (this: Self, i: ChatInputCommandInteraction) {
             if (this.subcommands.size === 0) throw new Error(`execute: NO SUBCOMMANDS IN GROUP ${this.data.name}`);
             const subcommand = this.subcommands.get(i.options.getSubcommand()!);
             if (!subcommand) throw new Error(`execute: SUBCOMMAND IN GROUP ${this.data.name} NOT FOUND`);
-            return subcommand.execute.bind(this)(i);
-        };
-        this.buttonReact = async function (i) {
+            return subcommand.execute(i);
+        }).bind(this);
+        this.buttonReact = (async function (this: Self, i: ButtonInteraction) {
             if (this.subcommands.size === 0) throw new Error(`buttonReact: NO SUBCOMMANDS IN GROUP ${this.data.name}`);
             const subcommandName = await options.buttonReactGetter?.bind(this)(i);
             const subcommand = this.subcommands.get(subcommandName ?? '');
             if (!subcommand) throw new Error(`buttonReact: SUBCOMMAND IN GROUP ${this.data.name} NOT FOUND`);
-            return subcommand.buttonReact.bind(this)(i);
-        };
-        this.menuReact = async function (i) {
+            return subcommand.buttonReact(i);
+        }).bind(this);
+        this.menuReact = (async function (this: Self, i: AnySelectMenuInteraction) {
             if (this.subcommands.size === 0) throw new Error(`menuReact: NO SUBCOMMANDS IN GROUP ${this.data.name}`);
             const subcommandName = await options.menuReactGetter?.bind(this)(i);
             const subcommand = this.subcommands.get(subcommandName ?? '');
             if (!subcommand) throw new Error(`menuReact: SUBCOMMAND IN GROUP ${this.data.name} NOT FOUND`);
-            return subcommand.menuReact.bind(this)(i);
-        };
-        this.textInput = async function (i) {
+            return subcommand.menuReact(i);
+        }).bind(this);
+        this.textInput = (async function (this: Self, i: ModalSubmitInteraction) {
             if (this.subcommands.size === 0) throw new Error(`textInput: NO SUBCOMMANDS IN GROUP ${this.data.name}`);
             const subcommandName = await options.textInputGetter?.bind(this)(i);
             const subcommand = this.subcommands.get(subcommandName ?? '');
             if (!subcommand) throw new Error(`textInput: SUBCOMMAND IN GROUP ${this.data.name} NOT FOUND`);
-            return subcommand.textInput.bind(this)(i);
-        };
+            return subcommand.textInput(i);
+        }).bind(this);
         for (const subcommand of options.subcommands ?? []) {
             this.addSubcommand(subcommand);
         }
