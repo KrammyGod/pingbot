@@ -916,7 +916,7 @@ const remove_song = new SlashSubcommand({
 
     long_description:
         'Removes a song at a certain index. Cannot be used to skip the current playing song\n' +
-        'Use {/skip} to skip the current song instead. Only hosts may use this command.\n\n' +
+        'Use {/music skip} to skip the current song instead. Only hosts may use this command.\n\n' +
         'Usage: `/music remove song index: <index>`\n\n' +
         '__**Options**__\n' +
         '*index:* The index of the song in the queue. See {/music queue} (Required)\n\n' +
@@ -940,7 +940,7 @@ const remove_song = new SlashSubcommand({
                 content: `There are only ${guildVoice.fullQueue.length} songs.`,
             }).then(Utils.VOID);
         } else if (res === 0) {
-            const skip_cmd = await Utils.get_rich_cmd('skip', interaction.client);
+            const skip_cmd = await Utils.get_rich_cmd('music skip', interaction.client);
             return interaction.editReply({
                 content: `Song at index ${idx + 1} is currently playing. Use ${skip_cmd} instead.`,
             }).then(Utils.VOID);
