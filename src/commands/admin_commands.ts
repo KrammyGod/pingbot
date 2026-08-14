@@ -197,7 +197,7 @@ export const add = new MessageCommand({
         await DB.addBrons(res!.id, amount);
         await message.channel.send({
             content: `${res} ${amount < 0 ? 'lost' : 'gained'} ` +
-                `${Math.abs(amount)} ${message.client.bot_emojis.brons}.`,
+                `${Math.abs(amount)} ${await Utils.get_bot_emoji(message.client, 'brons')}.`,
             allowedMentions: { users: [] },
         }).then(msg => {
             if (message.guild?.id === config.guild) return;

@@ -104,31 +104,26 @@ async function sendCollectorResults(body: SendMessage) {
             rewardEmoji = await DB.getEmoji(account.award.name);
         }
 
-        const retEmoji = await manager.shards.random()?.eval(async (client, { name, emoji, acc, embed, guildId }) => {
+        const retEmoji = await manager.shards.random()?.eval(async (client, { emoji, acc, embed }) => {
             let retEmoji = undefined;
             if (emoji) {
                 console.log('Got emoji! Skipping creation...');
             } else if (!acc.error) {
                 console.log(`Emoji ${acc.award.name} not found. Creating new emoji...`);
-                // Fetch emoji guild, create new emoji, and return the emoji string
-                emoji = await client.guilds.fetch(guildId).then(guild => {
-                    const role = guild.members.me!.roles.botRole!;
-                    return guild.emojis.create({
-                        attachment: acc.award.icon,
-                        name: acc.award.name
-                            // Don't edit the original string
-                            .slice()
-                            // Replace all non-alphanumeric characters with underscore
-                            .replace(/[^a-zA-Z0-9_]/g, '_')
-                            // Limit length to 32 characters
-                            .slice(0, 32)
-                            // Convert to lowercase
-                            .toLowerCase()
-                            // Pad with underscore if 1 character (min 2 characters)
-                            .padEnd(2, '_'),
-                        roles: [role],
-                        reason: `New emoji for ${name} auto collect.`,
-                    });
+                // Create application emojis so only this bot can use them.
+                emoji = await client.application!.emojis.create({
+                    attachment: acc.award.icon,
+                    name: acc.award.name
+                        // Don't edit the original string
+                        .slice()
+                        // Replace all non-alphanumeric characters with underscore
+                        .replace(/[^a-zA-Z0-9_]/g, '_')
+                        // Limit length to 32 characters
+                        .slice(0, 32)
+                        // Convert to lowercase
+                        .toLowerCase()
+                        // Pad with underscore if 1 character (min 2 characters)
+                        .padEnd(2, '_'),
                 }).then(emoji => emoji.toString(), () => acc.award.name);
                 // If it is in discord's emoji string format
                 if (emoji !== acc.award.name) {
@@ -171,7 +166,7 @@ async function sendCollectorResults(body: SendMessage) {
             }
 
             return retEmoji;
-        }, { name: body.name, emoji: rewardEmoji, acc: account, embed: embed.toJSON(), guildId: config.emojis });
+        }, { emoji: rewardEmoji, acc: account, embed: embed.toJSON() });
 
         // Add it to the database if a new emoji was created.
         if (retEmoji && !account.error) await DB.addEmoji(account.award.name, retEmoji);

@@ -87,6 +87,19 @@ export function fetch_guild_cache<T, R>(
     ).then(results => results.find(r => r !== undefined));
 }
 
+export async function get_bot_emoji(client: Client, name: string) {
+    const emojis = client.application?.emojis;
+    if (!emojis) return '';
+    let emoji = emojis.cache.find(e => e.name === name);
+    if (!emoji) {
+        const fetched = await emojis.fetch().catch(() => undefined);
+        emoji = fetched?.find(e => e.name === name);
+        // Fetch went through and the name still isn't there, so it was never uploaded.
+        if (fetched && !emoji) console.log(`Emoji ${name} is missing from the application!`);
+    }
+    return emoji?.toString() ?? '';
+}
+
 export async function convert_user(client: Client, text: string): Promise<User | undefined>;
 export async function convert_user(
     client: Client,

@@ -203,7 +203,8 @@ const guess_number = new SlashSubcommand({
             });
             return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
-        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ${interaction.client.bot_emojis.brons}`)
+        embed.setTitle(`${title} ${change > 0 ? '+' : ''}${change} ` +
+            `${await Utils.get_bot_emoji(interaction.client, 'brons')}`)
             .setDescription(number_privates.cds.get(interaction.user.id).tries_left())
             .setImage(`attachment://${num}.png`)
             .setFooter({ text: `My number was ${num}!` });
@@ -264,7 +265,7 @@ async function generate_flip(
         if (err instanceof DatabaseMaintenanceError) throw err;
         return false;
     });
-    embed.setTitle(`${title}\n${change > 0 ? '+' : ''}${change} ${client.bot_emojis.brons}`)
+    embed.setTitle(`${title}\n${change > 0 ? '+' : ''}${change} ${await Utils.get_bot_emoji(client, 'brons')}`)
         .setImage(`attachment://${chosen}.png`);
     return [embed, [`files/${chosen}.png`], res];
 }

@@ -35,11 +35,6 @@ export default {
      */
     guild: process.env.GUILD!,
     /**
-     * Secret server that stores all the emojis.
-     * Can be same as support server.
-     */
-    emojis: process.env.EMOJIGUILD!,
-    /**
      * Pixiv refresh token to use when scraping pixiv links.
      */
     pixiv: process.env.PIXIV_REFRESH_TOKEN || '',

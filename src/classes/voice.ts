@@ -316,12 +316,10 @@ export class GuildVoice {
         GuildVoices.delete(this.voiceChannel.guildId);
     }
 
-    // create massive ID numbers for songs in different guilds
+    // Give a unique id for the guild's songs, so we don't
     getUniqueId() {
         return this.IDCounter++;
     }
-
-    // Give a unique id for the guild's songs, so we don't
 
     // Separated to make ctor more clear.
     private connectAndListen(voiceChannel: VoiceBasedChannel) {

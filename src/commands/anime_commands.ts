@@ -380,7 +380,7 @@ export const animes = new SlashCommandNoSubcommand({
         if (gain) {
             await interaction.followUp({
                 content: `You collected bonuses for ${interaction.values.length} anime(s), ` +
-                    `and gained +${gain} ${interaction.client.bot_emojis.brons}!`,
+                    `and gained +${gain} ${await Utils.get_bot_emoji(interaction.client, 'brons')}!`,
                 flags: MessageFlags.Ephemeral,
             }).catch(Utils.VOID);
         }
@@ -471,7 +471,7 @@ export const anime = new SlashCommandNoSubcommand({
                 if (gain) {
                     await interaction.followUp({
                         content: `You collected bonuses for \`${series}\`! ` +
-                            `+${gain} ${interaction.client.bot_emojis.brons}`,
+                            `+${gain} ${await Utils.get_bot_emoji(interaction.client, 'brons')}`,
                         flags: MessageFlags.Ephemeral,
                     });
                 }
@@ -512,17 +512,18 @@ export const bal = new SlashCommandNoSubcommand({
                 allowedMentions: { users: [] },
             }).then(Utils.VOID);
         }
+        const brons_emoji = await Utils.get_bot_emoji(interaction.client, 'brons');
         if (user.id === interaction.user.id) {
             return interaction.editReply({
-                content: `You currently have ${brons} ${interaction.client.bot_emojis.brons}.`,
+                content: `You currently have ${brons} ${brons_emoji}.`,
             }).then(Utils.VOID);
         } else if (user.id === interaction.client.user.id) {
             return interaction.editReply({
-                content: `I have ∞ ${interaction.client.bot_emojis.brons}.`,
+                content: `I have ∞ ${brons_emoji}.`,
             }).then(Utils.VOID);
         }
         return interaction.editReply({
-            content: `${user} has ${brons} ${interaction.client.bot_emojis.brons}.`,
+            content: `${user} has ${brons} ${brons_emoji}.`,
             allowedMentions: { users: [] },
         }).then(Utils.VOID);
     },
@@ -571,10 +572,11 @@ const lb_privates = {
         const users = await DB.getLeaderboards(start);
 
         let field = '';
+        const brons_emoji = await Utils.get_bot_emoji(client, 'brons');
         for (const data of users) {
             const displayName = await Utils.fetch_user_fast(client, data.uid, u => u?.displayName);
             field += `${data.idx}. __${displayName ?? data.uid}` +
-                `:__ **${data.brons}** ${client.bot_emojis.brons} *(${data.waifus} ` +
+                `:__ **${data.brons}** ${brons_emoji} *(${data.waifus} ` +
                 `${data.waifus === 1 ? 'waifu' : 'waifus'})*`;
             if (authorID === data.uid) {
                 field += ' ⬅️ (You)';
@@ -760,16 +762,17 @@ export const daily = new SlashCommandNoSubcommand({
         await interaction.deferReply();
         const { collect_success, amt } = await DB.getAndSetDaily(interaction.user.id);
         const embed = new EmbedBuilder({ color: Colors.Yellow });
+        const brons_emoji = await Utils.get_bot_emoji(interaction.client, 'brons');
         if (collect_success) {
             // Constant from database.ts; should stay same
             if (amt === 1000) {
                 // First sign up
                 embed.setColor(Colors.Gold).setTitle(
-                    `You have collected your first daily! +1000 ${interaction.client.bot_emojis.brons}!`,
+                    `You have collected your first daily! +1000 ${brons_emoji}!`,
                 );
                 return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
             }
-            embed.setTitle(`You have collected your daily! +200 ${interaction.client.bot_emojis.brons}!`);
+            embed.setTitle(`You have collected your daily! +200 ${brons_emoji}!`);
             const chosen = await DB.fetchRandomStarred(interaction.user.id);
             let bonus_brons = 0;
             if (chosen) {
@@ -779,7 +782,7 @@ export const daily = new SlashCommandNoSubcommand({
                     `Congrats on level ${chosen.lvl}!`;
                 embed.setColor(Colors.Gold).setTitle(
                     `${embed.data.title}\naaaaand ${chosen.name} gave you another +` +
-                    `${bonus_brons} ${interaction.client.bot_emojis.brons}! ${level_str}`,
+                    `${bonus_brons} ${brons_emoji}! ${level_str}`,
                 );
                 DB.addBrons(interaction.user.id, bonus_brons);
             }
@@ -867,7 +870,7 @@ export const profile = new SlashCommandNoSubcommand({
             title: `${user.displayName}'s Profile`,
             description: `**「${brons < 0 ?
                 '∞' :
-                brons} ${interaction.client.bot_emojis.brons}」**`,
+                brons} ${await Utils.get_bot_emoji(interaction.client, 'brons')}」**`,
             color: Colors.Gold,
         }).addFields([
             {
@@ -1433,7 +1436,7 @@ async function delete_char(interaction: AnySelectMenuInteraction, char: DB.Chara
     DB.addBrons(interaction.user.id, refund);
     embed.setTitle(
         `Successfully deleted ${char.getWFC(interaction.channel!)}${char.name} ` +
-        `${char.gender}! +${refund} ${interaction.client.bot_emojis.brons}`,
+        `${char.gender}! +${refund} ${await Utils.get_bot_emoji(interaction.client, 'brons')}`,
     );
     return { embeds: [embed], flags: MessageFlags.Ephemeral };
 }
@@ -1770,7 +1773,7 @@ async function generateCharacterDisplay(
         add_emoji = ' 🆒';
         // CONSTANT: Refund brons
         refund = character.fc ? 2 : 1;
-        add_on = `**Received +${refund} ${client.bot_emojis.brons}**\n`;
+        add_on = `**Received +${refund} ${await Utils.get_bot_emoji(client, 'brons')}**\n`;
         if (character.lvl > 1) {
             add_emoji = ' 🆙';
             add_on += `**Lvl (${character.lvl - 1} -> ${character.lvl})**\n`;
@@ -1842,7 +1845,7 @@ export const roll = new SlashCommandNoSubcommand({
         total_refund += refund;
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = await Utils.get_bot_emoji(interaction.client, 'brons');
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         // Reusing error_embed
         error_embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
@@ -1891,7 +1894,7 @@ export const multi = new SlashCommandNoSubcommand({
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = await Utils.get_bot_emoji(interaction.client, 'brons');
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -1944,7 +1947,7 @@ export const whale = new SlashCommandNoSubcommand({
         }
         await DB.addBrons(interaction.user.id, total_refund);
         const total_change = amtTaken.amt + total_refund;
-        const brons = interaction.client.bot_emojis.brons;
+        const brons = await Utils.get_bot_emoji(interaction.client, 'brons');
         const brons_string = `${total_change > 0 ? '+' : ''}${total_change} ${brons}`;
         embed.setTitle(`Total change for ${interaction.user.displayName}: ${brons_string}`).setColor('Aqua');
         embeds.push(embed);
@@ -2016,7 +2019,7 @@ export const dall = new SlashCommandNoSubcommand({
         embed.setTitle('Confirm delete?').setDescription(
             `## Found ${commons} common(s).\n` +
             `## Total refund: +${commons} ` +
-            `${interaction.client.bot_emojis.brons}\n` +
+            `${await Utils.get_bot_emoji(interaction.client, 'brons')}\n` +
             '# **This action cannot be undone.**',
         );
         const buttons = new ActionRowBuilder<ButtonBuilder>()
@@ -2043,7 +2046,7 @@ export const dall = new SlashCommandNoSubcommand({
         await DB.addBrons(interaction.user.id, deleted);
         embed.setDescription(
             `Successfully deleted ${deleted} common(s)! ` +
-            `+${deleted} ${interaction.client.bot_emojis.brons}`,
+            `+${deleted} ${await Utils.get_bot_emoji(interaction.client, 'brons')}`,
         );
         await interaction.editReply({ embeds: [embed] });
     },

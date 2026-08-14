@@ -117,8 +117,8 @@ async function nowPlaying(client: Client, guildId: string) {
     else if (percentageLeft < 0) percentageLeft = 0;
     const emptyBars = Math.round(barLength * percentageLeft);
     const bar =
-        client.bot_emojis.barfull.repeat(barLength - emptyBars) +
-        client.bot_emojis.barempty.repeat(emptyBars);
+        (await Utils.get_bot_emoji(client, 'barfull')).repeat(barLength - emptyBars) +
+        (await Utils.get_bot_emoji(client, 'barempty')).repeat(emptyBars);
     return new EmbedBuilder({
         title: '🎶 Now Playing:',
         description: `${guildVoice.paused ? '⏸️' : '▶️'} ${song.linkedTitle} ` +
