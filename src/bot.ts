@@ -13,7 +13,6 @@ import {
     Client,
     Collection,
     Events,
-    GuildEmoji,
     GuildMember,
     GuildTextBasedChannel,
     IntentsBitField,
@@ -64,7 +63,6 @@ client.is_listening = true;
 client.is_user_cache_ready = false;
 client.is_using_lambda = true;
 client.prefix = config.prefix;
-client.bot_emojis = {};
 client.lines = [];
 client.cogs = [];
 client.interaction_commands = new Map();
@@ -525,14 +523,8 @@ async function loading() {
         }
     });
 
-    // Setup all available emojis
-    client.bot_emojis = {};
-    const emojis = await client.guilds.fetch(config.emojis)
-        .then(guild => guild.emojis.fetch().then(e => Array.from(e.values())))
-        .catch(() => [] as GuildEmoji[]);
-    for (const emoji of emojis) {
-        client.bot_emojis[emoji.name ?? ''] = emoji.toString();
-    }
+    // Warm the emoji cache so the first command that needs one doesn't pay for the fetch.
+    client.application.emojis.fetch().catch(VOID);
 }
 
 client.once(Events.ClientReady, () => {
