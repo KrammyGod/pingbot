@@ -1,4 +1,4 @@
-import { parse } from 'cookie';
+import { parseCookie } from 'cookie';
 
 import type { CollectBase, CollectResult, Logger } from './collect';
 
@@ -99,7 +99,7 @@ export class HoyolabCollector implements CollectBase {
     }
 
     async getAid() {
-        const cookieObj = parse(this.cookie);
+        const cookieObj = parseCookie(this.cookie);
         return cookieObj?.account_id
             ?? cookieObj?.ltuid
             ?? cookieObj?.account_id_v2

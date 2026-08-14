@@ -1,4 +1,4 @@
-import { parse } from 'cookie';
+import { parseCookie } from 'cookie';
 
 const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) ' +
     'AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150';
@@ -105,7 +105,7 @@ class HoyoAccountInfo {
 
 export function getUID(cookie?: string) {
     if (!cookie) return '';
-    const cookieObj = parse(cookie);
+    const cookieObj = parseCookie(cookie);
     return cookieObj?.account_id ?? cookieObj?.ltuid ?? cookieObj?.account_id_v2 ?? cookieObj?.ltuid_v2 ?? '';
 }
 
