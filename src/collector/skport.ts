@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { parse } from 'cookie';
+import { parseCookie } from 'cookie';
 
 import type { CollectBase, CollectResult, Logger } from './collect';
 
@@ -100,7 +100,7 @@ export class SkportCollector implements CollectBase {
         private readonly LOGGER: Logger,
     ) {
         // Extract the required values from our custom made cookie.
-        const vals = parse(this.cookie ?? '');
+        const vals = parseCookie(this.cookie ?? '');
         // The actual credential for signing in.
         this.extraHeaders.cred = vals.cred as string;
         // The user's private game ID
