@@ -1432,7 +1432,7 @@ export function deleteLocalData(ids: string | string[]) {
     // A bulk delete carries up to 100 ids, and /purge issues those back to back.
     // One statement per id would swamp a pool that holds ten connections.
     return query(
-        'DELETE FROM local_data WHERE id = ANY($1)',
+        'DELETE FROM local_data WHERE id = ANY($1::text[])',
         [Array.isArray(ids) ? ids : [ids]],
     ).then(Utils.VOID, Utils.VOID);
 }

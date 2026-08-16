@@ -204,11 +204,14 @@ http.createServer((req, res) => {
 
     const chunks: Uint8Array[] = [];
     let received = 0;
+    let aborted = false;
     req.on('data', chunk => {
         // Without a ceiling anything that reaches this port can buffer until the
         // pod is OOM killed. A collector body is a few KiB.
+        if (aborted) return;
         received += chunk.length;
         if (received > MAX_BODY_BYTES) {
+            aborted = true;
             res.writeHead(413, { 'Content-Type': 'text/plain' });
             res.end('Payload Too Large\n');
             req.destroy();
@@ -216,6 +219,8 @@ http.createServer((req, res) => {
         }
         chunks.push(chunk);
     }).on('end', () => {
+        // The response is already closed; writing again would throw.
+        if (aborted) return;
         function safeJSONParse<T>(str: string): T | void {
             try {
                 return JSON.parse(str);
