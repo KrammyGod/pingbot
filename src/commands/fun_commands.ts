@@ -728,7 +728,8 @@ export const poll = new SlashCommandNoSubcommand<PollObject>({
                         flags: MessageFlags.Ephemeral,
                     });
                 }
-                await this.cache.delete(pollInfo.mid); // Remove old poll from cache
+                // Only set when this poll was already sent once.
+                if (pollInfo.mid) await this.cache.delete(pollInfo.mid); // Remove old poll from cache
                 pollInfo.mid = message.id;
                 await this.cache.set(message.id, pollInfo);
             };

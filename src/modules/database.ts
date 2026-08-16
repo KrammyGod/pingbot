@@ -324,8 +324,10 @@ export function getCostPerPull(special: boolean) {
 // Generates a query string and params to use my shiny custom
 // search order
 function sortQueryAndParams(colName: string, params: string[], name: string) {
-    // Escape percent signs and underscores.
-    name = name.replaceAll(/(?<!\\)%/g, '\\%').replaceAll(/(?<!\\)_/g, '\\_');
+    // Escape the escape character first: a term ending in a lone backslash otherwise
+    // reaches Postgres as a pattern ending in one, which it rejects outright.
+    // Then escape percent signs and underscores.
+    name = name.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
     // This modifies params to make it all the correct ones
     params.push(
         `${name}`, `${name} %`, `% ${name}`, `% ${name} %`,
@@ -385,7 +387,9 @@ async function multi_query<R extends QueryResultRow = object, I = unknown>(
         await client.query('COMMIT');
         return res;
     } catch (err) {
-        await client.query('ROLLBACK');
+        // A failing transaction often means a broken connection, and letting the
+        // ROLLBACK reject would replace the error the callers branch on.
+        await client.query('ROLLBACK').catch(() => {});
         throw err;
     } finally {
         client.release();
@@ -482,7 +486,7 @@ export function getCollected(userID: string) {
 }
 
 export function getWhales(userID: string) {
-    return query<{ whales: number }>(
+    return query<{ whales: boolean }>(
         'SELECT whales FROM user_info WHERE uid = $1',
         [userID],
     ).then(ret => ret.at(0)?.whales);
@@ -1188,10 +1192,13 @@ function setUserCharacterNsfw(userID: string, wid: string, nsfw: boolean) {
 
 export async function deleteUserCharacter(char: Character) {
     // Just in case, retrieve index; I'm paranoid.
-    const { idx } = await query<{ idx: string }>(
+    const row = await query<{ idx: string }>(
         'SELECT idx FROM user_chars WHERE uid = $1 AND wid = $2',
         [char.uid, char.wid],
-    ).then(res => res[0]);
+    ).then(res => res.at(0));
+    // Already sold, possibly from another window. Callers read 0 as "nothing deleted".
+    if (!row) return 0;
+    const { idx } = row;
     // Note that we didn't need to also include index,
     // but we do it just in case; will be helpful when
     // updating the index for other chars
@@ -1412,7 +1419,7 @@ export class Cache<CacheType extends NodePgJsonValue> {
         ).then(Utils.VOID);
     }
 
-    delete(id: string | null = null) {
+    delete(id: string) {
         return query<{ cmd: string, id: string, data: NodePgJsonSerialized<CacheType>, expiry: Date }>(
             'DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *',
             [this.cmd, id],
