@@ -126,11 +126,26 @@ function getCollector(type: CollectorType, account: DatabaseAccount): CollectBas
     return new HoyolabCollector(account.cookie, account[type] === 'notify', account.id, LOGGER);
 }
 
+const COLLECTOR_TYPES: readonly CollectorType[] = ['honkai', 'genshin', 'star_rail', 'endfield'];
+
+/**
+ * The column name is interpolated into the query below, so it has to be one of
+ * ours. A typo in .env-cmdrc would otherwise reach Postgres as `WHERE undefined`.
+ */
+function getCollectorType(): CollectorType {
+    const type = process.env.type;
+    if (!type || !COLLECTOR_TYPES.includes(type as CollectorType)) {
+        throw new Error(`Invalid collector type ${JSON.stringify(type)}; expected one of ${COLLECTOR_TYPES.join(', ')}`);
+    }
+    return type as CollectorType;
+}
+
 async function collect() {
+    const type = getCollectorType();
     const accounts = await client.query<DatabaseAccount>(
         `SELECT *
          FROM hoyolab_cookies_list
-         WHERE ${process.env.type} <> $1`,
+         WHERE ${type} <> $1`,
         ['none'],
     ).then(res => res.rows);
     const message: SendMessage = {
@@ -138,7 +153,7 @@ async function collect() {
         name: process.env.displayName!,
     };
     for (const account of accounts) {
-        const collector = getCollector(process.env.type as CollectorType, account);
+        const collector = getCollector(type, account);
         const aid = await collector.getAid();
         LOGGER.log(`Checking into account ${aid}`);
         const result = await collector.run().catch(error => {
@@ -171,6 +186,9 @@ async function collect() {
     } catch (e) {
         LOGGER.error(e);
         add('I encountered a really bad error... save me...\n```\n' + inspect(e) + '```');
+        // Exiting 0 here made every failed run look successful to Kubernetes, so
+        // backoffLimit and failedJobsHistoryLimit on the CronJob never applied.
+        process.exitCode = 1;
     } finally {
         await client.end().catch(() => { });
         LOGGER.end();

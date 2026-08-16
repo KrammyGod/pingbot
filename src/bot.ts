@@ -371,9 +371,7 @@ client.on(Events.Raw, (packet: RawMessageDeletePacket) => {
     if (packet.t === 'MESSAGE_DELETE') {
         DB.deleteLocalData(packet.d.id);
     } else if (packet.t === 'MESSAGE_DELETE_BULK') {
-        for (const id of packet.d.ids) {
-            DB.deleteLocalData(id);
-        }
+        DB.deleteLocalData(packet.d.ids);
     }
 });
 

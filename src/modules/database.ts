@@ -397,7 +397,9 @@ export function start() {
     pool.on('error', err => {
         // We don't care if the connection is terminated.
         if (err.message.includes('terminating connection due to administrator command')) return;
-        throw err;
+        // Throwing here becomes an uncaughtException. index.ts owns every shard, so
+        // an idle client dying used to take the whole bot down with it.
+        console.error(err);
     });
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
     return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
@@ -408,8 +410,10 @@ export function end() {
 }
 
 export function getUidsList(shardId: number, totalShards: number) {
+    // Partitioning by row number rather than LIMIT/OFFSET arithmetic: integer
+    // division there dropped the last count % totalShards users from every shard.
     return query<{ uid: string }>(
-        `WITH uids AS (SELECT uid
+        `WITH uids AS (SELECT uid, row_number() OVER (ORDER BY uid) - 1 AS rn
                        FROM (SELECT uid
                              FROM user_info
                              UNION
@@ -418,7 +422,7 @@ export function getUidsList(shardId: number, totalShards: number) {
 
          SELECT uid
          FROM uids
-         LIMIT (SELECT COUNT(*) FROM uids) / $1 OFFSET (SELECT COUNT(*) FROM uids) / $1 * $2`,
+         WHERE rn % $1 = $2`,
         [totalShards, shardId],
     ).then(res => res.map(row => row.uid));
 }
@@ -1417,9 +1421,11 @@ export class Cache<CacheType extends NodePgJsonValue> {
 }
 
 // We use this function to delete when any subscribed object is deleted
-export function deleteLocalData(id: string) {
+export function deleteLocalData(ids: string | string[]) {
+    // A bulk delete carries up to 100 ids, and /purge issues those back to back.
+    // One statement per id would swamp a pool that holds ten connections.
     return query(
-        'DELETE FROM local_data WHERE id = $1',
-        [id],
+        'DELETE FROM local_data WHERE id = ANY($1)',
+        [Array.isArray(ids) ? ids : [ids]],
     ).then(Utils.VOID, Utils.VOID);
 }
