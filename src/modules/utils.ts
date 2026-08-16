@@ -153,7 +153,7 @@ export async function convert_channel(client: Client, text: string) {
             c.isDMBased() ? false : c.name.toLowerCase().includes(text),
         )?.id,
         { context: text },
-    ).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0')) ?? null;
+    ).then(res => client.channels.fetch(res.find(r => r !== undefined) ?? '0').catch(() => null)) ?? null;
 }
 
 export function convert_emoji<T>(
@@ -325,8 +325,8 @@ export async function get_results<T>(
 ) {
     if (choices.length <= 1) return choices.at(0);
 
-    // Take first 10 results
-    choices = choices.splice(0, 10);
+    // Take first 10 results. slice, not splice: this array belongs to the caller.
+    choices = choices.slice(0, 10);
     const res_title = title_fmt(choices.length);
     const menu = new StringSelectMenuBuilder()
         .setPlaceholder('Select one to proceed.')

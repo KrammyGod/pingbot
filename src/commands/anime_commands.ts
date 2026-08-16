@@ -1,4 +1,3 @@
-import fs from 'fs';
 import config from '@config';
 import * as DB from '@modules/database';
 import * as Utils from '@modules/utils';
@@ -784,7 +783,7 @@ export const daily = new SlashCommandNoSubcommand({
                     `${embed.data.title}\naaaaand ${chosen.name} gave you another +` +
                     `${bonus_brons} ${brons_emoji}! ${level_str}`,
                 );
-                DB.addBrons(interaction.user.id, bonus_brons);
+                await DB.addBrons(interaction.user.id, bonus_brons);
             }
             return interaction.editReply({ embeds: [embed] }).then(Utils.VOID);
         }
@@ -1187,7 +1186,6 @@ async function get_char_as_embed(
 
     // Only enable if user is the author.
     if (authorID === target.id) {
-        await character.loadWaifu();
         const is_nsfw = Utils.channel_is_nsfw_safe(channel) && character.nsfw;
         // Switching image is always available; not all images are always available, however.
         if (character.fc) {
@@ -1433,7 +1431,7 @@ async function delete_char(interaction: AnySelectMenuInteraction, char: DB.Chara
         return { embeds: [embed], flags: MessageFlags.Ephemeral };
     }
     const refund = (char.fc ? 4 : 2) * res; // CONSTANT: Refund brons
-    DB.addBrons(interaction.user.id, refund);
+    await DB.addBrons(interaction.user.id, refund);
     embed.setTitle(
         `Successfully deleted ${char.getWFC(interaction.channel!)}${char.name} ` +
         `${char.gender}! +${refund} ${await Utils.get_bot_emoji(interaction.client, 'brons')}`,
@@ -2354,7 +2352,6 @@ export const users = new SlashCommandNoSubcommand({
         // });
         for (const [i, char] of users.entries()) {
             const user = await interaction.client.users.fetch(char.uid).catch(() => null);
-            if (!user) return interaction.deleteReply();
             desc +=
                 `${i + 1}. **@${user?.tag ?? char.uid}** ` +
                 `***(waifu #${char.idx})** (Level ${char.displayLvl})* ` +
@@ -2504,16 +2501,6 @@ type ImpartialWaifu = {
     nimg: string[];
 };
 const submit_privates = {
-    // Helper to generate a random, unique filename
-    uniqueFileName(ext: string) {
-        let id = 0;
-        let test = `./files/tmp${id++}${ext}`;
-        while (fs.existsSync(test)) {
-            test = `./files/tmp${id++}${ext}`;
-        }
-        return test;
-    },
-
     secretButtons: new ActionRowBuilder<ButtonBuilder>({
         components: [
             new ButtonBuilder({

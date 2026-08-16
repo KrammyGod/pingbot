@@ -123,7 +123,7 @@ async function replace_emojis(message: Message) {
 }
 
 async function handle_reply(message: Message) {
-    if (message.mentions.users.has(client.user.id)) {
+    if (client.lines.length && message.mentions.users.has(client.user.id)) {
         const lines = client.lines[Math.floor(Math.random() * client.lines.length)].slice();
         const reply = await message.reply({ content: lines.shift() }).catch(VOID);
         if (!reply) return; // No permissions to send messages
@@ -508,9 +508,13 @@ async function loading() {
     load(client);
 
     // Read in all reply lines
-    fs.readFile(path.resolve(__dirname, '../files/lines.txt'), (_, data) => {
-        const lines = data?.toString().split('\n');
+    fs.readFile(path.resolve(__dirname, '../files/lines.txt'), (err, data) => {
         client.lines = [];
+        if (err || !data) {
+            console.error('Could not read files/lines.txt; mention replies are disabled.', err);
+            return;
+        }
+        const lines = data.toString().split('\n');
         for (const line of lines) {
             const replies = [];
             // Split by commas, strip quotes

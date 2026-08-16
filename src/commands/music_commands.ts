@@ -1035,7 +1035,7 @@ const restart = new SlashSubcommand({
             // Low level access to guildVoice private fields
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
-                playNext(interaction.client, interaction.guildId!);
+                await playNext(interaction.client, interaction.guildId!);
                 await i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             } else {
                 await i.editReply({ content: 'There is no queue.', components: [] });

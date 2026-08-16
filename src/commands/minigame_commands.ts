@@ -71,6 +71,14 @@ class Cooldown {
         return Utils.timestamp(next_ready, 'R');
     }
 
+    /**
+     * Window elapsed, so this behaves exactly like a freshly constructed cooldown
+     * and can be dropped. See {@link CooldownMapping.sweep}.
+     */
+    is_expired() {
+        return this.last + this.per * 1000 < Date.now();
+    }
+
     get_ready_rate() {
         const is_ready = this.is_ready();
         if (is_ready === '') return '';
@@ -84,10 +92,14 @@ class Cooldown {
  * This allows global cooldowns, per-user cooldowns, per-guild cooldowns, etc.
  * If it has more use, can be included as a separate module.
  */
+/** How often {@link CooldownMapping} drops elapsed entries. */
+const SWEEP_INTERVAL_MS = 60 * 1000;
+
 class CooldownMapping {
     private readonly rate: number;
     private readonly per: number;
     private cooldowns: Map<string, Cooldown>;
+    private lastSweep: number;
 
     /**
      * Creates a mapping of any ID to a cooldown.
@@ -100,13 +112,29 @@ class CooldownMapping {
         this.per = per;
         this.rate = rate;
         this.cooldowns = new Map();
+        this.lastSweep = Date.now();
     }
 
     get(key: string) {
+        this.sweep();
         if (!this.cooldowns.has(key)) {
             this.cooldowns.set(key, new Cooldown(this.rate, this.per));
         }
         return this.cooldowns.get(key)!;
+    }
+
+    /**
+     * Without this the map grows by one entry per user per command and never
+     * shrinks. An elapsed cooldown is indistinguishable from a fresh one, so
+     * dropping it changes nothing the user can observe.
+     */
+    private sweep() {
+        const now = Date.now();
+        if (now - this.lastSweep < SWEEP_INTERVAL_MS) return;
+        this.lastSweep = now;
+        for (const [key, cooldown] of this.cooldowns) {
+            if (cooldown.is_expired()) this.cooldowns.delete(key);
+        }
     }
 }
 

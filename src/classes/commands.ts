@@ -17,8 +17,9 @@ import {
 import { Cache } from '@modules/database';
 import type { NodePgJsonValue } from '@typings/serialize';
 
-const DEFAULT_COMMAND_FUNCTION = () => {
-    // We guarantee that the last argument is the command object based on usage
+// `this` has to be the command the caller bound it to, and an arrow both captures
+// the module scope and ignores .bind entirely.
+const DEFAULT_COMMAND_FUNCTION = function (this: unknown) {
     throw new Error(`No function defined for ${inspect(this)}`);
 };
 

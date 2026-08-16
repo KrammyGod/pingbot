@@ -75,9 +75,9 @@ export async function getRawImageLink(source: string) {
 
     if (!images.length) {
         console.log(`(scraper/getRawImageLink ${id}) Trying twitter...`);
-        console.log(`(scraper/getRawImageLink ${id}) GET ${config.scraper}?url=${source}`);
+        console.log(`(scraper/getRawImageLink ${id}) GET ${config.scraper}?url=${encodeURIComponent(source)}`);
         // Let a separate server handle the parsing of twitter images with playwright.
-        const { imgs } = await fetch(`${config.scraper}?url=${source}`)
+        const { imgs } = await fetch(`${config.scraper}?url=${encodeURIComponent(source)}`)
             .then(res => {
                 console.log(`(scraper/getRawImageLink ${id}) Scraper returned ${res.status}.`);
                 return res.json();

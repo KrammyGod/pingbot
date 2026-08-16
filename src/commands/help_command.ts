@@ -42,8 +42,8 @@ async function get_results_category(
     if (choices.length === 0) return undefined;
     else if (choices.length === 1) return choices[0];
 
-    // Take first 10 results
-    choices = choices.splice(0, 10);
+    // Take first 10 results. slice, not splice: this array belongs to the caller.
+    choices = choices.slice(0, 10);
     const res_title = `Found ${choices.length} categories:`;
     const menu = new StringSelectMenuBuilder()
         .setPlaceholder('Select one to proceed.')
@@ -132,13 +132,15 @@ async function get_results_cmd(interaction: RepliableInteraction, search: string
             }
         }
     }
-    choices = choices.filter(cmd => cmd.name.toLowerCase().includes(search.toLowerCase())).sort();
+    // A bare sort() stringifies each object to "[object Object]" and orders nothing.
+    choices = choices.filter(cmd => cmd.name.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     if (choices.length === 0) return undefined;
     else if (choices.length === 1) return choices[0];
 
-    // Take first 10 results
-    choices = choices.splice(0, 10);
+    // Take first 10 results. slice, not splice: this array belongs to the caller.
+    choices = choices.slice(0, 10);
     const res_title = `Found ${choices.length} commands:`;
     const menu = new StringSelectMenuBuilder()
         .setPlaceholder('Select one to proceed.')
@@ -476,7 +478,7 @@ export const help = new SlashCommandNoSubcommand({
                     interaction,
                     interaction.client.cogs.filter(cog =>
                         cog.name.toLowerCase().includes(value.toLowerCase()),
-                    ).sort(),
+                    ).sort((a, b) => a.name.localeCompare(b.name)),
                 );
                 // Either null or undefined, doesn't matter
                 if (!category) {
@@ -548,7 +550,7 @@ export const help = new SlashCommandNoSubcommand({
                 interaction,
                 interaction.client.cogs.filter(cog =>
                     cog.name.toLowerCase().includes(categoryName.toLowerCase()),
-                ).sort(),
+                ).sort((a, b) => a.name.localeCompare(b.name)),
             );
             if (category === null) {
                 res = await get_cog_page(interaction.client, interaction.user.id, 1);

@@ -135,7 +135,9 @@ const COLLECTOR_TYPES: readonly CollectorType[] = ['honkai', 'genshin', 'star_ra
 function getCollectorType(): CollectorType {
     const type = process.env.type;
     if (!type || !COLLECTOR_TYPES.includes(type as CollectorType)) {
-        throw new Error(`Invalid collector type ${JSON.stringify(type)}; expected one of ${COLLECTOR_TYPES.join(', ')}`);
+        throw new Error(
+            `Invalid collector type ${JSON.stringify(type)}; expected one of ${COLLECTOR_TYPES.join(', ')}`,
+        );
     }
     return type as CollectorType;
 }
