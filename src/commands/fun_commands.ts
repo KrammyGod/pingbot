@@ -166,10 +166,9 @@ export const getid = new SlashCommandNoSubcommand({
         'Examples: `/getid user: Krammy`, `/getid user: @Krammy`',
 
     async execute(interaction) {
-        let query = interaction.options.getString('user')!;
-        if (!query.startsWith('@')) {
-            query = `@${query}`;
-        }
+        await interaction.deferReply();
+        const raw = interaction.options.getString('user')!;
+        const query = raw.replace(/^@+/, '').toLowerCase();
         const users = await interaction.client.shard?.broadcastEval(
             (client, query) => {
                 const u = client.users.cache.filter(u =>
@@ -187,7 +186,7 @@ export const getid = new SlashCommandNoSubcommand({
         if (res === null) {
             return interaction.deleteReply();
         } else if (!res) {
-            await interaction.editReply({ content: `No users found with name ${query}!` });
+            await interaction.editReply({ content: `No users found with name ${raw}!` });
         } else {
             await interaction.editReply({ content: `${res.name}'s ID is \`${res.id}\`` });
         }
@@ -902,6 +901,11 @@ export const poll_end = new ContextCommand({
         // Cache outdated, ignore
         if (!pollInfo) {
             return interaction.deleteReply();
+        } else if (pollInfo.uid !== interaction.user.id) {
+            // Same ownership gate Edit Poll applies; without it anyone could close it.
+            return interaction.editReply({
+                content: 'You are not the owner of this poll!',
+            }).then(Utils.VOID);
         }
         pollInfo.expires = new Date();
         await poll.cache.set(id, pollInfo);

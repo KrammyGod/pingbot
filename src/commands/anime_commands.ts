@@ -1523,9 +1523,17 @@ const listHelpers = {
         const char = high ?
             await DB.fetchUserHighCharacter(interaction.user.id, wid) :
             await DB.fetchUserCharacter(interaction.user.id, wid);
+        // The menu outlives the character: selling it in another window leaves this
+        // stale, and every handler below dereferences it immediately.
+        if (!char) {
+            return interaction.followUp({
+                content: 'You no longer own that character. Please reopen the list.',
+                flags: MessageFlags.Ephemeral,
+            }).then(Utils.VOID);
+        }
         const callFn = fnMappings[fn as keyof typeof fnMappings];
         if (callFn) {
-            const res = await callFn(interaction, char!) as InteractionReplyOptions | null;
+            const res = await callFn(interaction, char) as InteractionReplyOptions | null;
             if (res) {
                 await interaction.followUp(res);
             }
@@ -1548,7 +1556,7 @@ const listHelpers = {
         if (fn === 'delete_char') {
             res = get_char_as_embed(
                 interaction.channel!, interaction.user.id,
-                interaction.user, char!.idx!, high,
+                interaction.user, char.idx!, high,
             );
         } else {
             res = get_char_as_embed(
