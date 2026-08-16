@@ -155,16 +155,22 @@ async function collect() {
         name: process.env.displayName!,
     };
     for (const account of accounts) {
-        const collector = getCollector(type, account);
-        const aid = await collector.getAid();
-        LOGGER.log(`Checking into account ${aid}`);
-        const result = await collector.run().catch(error => {
-            LOGGER.error('Error in sign-in.');
-            on_account_error(error, aid, account.id);
-            return { uid: account.id, error: true } as CollectResult;
-        });
-        if (result) {
-            message.accounts.push(result);
+        let aid = account.id;
+        try {
+            const collector = getCollector(type, account);
+            aid = await collector.getAid();
+            LOGGER.log(`Checking into account ${aid}`);
+            const result = await collector.run().catch(error => {
+                LOGGER.error('Error in sign-in.');
+                on_account_error(error, aid, account.id);
+                return { uid: account.id, error: true } as CollectResult;
+            });
+            if (result) {
+                message.accounts.push(result);
+            }
+        } catch (error) {
+            LOGGER.error('Could not prepare this account for check-in; skipping it.');
+            on_account_error(error as object, aid, account.id);
         }
     }
     LOGGER.log('Completed collection!');
