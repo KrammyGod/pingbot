@@ -87,14 +87,14 @@ class Cooldown {
     }
 }
 
+/** How often {@link CooldownMapping} drops elapsed entries. */
+const SWEEP_INTERVAL_MS = 60 * 1000;
+
 /**
  * A mapping of any ID to a cooldown.
  * This allows global cooldowns, per-user cooldowns, per-guild cooldowns, etc.
  * If it has more use, can be included as a separate module.
  */
-/** How often {@link CooldownMapping} drops elapsed entries. */
-const SWEEP_INTERVAL_MS = 60 * 1000;
-
 class CooldownMapping {
     private readonly rate: number;
     private readonly per: number;
