@@ -13,6 +13,15 @@ CREATE TABLE IF NOT EXISTS commons (
 CREATE INDEX ON commons (name);
 CREATE INDEX ON commons (origin);
 
+-- Declared before completed_series, which carries a foreign key onto it.
+CREATE TABLE IF NOT EXISTS user_info (
+    uid BIGINT PRIMARY KEY,
+    brons INT NOT NULL,
+    collected BOOLEAN NOT NULL DEFAULT TRUE,
+    whales BOOLEAN NOT NULL DEFAULT FALSE,
+    CHECK (brons >= 0) -- Crucial for improved performance w/ transactions
+);
+
 CREATE TABLE IF NOT EXISTS completed_series (
     uid BIGINT NOT NULL REFERENCES user_info ON DELETE CASCADE,
     origin TEXT NOT NULL,
@@ -56,7 +65,7 @@ CREATE TABLE IF NOT EXISTS hoyolab_cookies_list (
     star_rail checkin_type NOT NULL DEFAULT 'none',
     honkai checkin_type NOT NULL DEFAULT 'none',
     endfield checkin_type NOT NULL DEFAULT 'none',
-    PRIMARY KEY (id, cookie)
+    PRIMARY KEY (id, cookie),
     -- We need to ensure that endfield cookie isn't shared with hoyolab
     CHECK (
         endfield = 'none' OR
@@ -125,14 +134,6 @@ CREATE TABLE IF NOT EXISTS char_mapping (
     iid BIGINT NOT NULL,
     fc BOOLEAN NOT NULL,
     UNIQUE (iid, fc)
-);
-
-CREATE TABLE IF NOT EXISTS user_info (
-    uid BIGINT PRIMARY KEY,
-    brons INT NOT NULL,
-    collected BOOLEAN NOT NULL DEFAULT TRUE,
-    whales BOOLEAN NOT NULL DEFAULT FALSE,
-    CHECK (brons >= 0) -- Crucial for improved performance w/ transactions
 );
 
 CREATE TABLE IF NOT EXISTS waifus (

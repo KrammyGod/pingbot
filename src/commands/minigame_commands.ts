@@ -153,11 +153,11 @@ const num_docs =
     `Guess a number between 1 and 10 (inclusive) to win brons. You must have an account.
 Cost: -1 bron per guess.
 Cooldown: 75 seconds every 5 guesses.
-__Prizes:__ 
-> +5 brons (including cost) for guessing a number 1 away from the actual number.
+__Prizes:__
+> +1 bron (including cost) for guessing a number 1 away from the actual number.
 > +10 brons (including cost) for guessing the actual number.
 
-For the +5 brons prize, for example, if the number was 5, guessing 4 or 6 would award 5 brons.
+For the +1 bron prize, for example, if the number was 5, guessing 4 or 6 would award 1 bron.
 
 Pro tip: You have higher chances of winning guessing middle numbers.`;
 

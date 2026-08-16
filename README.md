@@ -54,8 +54,10 @@ Growth comes from raising the shard count, which the `ShardingManager` negotiate
 - `lint` - Lints the source code
 - `lint:fix` - Runs eslint with fix option
 - `build` - Transpiles the source code
-- `deploy` - Transpiles the source code and registers slash commands
-- `start` - Transpiles the source code and starts the bot
+- `deploy` - Registers slash commands from the current `dist/`
+- `start` - Starts the bot from the current `dist/`
+
+`deploy` and `start` do **not** build first; run `npm run build` when the source has changed.
 
 Every script that needs configuration reads it from a `.env` file when one is present
 (`node --env-file-if-exists=.env`). This keeps a single definition of each command: locally the file supplies the
