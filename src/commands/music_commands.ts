@@ -50,22 +50,27 @@ function isGuildMemberObject(member: unknown): member is GuildMember {
     return member instanceof GuildMember;
 }
 
-async function get_member(interaction: BaseInteraction) {
-    let member = interaction.member;
+async function get_member(interaction: BaseInteraction): Promise<GuildMember | null> {
+    const member = interaction.member;
     if (isGuildMemberObject(member)) return member;
 
-    member = await interaction.guild!.members.fetch(member?.user.id ?? '0').catch(() => null);
-    if (!member) {
-        const reply: InteractionReplyOptions = {
-            content: 'I was unable to fetch your details. Please report this to the support server!',
-            flags: MessageFlags.Ephemeral,
-        };
-        return interaction.isRepliable() ?
-            interaction.replied || interaction.deferred ?
-                interaction.reply(reply).then(() => null) :
-                interaction.followUp(reply).then(() => null) :
-            null;
-    }
+    // A raw API member is only handed to us when the guild is uncached, and then
+    // interaction.guild is null as well, so there is nothing to fetch through.
+    const fetched = interaction.guild ?
+        await interaction.guild.members.fetch(member?.user.id ?? '0').catch(() => null) :
+        null;
+    if (fetched) return fetched;
+
+    if (!interaction.isRepliable()) return null;
+    const reply: InteractionReplyOptions = {
+        content: 'I was unable to fetch your details. Please report this to the support server!',
+        flags: MessageFlags.Ephemeral,
+    };
+    // Acknowledged already means followUp; only an untouched interaction takes reply.
+    const sent = interaction.replied || interaction.deferred ?
+        interaction.followUp(reply) :
+        interaction.reply(reply);
+    return sent.then(() => null, () => null);
 }
 
 // This function will pretty much always be called to validate
@@ -134,16 +139,14 @@ async function nowPlaying(client: Client, guildId: string) {
     }).setThumbnail(song.thumbnail);
 }
 
-const playNextLock = new Map<string, boolean>();
+// Membership means held. A stranded entry would make every later playNext for
+// that guild return immediately, so the guild goes silent until the process restarts.
+const playNextLock = new Set<string>();
 
-function getPlayNextLock(guildId: string) {
-    if (!playNextLock.has(guildId)) {
-        playNextLock.set(guildId, false);
-        return true;
-    }
-    const lock = playNextLock.get(guildId)!;
-    playNextLock.set(guildId, false);
-    return lock;
+function acquirePlayNextLock(guildId: string) {
+    if (playNextLock.has(guildId)) return false;
+    playNextLock.add(guildId);
+    return true;
 }
 
 function releasePlayNextLock(guildId: string) {
@@ -152,13 +155,19 @@ function releasePlayNextLock(guildId: string) {
 
 // This function will help play the next song in a guild
 async function playNext(client: Client, guildId: string) {
-    if (!getPlayNextLock(guildId)) return;
+    // Looked up before the lock is taken so a destroyed GuildVoice cannot strand it.
     const guildVoice = GuildVoices.get(guildId);
     if (!guildVoice) return;
-    const success = await guildVoice.playNextSong();
-    releasePlayNextLock(guildId);
+    if (!acquirePlayNextLock(guildId)) return;
+    let success: boolean;
+    try {
+        success = await guildVoice.playNextSong();
+    } finally {
+        // playNextSong throws on a dead ffmpeg; without this the lock never comes back.
+        releasePlayNextLock(guildId);
+    }
     if (!success) {
-        await guildVoice.textChannel.send({ content: 'End of queue.' });
+        await guildVoice.textChannel.send({ content: 'End of queue.' }).catch(Utils.VOID);
         guildVoice.player.stop();
         return;
     }
@@ -1026,7 +1035,7 @@ const restart = new SlashSubcommand({
             // Low level access to guildVoice private fields
             guildVoice.reset(guildVoice.fullQueue.slice());
             if (guildVoice.fullQueue.length) {
-                playNext(interaction.client, interaction.guildId!);
+                await playNext(interaction.client, interaction.guildId!);
                 await i.editReply({ content: '🔄 Successfully restarted the queue.', components: [] });
             } else {
                 await i.editReply({ content: 'There is no queue.', components: [] });

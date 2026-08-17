@@ -93,6 +93,7 @@ const CONFIG = {
 export class SkportCollector implements CollectBase {
     private readonly extraHeaders: Record<string, string> = {};
     private token: string = '';
+    private info?: Promise<{ uid: string, serverName: string, nickname: string }>;
     constructor(
         private readonly cookie: string,
         private readonly notify: boolean,
@@ -152,7 +153,9 @@ export class SkportCollector implements CollectBase {
      * This signs the request using the request token retrieved at the time of signing.
      */
     async getHeaders(path: string, body: string) {
-        await this.refreshToken();
+        // Every signed request used to buy its own token, so one account cost four
+        // refreshes where one does.
+        if (!this.token) await this.refreshToken();
         const timestamp = Math.floor(Date.now() / 1000).toString();
         const sign = this.generateSign(path, body, timestamp, this.token);
         return {
@@ -192,7 +195,10 @@ export class SkportCollector implements CollectBase {
         return fetch(CONFIG.refreshURL, { headers: this.baseHeaders })
             .then(res => res.json())
             .then((data: RefreshAPIResponse) => {
-                this.token = data.data?.token;
+                const token = data.data?.token;
+                // Signing with undefined throws inside crypto with a far less obvious message.
+                if (!token) throw new Error(`No token in refresh response: ${JSON.stringify(data)}`);
+                this.token = token;
             })
             .catch(err => {
                 this.LOGGER.error('failure in token refresh');
@@ -218,7 +224,13 @@ export class SkportCollector implements CollectBase {
             });
     }
 
-    async getInfo(): Promise<{uid: string, serverName: string, nickname: string}> {
+    /** Memoised: getAid and run both need it, and the answer cannot change mid-run. */
+    getInfo(): Promise<{uid: string, serverName: string, nickname: string}> {
+        this.info ??= this.fetchInfo();
+        return this.info;
+    }
+
+    private async fetchInfo(): Promise<{uid: string, serverName: string, nickname: string}> {
         const path = URL.parse(CONFIG.roleURL)?.pathname ?? '/';
         const headers = await this.getHeaders(path, '');
         const res = await fetch(CONFIG.roleURL, { headers })
@@ -260,8 +272,8 @@ export class SkportCollector implements CollectBase {
                 headers: { ...headers, 'Content-Type': 'application/json' },
             }).then(res => res.json()).then((data: SignAPIResponse) => {
                 const code = data.code;
-                if (code || code !== 0) {
-                    this.LOGGER.error('Already signed in today.');
+                if (code !== 0) {
+                    this.LOGGER.error(`Sign in returned code ${code}${data.message ? `: ${data.message}` : ''}`);
                 } else {
                     this.LOGGER.log('Sign in complete, did not notify user. This can mean failure or success.');
                 }

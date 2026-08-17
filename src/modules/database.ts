@@ -324,8 +324,10 @@ export function getCostPerPull(special: boolean) {
 // Generates a query string and params to use my shiny custom
 // search order
 function sortQueryAndParams(colName: string, params: string[], name: string) {
-    // Escape percent signs and underscores.
-    name = name.replaceAll(/(?<!\\)%/g, '\\%').replaceAll(/(?<!\\)_/g, '\\_');
+    // Escape the escape character first: a term ending in a lone backslash otherwise
+    // reaches Postgres as a pattern ending in one, which it rejects outright.
+    // Then escape percent signs and underscores.
+    name = name.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
     // This modifies params to make it all the correct ones
     params.push(
         `${name}`, `${name} %`, `% ${name}`, `% ${name} %`,
@@ -385,7 +387,9 @@ async function multi_query<R extends QueryResultRow = object, I = unknown>(
         await client.query('COMMIT');
         return res;
     } catch (err) {
-        await client.query('ROLLBACK');
+        // A failing transaction often means a broken connection, and letting the
+        // ROLLBACK reject would replace the error the callers branch on.
+        await client.query('ROLLBACK').catch(() => {});
         throw err;
     } finally {
         client.release();
@@ -397,7 +401,9 @@ export function start() {
     pool.on('error', err => {
         // We don't care if the connection is terminated.
         if (err.message.includes('terminating connection due to administrator command')) return;
-        throw err;
+        // Throwing here becomes an uncaughtException. index.ts owns every shard, so
+        // an idle client dying used to take the whole bot down with it.
+        console.error(err);
     });
     // 2 in 1, we remove all expired local caches, and check if database works at the same time.
     return pool.query('DELETE FROM local_data WHERE CURRENT_DATE >= expiry').then(() => false, () => true);
@@ -408,8 +414,10 @@ export function end() {
 }
 
 export function getUidsList(shardId: number, totalShards: number) {
+    // Partitioning by row number rather than LIMIT/OFFSET arithmetic: integer
+    // division there dropped the last count % totalShards users from every shard.
     return query<{ uid: string }>(
-        `WITH uids AS (SELECT uid
+        `WITH uids AS (SELECT uid, row_number() OVER (ORDER BY uid) - 1 AS rn
                        FROM (SELECT uid
                              FROM user_info
                              UNION
@@ -418,7 +426,7 @@ export function getUidsList(shardId: number, totalShards: number) {
 
          SELECT uid
          FROM uids
-         LIMIT (SELECT COUNT(*) FROM uids) / $1 OFFSET (SELECT COUNT(*) FROM uids) / $1 * $2`,
+         WHERE rn % $1 = $2`,
         [totalShards, shardId],
     ).then(res => res.map(row => row.uid));
 }
@@ -478,7 +486,7 @@ export function getCollected(userID: string) {
 }
 
 export function getWhales(userID: string) {
-    return query<{ whales: number }>(
+    return query<{ whales: boolean }>(
         'SELECT whales FROM user_info WHERE uid = $1',
         [userID],
     ).then(ret => ret.at(0)?.whales);
@@ -1184,10 +1192,13 @@ function setUserCharacterNsfw(userID: string, wid: string, nsfw: boolean) {
 
 export async function deleteUserCharacter(char: Character) {
     // Just in case, retrieve index; I'm paranoid.
-    const { idx } = await query<{ idx: string }>(
+    const row = await query<{ idx: string }>(
         'SELECT idx FROM user_chars WHERE uid = $1 AND wid = $2',
         [char.uid, char.wid],
-    ).then(res => res[0]);
+    ).then(res => res.at(0));
+    // Already sold, possibly from another window. Callers read 0 as "nothing deleted".
+    if (!row) return 0;
+    const { idx } = row;
     // Note that we didn't need to also include index,
     // but we do it just in case; will be helpful when
     // updating the index for other chars
@@ -1408,7 +1419,7 @@ export class Cache<CacheType extends NodePgJsonValue> {
         ).then(Utils.VOID);
     }
 
-    delete(id: string | null = null) {
+    delete(id: string) {
         return query<{ cmd: string, id: string, data: NodePgJsonSerialized<CacheType>, expiry: Date }>(
             'DELETE FROM local_data WHERE cmd = $1 AND id = $2 RETURNING *',
             [this.cmd, id],
@@ -1417,9 +1428,11 @@ export class Cache<CacheType extends NodePgJsonValue> {
 }
 
 // We use this function to delete when any subscribed object is deleted
-export function deleteLocalData(id: string) {
+export function deleteLocalData(ids: string | string[]) {
+    // A bulk delete carries up to 100 ids, and /purge issues those back to back.
+    // One statement per id would swamp a pool that holds ten connections.
     return query(
-        'DELETE FROM local_data WHERE id = $1',
-        [id],
+        'DELETE FROM local_data WHERE id = ANY($1::text[])',
+        [Array.isArray(ids) ? ids : [ids]],
     ).then(Utils.VOID, Utils.VOID);
 }

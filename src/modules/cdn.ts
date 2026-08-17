@@ -2,28 +2,20 @@ import config from '@config';
 import path from 'path';
 import { VOID } from '@modules/utils';
 
-const headers = new Headers();
-headers.append('Authorization', `Bearer ${config.secret}`);
-
-type Metrics = {
-    metrics: {
-        statuscode: number,
-        count: string
-    }[]
-};
-
-export async function getCDNMetrics(): Promise<Metrics> {
-    const res = await fetch(`${config.origin}/api/metrics`, {
-        method: 'GET',
-        headers,
-    }).then(res => res.json()).catch(e => console.error(`GET: ${e}`));
-    return res ?? { metrics: [] };
+/**
+ * Built per request. A shared Headers object let concurrent calls append a second
+ * Content-Type onto each other and delete it out from under one another.
+ */
+function authHeaders(extra?: Record<string, string>) {
+    return { 'Authorization': `Bearer ${config.secret}`, ...extra };
 }
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export async function uploadToCDN(body: FormData): Promise<string[]> {
     const { urls } = await fetch(`${config.origin}/api/upload`, {
         method: 'POST',
-        headers,
+        headers: authHeaders(),
         body,
     }).then(res => {
         if (res.status === 200) return res.json();
@@ -38,26 +30,22 @@ export async function uploadToCDN(body: FormData): Promise<string[]> {
 }
 
 export async function updateCDN(filenames: string[], newSources: string[]) {
-    headers.append('Content-Type', 'application/json');
     // Update to actual null to tell server to remove source
     const sources = newSources.map(s => s === 'null' ? null : s);
     const res = await fetch(`${config.origin}/api/update`, {
         method: 'PUT',
-        headers,
+        headers: authHeaders(JSON_HEADERS),
         body: JSON.stringify({ filenames, sources }),
     }).then(res => res.json()).catch(e => console.error(`PUT: ${e}`));
-    headers.delete('Content-Type');
     return res?.message ?? 'Error updating files';
 }
 
 export async function deleteFromCDN(filenames: string[]): Promise<string> {
-    headers.append('Content-Type', 'application/json');
     const res = await fetch(`${config.origin}/api/delete`, {
         method: 'DELETE',
-        headers,
+        headers: authHeaders(JSON_HEADERS),
         body: JSON.stringify({ filenames }),
     }).then(res => res.json()).catch(e => console.error(`DELETE: ${e}`));
-    headers.delete('Content-Type');
     return res?.message ?? 'Error deleting files';
 }
 

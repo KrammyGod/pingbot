@@ -40,7 +40,7 @@ RUN groupadd -g 2000 -r node \
 FROM nodejs AS builder
 ARG DEBIAN_FRONTEND=noninteractive
 
-# git                     -> github:* dependencies (pixiv.ts, play-dl)
+# git                     -> github:* dependencies (pixiv.ts)
 # build-essential/python3 -> node-gyp, for sodium-native and friends
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \

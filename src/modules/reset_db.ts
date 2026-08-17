@@ -60,11 +60,7 @@ async function query<R extends QueryResultRow = object, I = unknown>(query: stri
 
 export default async function reset() {
     await query(
-        'UPDATE user_info SET collected = $1',
-        [false],
-    );
-    await query(
-        'UPDATE user_info SET whales = $1',
+        'UPDATE user_info SET collected = $1, whales = $1',
         [false],
     );
     LOGGER.log('Set collected and whales to false!');

@@ -174,6 +174,9 @@ async function sendCollectorResults(body: SendMessage) {
     console.log(`Completed check-in for ${body.name}!\n`);
 }
 
+/** A collector body is a few KiB; this only exists to stop unbounded buffering. */
+const MAX_BODY_BYTES = 1024 * 1024;
+
 // Currently we only use this port for auto collector & kubernetes,
 // so we don't have to worry about parsing other bodies.
 http.createServer((req, res) => {
@@ -193,10 +196,31 @@ http.createServer((req, res) => {
         return res.end(ready ? 'OK\n' : 'Not Ready\n');
     }
 
+    // The collector is the only writer, and it always POSTs to the root.
+    if (req.method !== 'POST') {
+        res.writeHead(405, { 'Content-Type': 'text/plain', 'Allow': 'POST' });
+        return res.end('Method Not Allowed\n');
+    }
+
     const chunks: Uint8Array[] = [];
+    let received = 0;
+    let aborted = false;
     req.on('data', chunk => {
+        // Without a ceiling anything that reaches this port can buffer until the
+        // pod is OOM killed. A collector body is a few KiB.
+        if (aborted) return;
+        received += chunk.length;
+        if (received > MAX_BODY_BYTES) {
+            aborted = true;
+            res.writeHead(413, { 'Content-Type': 'text/plain' });
+            res.end('Payload Too Large\n');
+            req.destroy();
+            return;
+        }
         chunks.push(chunk);
     }).on('end', () => {
+        // The response is already closed; writing again would throw.
+        if (aborted) return;
         function safeJSONParse<T>(str: string): T | void {
             try {
                 return JSON.parse(str);
@@ -215,7 +239,9 @@ http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end('OK');
 
-        return sendCollectorResults(body);
+        // Nothing awaits this, so its rejections have to be swallowed here or they
+        // reach the unhandledRejection handler installed below.
+        return sendCollectorResults(body).catch(err => console.error(err));
     });
 }).listen(config.port, () => {
     console.log(`Message server listening on ${config.port}\n`);
@@ -233,3 +259,8 @@ function cleanup() {
 process.on('SIGINT', cleanup);
 // Sent by linux when machine shuts down
 process.on('SIGTERM', cleanup);
+
+// This process owns every shard, so letting an async fault reach Node's default
+// handler takes the whole bot down. bot.ts has had these for the same reason.
+process.on('uncaughtException', err => console.error(err));
+process.on('unhandledRejection', err => console.error(err));

@@ -58,7 +58,7 @@ export const purge = new MessageCommand({
             const deleted = await Purge.purge_from_dm(message.channel, amount);
             return message.channel.send({ content: `Successfully deleted ${deleted} message(s).` })
                 .then(m => {
-                    setTimeout(() => m.delete(), 3000);
+                    setTimeout(() => m.delete().catch(Utils.VOID), 3000);
                 });
         } else if (!message.channel.permissionsFor(message.member!)
             .has(PermissionsBitField.Flags.ManageMessages)) {
@@ -115,7 +115,7 @@ export const purge = new MessageCommand({
             });
             return new_channel.send({ content: `${message.author} Purged all messages.` })
                 .then(msg => {
-                    setTimeout(() => msg.delete(), 3000);
+                    setTimeout(() => msg.delete().catch(Utils.VOID), 3000);
                 }).catch(Utils.VOID);
         }
 
@@ -126,7 +126,7 @@ export const purge = new MessageCommand({
         // We also delete the command message, so deleted - 1
         return message.channel.send({ content: `${message.author} deleted ${deleted - 1} message(s).` })
             .then(m => {
-                setTimeout(() => m.delete(), 3000);
+                setTimeout(() => m.delete().catch(Utils.VOID), 3000);
             }).catch(Utils.VOID);
     },
 });
@@ -167,7 +167,7 @@ export const add = new MessageCommand({
             return message.channel.send({ content: 'Too less arguments.' })
                 .then(msg => {
                     setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                    setTimeout(async () => await msg.delete(), 1000);
+                    setTimeout(() => msg.delete().catch(Utils.VOID), 1000);
                 });
         }
         let amount = undefined;
@@ -181,7 +181,7 @@ export const add = new MessageCommand({
             return message.channel.send({ content: 'Missing number.' })
                 .then(msg => {
                     setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                    setTimeout(() => msg.delete(), 1000);
+                    setTimeout(() => msg.delete().catch(Utils.VOID), 1000);
                 });
         }
         let res = await Utils.convert_user(message.client, args[0]);
@@ -191,7 +191,7 @@ export const add = new MessageCommand({
             return message.channel.send({ content: 'No users found.' })
                 .then(msg => {
                     setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                    setTimeout(() => msg.delete(), 1000);
+                    setTimeout(() => msg.delete().catch(Utils.VOID), 1000);
                 });
         }
         await DB.addBrons(res!.id, amount);
@@ -201,7 +201,7 @@ export const add = new MessageCommand({
             allowedMentions: { users: [] },
         }).then(msg => {
             if (message.guild?.id === config.guild) return;
-            setTimeout(() => msg.delete(), 1000);
+            setTimeout(() => msg.delete().catch(Utils.VOID), 1000);
         });
     },
 });
@@ -218,7 +218,7 @@ export const upload = new MessageCommand({
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                setTimeout(() => msg.delete(), 2000);
+                setTimeout(() => msg.delete().catch(Utils.VOID), 2000);
             });
         }
         const res = [];
@@ -257,7 +257,7 @@ export const sauce = new MessageCommand({
             const content = message.client.is_using_lambda ? 'Using lambda.' : 'Not using lambda.';
             return message.channel.send({ content }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                setTimeout(() => msg.delete(), 2000);
+                setTimeout(() => msg.delete().catch(Utils.VOID), 2000);
             });
         }
         setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
@@ -268,7 +268,7 @@ export const sauce = new MessageCommand({
             const response = await getSauce(arg, message.client.is_using_lambda);
             // pixiv sauces have different link, prefer en/artworks/ format.
             content += `${i + 1}. ${response.sauce.replace(
-                /member_illust.php?mode=.*&illust_id=/g,
+                /member_illust\.php\?mode=.*&illust_id=/g,
                 'en/artworks/',
             )}\n`;
             if (response.error) {
@@ -291,12 +291,12 @@ export const update = new MessageCommand({
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                setTimeout(() => msg.delete(), 2000);
+                setTimeout(() => msg.delete().catch(Utils.VOID), 2000);
             });
         } else if (args.length % 2 !== 0) {
             return message.channel.send({ content: 'Arguments must be in pairs.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                setTimeout(() => msg.delete(), 2000);
+                setTimeout(() => msg.delete().catch(Utils.VOID), 2000);
             });
         }
         setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
@@ -323,7 +323,7 @@ export const del = new MessageCommand({
         if (args.length < 1) {
             return message.channel.send({ content: 'Too few arguments.' }).then(msg => {
                 setTimeout(() => message.delete().catch(Utils.VOID), 200);
-                setTimeout(() => msg.delete(), 2000);
+                setTimeout(() => msg.delete().catch(Utils.VOID), 2000);
             });
         }
         setTimeout(() => message.edit({ flags: MessageFlags.SuppressEmbeds }), 200);
@@ -343,12 +343,12 @@ export const start = new MessageCommand({
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
         if (message.client.is_listening) {
             await message.reply({ content: "I'm already listening." })
-                .then(msg => setTimeout(() => msg.delete(), 2000))
+                .then(msg => setTimeout(() => msg.delete().catch(Utils.VOID), 2000))
                 .catch(Utils.VOID);
         } else {
             message.client.is_listening = true;
             await message.reply({ content: "I'm listening again." })
-                .then(msg => setTimeout(() => msg.delete(), 2000))
+                .then(msg => setTimeout(() => msg.delete().catch(Utils.VOID), 2000))
                 .catch(Utils.VOID);
         }
     },
@@ -366,12 +366,12 @@ export const stop = new MessageCommand({
         setTimeout(() => message.delete().catch(Utils.VOID), 200);
         if (!message.client.is_listening) {
             await message.channel.send({ content: 'I already stopped listening.' })
-                .then(msg => setTimeout(() => msg.delete(), 2000))
+                .then(msg => setTimeout(() => msg.delete().catch(Utils.VOID), 2000))
                 .catch(Utils.VOID);
         } else {
             message.client.is_listening = false;
             await message.channel.send({ content: 'I stopped listening.' })
-                .then(msg => setTimeout(() => msg.delete(), 2000))
+                .then(msg => setTimeout(() => msg.delete().catch(Utils.VOID), 2000))
                 .catch(Utils.VOID);
         }
     },

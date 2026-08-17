@@ -71,6 +71,14 @@ class Cooldown {
         return Utils.timestamp(next_ready, 'R');
     }
 
+    /**
+     * Window elapsed, so this behaves exactly like a freshly constructed cooldown
+     * and can be dropped. See {@link CooldownMapping.sweep}.
+     */
+    is_expired() {
+        return this.last + this.per * 1000 < Date.now();
+    }
+
     get_ready_rate() {
         const is_ready = this.is_ready();
         if (is_ready === '') return '';
@@ -78,6 +86,9 @@ class Cooldown {
         return `currently on cooldown${rate}.\nMore available ${is_ready}`;
     }
 }
+
+/** How often {@link CooldownMapping} drops elapsed entries. */
+const SWEEP_INTERVAL_MS = 60 * 1000;
 
 /**
  * A mapping of any ID to a cooldown.
@@ -88,6 +99,7 @@ class CooldownMapping {
     private readonly rate: number;
     private readonly per: number;
     private cooldowns: Map<string, Cooldown>;
+    private lastSweep: number;
 
     /**
      * Creates a mapping of any ID to a cooldown.
@@ -100,13 +112,29 @@ class CooldownMapping {
         this.per = per;
         this.rate = rate;
         this.cooldowns = new Map();
+        this.lastSweep = Date.now();
     }
 
     get(key: string) {
+        this.sweep();
         if (!this.cooldowns.has(key)) {
             this.cooldowns.set(key, new Cooldown(this.rate, this.per));
         }
         return this.cooldowns.get(key)!;
+    }
+
+    /**
+     * Without this the map grows by one entry per user per command and never
+     * shrinks. An elapsed cooldown is indistinguishable from a fresh one, so
+     * dropping it changes nothing the user can observe.
+     */
+    private sweep() {
+        const now = Date.now();
+        if (now - this.lastSweep < SWEEP_INTERVAL_MS) return;
+        this.lastSweep = now;
+        for (const [key, cooldown] of this.cooldowns) {
+            if (cooldown.is_expired()) this.cooldowns.delete(key);
+        }
     }
 }
 
@@ -125,11 +153,11 @@ const num_docs =
     `Guess a number between 1 and 10 (inclusive) to win brons. You must have an account.
 Cost: -1 bron per guess.
 Cooldown: 75 seconds every 5 guesses.
-__Prizes:__ 
-> +5 brons (including cost) for guessing a number 1 away from the actual number.
+__Prizes:__
+> +1 bron (including cost) for guessing a number 1 away from the actual number.
 > +10 brons (including cost) for guessing the actual number.
 
-For the +5 brons prize, for example, if the number was 5, guessing 4 or 6 would award 5 brons.
+For the +1 bron prize, for example, if the number was 5, guessing 4 or 6 would award 1 bron.
 
 Pro tip: You have higher chances of winning guessing middle numbers.`;
 

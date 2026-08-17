@@ -21,6 +21,7 @@ import {
     InteractionContextType,
     Message,
     MessageActionRowComponentBuilder,
+    MessageComponentInteraction,
     MessageFlags,
     ModalBuilder,
     ModalSubmitFields,
@@ -91,7 +92,7 @@ export const purge = new SlashCommandNoSubcommand({
                 amount,
             );
             return interaction.editReply({ content: `Successfully deleted ${deleted} message(s).` }).then(m => {
-                setTimeout(() => Utils.delete_ephemeral_message(interaction, m), 3000);
+                setTimeout(() => Utils.delete_ephemeral_message(interaction, m).catch(Utils.VOID), 3000);
             });
         } else if (!interaction.inCachedGuild()) {
             return console.log(`/guild: Guild ${interaction.guildId} not found in cache! Pls fix!`);
@@ -157,7 +158,7 @@ export const purge = new SlashCommandNoSubcommand({
                 throw new PermissionError();
             });
             return new_channel.send({ content: `${interaction.user} Purged all messages.` }).then(msg => {
-                setTimeout(() => msg.delete(), 3000);
+                setTimeout(() => msg.delete().catch(Utils.VOID), 3000);
             }).catch(Utils.VOID);
         } else if (!interaction.channel!.permissionsFor(interaction.guild.members.me!)
             .has(PermissionsBitField.Flags.ReadMessageHistory)) {
@@ -177,7 +178,7 @@ export const purge = new SlashCommandNoSubcommand({
         );
         await Utils.delete_ephemeral_message(interaction, message);
         await interaction.channel!.send({ content: `${interaction.user} deleted ${deleted} message(s).` })
-            .then(m => setTimeout(() => m.delete(), 3000))
+            .then(m => setTimeout(() => m.delete().catch(Utils.VOID), 3000))
             .catch(Utils.VOID);
     },
 });
@@ -738,8 +739,10 @@ export const role = new SlashCommandNoSubcommand({
         }).setColor('Gold');
         const base_components: ActionRowBuilder<RoleSelectMenuBuilder | ButtonBuilder>[] = [roleSelector, apply];
         const msg = await interaction.editReply({ embeds: [embed], components: base_components });
-        const collector = msg.createMessageComponentCollector();
-        collector.on('collect', async i => {
+        // Unbounded, this outlived the interaction token it depends on: the listener
+        // leaked for the process lifetime and 'end' never ran.
+        const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
+        const on_collect = async (i: MessageComponentInteraction) => {
             if (i.isButton()) {
                 await i.deferUpdate();
                 // Add message
@@ -820,7 +823,10 @@ export const role = new SlashCommandNoSubcommand({
                     });
                 }
             }
-        });
+        };
+        // An async listener's rejection has nowhere to go, and once the interaction
+        // token expires every deferUpdate/editReply inside it throws.
+        collector.on('collect', i => void on_collect(i).catch(err => console.error(err)));
         collector.on('end', async () => {
             await msg.edit({
                 content: 'Self role setup has timed out.',

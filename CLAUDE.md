@@ -9,8 +9,8 @@ npm run dev          # watch mode: tsc -w + tsc-alias -w + nodemon
 npm run build        # rimraf dist && tsc --build && tsc-alias
 npm run lint         # eslint, --max-warnings=0 (CI gate)
 npm run lint:fix
-npm start            # build, then run the sharding manager
-npm run deploy       # build, then register slash commands with Discord
+npm start            # run the sharding manager from the current dist/ (does NOT build)
+npm run deploy       # register slash commands with Discord from dist/ (does NOT build)
 npm run collect:gi   # one collector run (also :hi3, :hsr, :ef)
 npm run reset        # daily reset for rotating commands
 npm run cookie       # check whether the stored hoyolab cookie is still valid
