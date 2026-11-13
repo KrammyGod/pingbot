@@ -42,14 +42,11 @@ const ACTIVITY: ActivitiesOptions = {
 const TOKEN = config.token;
 const INTENTS = [
     IntentsBitField.Flags.Guilds,
-    IntentsBitField.Flags.GuildMembers,
-    IntentsBitField.Flags.GuildEmojisAndStickers,
     IntentsBitField.Flags.GuildWebhooks,
     IntentsBitField.Flags.GuildVoiceStates,
     IntentsBitField.Flags.GuildMessages,
     IntentsBitField.Flags.DirectMessages,
     IntentsBitField.Flags.DirectMessageTyping,
-    IntentsBitField.Flags.MessageContent,
 ];
 // Warning: we assert that client is true, but actually the client is not immediately ready upon creation.
 // Ensure using the is_ready property before using properties such as client.user
