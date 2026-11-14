@@ -42,6 +42,7 @@ const ACTIVITY: ActivitiesOptions = {
 const TOKEN = config.token;
 const INTENTS = [
     IntentsBitField.Flags.Guilds,
+    IntentsBitField.Flags.GuildMembers,
     IntentsBitField.Flags.GuildWebhooks,
     IntentsBitField.Flags.GuildVoiceStates,
     IntentsBitField.Flags.GuildMessages,
